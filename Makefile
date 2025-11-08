@@ -3,10 +3,10 @@
 include .env
 export
 
-all: data/vessel_details.json data/protected_areas.geojson
+all: data/gfw data/protected_areas.geojson
 
-data/vessel_details.json: scripts/fetch_vessel_data.sh
-	@./scripts/fetch_vessel_data.sh
+data/gfw: scripts/fetch_vessel_presence.sh
+	@./scripts/fetch_vessel_presence.sh
 
 data/protected_areas.geojson: scripts/fetch_protected_areas.sh
 	@./scripts/fetch_protected_areas.sh
