@@ -11,7 +11,13 @@ vessel-presence: scripts/fetch_vessel_presence.sh
 data/protected_areas.geojson: scripts/fetch_protected_areas.sh
 	@./scripts/fetch_protected_areas.sh
 
+convert:
+	@./scripts/convert.sh
+
+transform: convert
+	cd etl && dbt run --profiles-dir .
+
 clean:
 	rm -rf data
 
-.PHONY: all clean vessel-presence
+.PHONY: all clean vessel-presence convert transform
