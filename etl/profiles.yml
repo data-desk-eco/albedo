@@ -1,0 +1,14 @@
+etl:
+  outputs:
+    dev:
+      type: duckdb
+      path: ../target/etl.duckdb
+      threads: 1
+      extensions:
+        - spatial
+        - httpfs
+        - json
+      settings:
+        preserve_insertion_order: false
+        temp_directory: ../target/temp
+  target: dev
