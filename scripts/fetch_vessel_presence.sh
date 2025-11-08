@@ -23,12 +23,6 @@ for year in $(seq $start_year $end_year); do
     month_padded=$(printf "%02d" $month)
     output_file="data/gfw/${year}-${month_padded}.json"
 
-    # Skip if already exists
-    if [ -f "$output_file" ]; then
-      echo "  Skipping ${year}-${month_padded} (already exists)"
-      continue
-    fi
-
     # Calculate last day of month
     if [ $month -eq 2 ]; then
       if [ $(($year % 4)) -eq 0 ] && ([ $(($year % 100)) -ne 0 ] || [ $(($year % 400)) -eq 0 ]); then
