@@ -1,9 +1,3 @@
-{{
-    config(
-        materialized='view'
-    )
-}}
-
 with vessel_data as (
     select * from {{ ref('vessel_presence') }}
 )
