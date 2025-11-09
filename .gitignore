@@ -6,3 +6,5 @@ data/*.duckdb
 data/backups/
 logs/
 target/
+.DS_Store
+etl/data/
