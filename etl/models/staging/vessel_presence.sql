@@ -1,9 +1,3 @@
-{{
-    config(
-        materialized='view'
-    )
-}}
-
 -- Read from pre-converted Parquet files (see scripts/json_to_parquet.sh)
 -- This is much faster than reading JSON directly
 

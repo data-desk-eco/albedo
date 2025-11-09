@@ -8,8 +8,8 @@ macro-paths: ["macros"]
 models:
   etl:
     staging:
-      +materialized: view
+      +materialized: table
     intermediate:
-      +materialized: view
+      +materialized: table
     marts:
       +materialized: table

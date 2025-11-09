@@ -1,9 +1,3 @@
-{{
-    config(
-        materialized='view'
-    )
-}}
-
 -- Detailed position data for map visualization
 -- This gives you individual points to render on the map
 
