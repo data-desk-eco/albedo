@@ -5,28 +5,30 @@ Map of shipping activity along Russia's Northern Sea Route. Consultancy project 
 ## Setup
 
 ```bash
-make           # Fetch all data (2021-2024)
-make test      # Quick test (Jan 2024)
-make clean     # Remove data
+make           # Fetch GFW data + protected areas
+make convert   # Convert JSON → Parquet
+make transform # Run dbt pipeline → data/data.duckdb
 ```
 
-Configuration in `.env` — edit to change date ranges, study area, etc.
+Configuration in `.env` — edit date ranges, study area, etc.
 
-## Data sources
+## Data pipeline
 
-- **Vessels**: [GFW 4Wings API](https://globalfishingwatch.org/our-apis/documentation) (`public-global-presence:latest`)
-- **Protected areas**: Russian Ministry of Natural Resources WFS
-- **Terms of reference**: `docs/NSR Traffic - Terms of Reference.pdf`
+1. **Fetch**: GFW 4Wings API → `data/gfw/*.json` (monthly)
+2. **Convert**: JSON → Parquet with DuckDB
+3. **Transform**: dbt models → `data/data.duckdb` (1.3GB)
 
-## Output
+## Database (data/data.duckdb)
 
-- `data/vessel_presence.json` — Raw 4Wings API response
-- `data/vessel_details.json` — Unique vessels with IMO, MMSI, flags, etc.
-- `data/protected_areas.geojson` — Russian Arctic protected areas
+- `vessel_activity` — 79K vessels, aggregated stats
+- `vessel_positions` — 16.9M positions, 2024, 0.01° grid
+
+## Sources
+
+- **Vessels**: [GFW 4Wings API](https://globalfishingwatch.org/our-apis/documentation)
+- **Protected areas**: Russian Ministry WFS
 
 ## Stack
 
-- Makefile + bash scripts (62 lines total)
-- curl + jq for data fetching/transformation
-- DuckDB for subsequent analysis
-- Final output: static Mapbox/MapLibre map
+- Bash + DuckDB + dbt
+- Output: static MapLibre map
