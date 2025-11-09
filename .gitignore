@@ -1,3 +1,7 @@
-data/
+data/gfw/
+data/temp/
+data/*.json
+data/*.geojson
+data/backups/
 logs/
 target/

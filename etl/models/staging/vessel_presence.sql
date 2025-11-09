@@ -68,4 +68,23 @@ select
     {{ flatten_vessel_json() }}
 from read_parquet('../data/gfw/2024-09.parquet')
 
--- Months 10-12: corrupt source data, need to re-fetch
+union all
+
+select
+    '2024-10' as month,
+    {{ flatten_vessel_json() }}
+from read_parquet('../data/gfw/2024-10.parquet')
+
+union all
+
+select
+    '2024-11' as month,
+    {{ flatten_vessel_json() }}
+from read_parquet('../data/gfw/2024-11.parquet')
+
+union all
+
+select
+    '2024-12' as month,
+    {{ flatten_vessel_json() }}
+from read_parquet('../data/gfw/2024-12.parquet')
