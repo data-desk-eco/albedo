@@ -2,7 +2,7 @@ etl:
   outputs:
     dev:
       type: duckdb
-      path: ../target/etl.duckdb
+      path: ../data/data.duckdb
       threads: 1
       extensions:
         - spatial
@@ -10,5 +10,5 @@ etl:
         - json
       settings:
         preserve_insertion_order: false
-        temp_directory: ../target/temp
+        temp_directory: ../data/temp
   target: dev
