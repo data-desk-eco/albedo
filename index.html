@@ -66,7 +66,7 @@
           source: 'basemap'
         },
         {
-          id: 'vessel-heat',
+          id: 'vessel-grid',
           type: 'circle',
           source: 'vessel-activity',
           'source-layer': 'vessel_activity',
@@ -74,20 +74,20 @@
             'circle-radius': [
               'interpolate', ['linear'], ['zoom'],
               0, 4,
-              3, 6,
-              6, 8,
-              10, 12
+              2, 5,
+              4, 6,
+              6, 7,
+              10, 10
             ],
             'circle-color': [
               'interpolate', ['linear'], ['get', 'hours'],
-              0, '#fee5d9',
-              50, '#fcae91',
-              100, '#fb6a4a',
-              200, '#de2d26',
-              500, '#a50f15'
+              0, '#e0e0e0',
+              50, '#a0a0a0',
+              100, '#606060',
+              200, '#303030',
+              500, '#000000'
             ],
-            'circle-opacity': 0.8,
-            'circle-blur': 0.3
+            'circle-opacity': 0.8
           },
           minzoom: 0
         }
@@ -114,7 +114,7 @@
   });
 
   // Show popup on click
-  map.on('click', 'vessel-heat', (e) => {
+  map.on('click', 'vessel-grid', (e) => {
     const props = e.features[0].properties;
     new maplibregl.Popup()
       .setLngLat(e.lngLat)
@@ -127,11 +127,11 @@
       .addTo(map);
   });
 
-  map.on('mouseenter', 'vessel-heat', () => {
+  map.on('mouseenter', 'vessel-grid', () => {
     map.getCanvas().style.cursor = 'pointer';
   });
 
-  map.on('mouseleave', 'vessel-heat', () => {
+  map.on('mouseleave', 'vessel-grid', () => {
     map.getCanvas().style.cursor = '';
   });
 </script>
