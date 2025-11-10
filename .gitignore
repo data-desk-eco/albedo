@@ -9,3 +9,7 @@ logs/
 target/
 .DS_Store
 etl/data/
+
+# Testing
+test_map.py
+map_*.png
