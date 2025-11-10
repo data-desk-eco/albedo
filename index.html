@@ -41,8 +41,7 @@
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
-  // Initialize map with globe projection
-  window.map = new maplibregl.Map({
+  const map = new maplibregl.Map({
     container: 'map',
     style: {
       version: 8,
@@ -123,7 +122,7 @@
     minZoom: 1.5
   });
 
-  window.map.on('load', () => {
+  map.on('load', () => {
     document.getElementById('stats').textContent =
       'Vessel activity heatmap (2024)\nDarker = more activity';
   });
