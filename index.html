@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Northern Sea Route Vessel Activity</title>
-  <script src="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.css" rel="stylesheet">
-  <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
+  <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
+  <script src="https://unpkg.com/georaster-layer-for-maplibre@0.3.0/dist/georaster-layer-for-maplibre.min.js"></script>
   <style>
     body { margin: 0; padding: 0; }
     #map {
@@ -53,10 +55,10 @@
           tileSize: 256,
           attribution: '&copy; OpenStreetMap contributors'
         },
-        'vessel-activity': {
+        'protected-areas': {
           type: 'vector',
-          url: 'pmtiles://./data/tiles.pmtiles',
-          attribution: 'Global Fishing Watch'
+          url: 'pmtiles://./data/protected_areas.pmtiles',
+          attribution: 'Russian Ministry'
         }
       },
       layers: [
@@ -68,7 +70,7 @@
         {
           id: 'protected-areas',
           type: 'fill',
-          source: 'vessel-activity',
+          source: 'protected-areas',
           'source-layer': 'protected_areas',
           paint: {
             'fill-color': '#808080',
@@ -78,48 +80,22 @@
         {
           id: 'protected-areas-outline',
           type: 'line',
-          source: 'vessel-activity',
+          source: 'protected-areas',
           'source-layer': 'protected_areas',
           paint: {
             'line-color': '#606060',
             'line-width': 1,
             'line-opacity': 0.5
           }
-        },
-        {
-          id: 'vessel-grid',
-          type: 'circle',
-          source: 'vessel-activity',
-          'source-layer': 'vessel_activity',
-          paint: {
-            'circle-radius': [
-              'interpolate', ['linear'], ['zoom'],
-              0, 4,
-              2, 5,
-              4, 6,
-              6, 7,
-              10, 10
-            ],
-            'circle-color': [
-              'interpolate', ['linear'], ['get', 'hours'],
-              0, '#e0e0e0',
-              50, '#a0a0a0',
-              100, '#606060',
-              200, '#303030',
-              500, '#000000'
-            ],
-            'circle-opacity': 0.8
-          },
-          minzoom: 0
         }
       ]
     },
-    center: [100, 90],
-    zoom: 1.75,
+    center: [100, 73],
+    zoom: 2.5,
     pitch: 30,
     bearing: 0,
     maxZoom: 10,
-    minZoom: 2.5
+    minZoom: 0
   });
 
   // Set globe projection after style loads
@@ -127,46 +103,29 @@
     map.setProjection({ type: 'globe' });
   });
 
-  map.on('load', () => {
-    document.getElementById('stats').textContent =
-      'Pan and zoom to explore\nvessel activity (2024)';
+  map.on('load', async () => {
+    document.getElementById('stats').textContent = 'Loading vessel heatmap...';
 
-    // Debug: Update stats on move
-    const updateStats = () => {
-      const zoom = map.getZoom().toFixed(2);
-      const center = map.getCenter();
-      const features = map.queryRenderedFeatures({ layers: ['vessel-grid'] });
+    // Load and display GeoTIFF heatmap
+    try {
+      const response = await fetch('./data/vessel_heatmap.tif');
+      const arrayBuffer = await response.arrayBuffer();
+      const georaster = await parseGeoraster(arrayBuffer);
+
+      const layer = new GeoRasterLayer({
+        georaster: georaster,
+        opacity: 0.8,
+        resolution: 256
+      });
+
+      layer.addTo(map);
+
       document.getElementById('stats').textContent =
-        `Pan and zoom to explore vessel activity (2024)\n\n` +
-        `Zoom: ${zoom}\n` +
-        `Center: [${center.lng.toFixed(2)}, ${center.lat.toFixed(2)}]\n` +
-        `Visible points: ${features.length}`;
-    };
-
-    map.on('move', updateStats);
-    updateStats();
-  });
-
-  // Show popup on click
-  map.on('click', 'vessel-grid', (e) => {
-    const props = e.features[0].properties;
-    new maplibregl.Popup()
-      .setLngLat(e.lngLat)
-      .setHTML(`
-        <strong>Grid Cell</strong><br>
-        Unique vessels: ${props.vessels}<br>
-        Total hours: ${props.hours}<br>
-        Detections: ${props.detections}
-      `)
-      .addTo(map);
-  });
-
-  map.on('mouseenter', 'vessel-grid', () => {
-    map.getCanvas().style.cursor = 'pointer';
-  });
-
-  map.on('mouseleave', 'vessel-grid', () => {
-    map.getCanvas().style.cursor = '';
+        'Vessel activity heatmap (2024)\nDarker = more activity';
+    } catch (error) {
+      console.error('Error loading heatmap:', error);
+      document.getElementById('stats').textContent = 'Error loading heatmap';
+    }
   });
 </script>
 </body>
