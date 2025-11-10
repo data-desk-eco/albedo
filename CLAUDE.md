@@ -12,8 +12,6 @@ make tiles     # Generate PMTiles → data/tiles.pmtiles (50MB)
 make serve     # Start server at http://localhost:8000
 ```
 
-**Note**: The server uses a custom Python HTTP handler with Range request support, required for PMTiles byte-serving.
-
 Configuration in `.env` — edit date ranges, study area, etc.
 
 ## Data pipeline
@@ -28,6 +26,29 @@ Configuration in `.env` — edit date ranges, study area, etc.
 - `vessel_activity` — 79K vessels, aggregated stats
 - `vessel_positions` — 16.9M positions, 2024, 0.01° grid
 
+## Frontend
+
+Single `index.html` file with:
+- MapLibre GL JS + PMTiles for vector tile rendering
+- Globe projection with grayscale circle visualization
+- Inline CSS/JS, no build step or dependencies
+- Custom Python server (`serve.py`) for Range request support
+
+## Structure
+
+```
+.
+├── index.html          # Web map interface
+├── serve.py            # HTTP server with Range request support
+├── Makefile            # Pipeline orchestration
+├── scripts/            # Data fetching & processing scripts
+├── etl/                # dbt models & configuration
+└── data/               # Generated data (gitignored)
+    ├── gfw/            # Raw GFW API responses
+    ├── data.duckdb     # Transformed data (1.3GB)
+    └── tiles.pmtiles   # Vector tiles (50MB)
+```
+
 ## Sources
 
 - **Vessels**: [GFW 4Wings API](https://globalfishingwatch.org/our-apis/documentation)
@@ -36,4 +57,4 @@ Configuration in `.env` — edit date ranges, study area, etc.
 ## Stack
 
 - Bash + DuckDB + dbt + tippecanoe
-- MapLibre GL JS + PMTiles for display
+- MapLibre GL JS + PMTiles
