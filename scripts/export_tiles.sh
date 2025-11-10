@@ -3,8 +3,8 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-# Export vessel activity as CSV for raster generation
-echo "Exporting vessel activity to CSV..."
+# Export vessel activity from DuckDB to CSV
+echo "Exporting vessel activity from DuckDB..."
 duckdb data/data.duckdb -c "
 COPY (
   SELECT
@@ -13,34 +13,14 @@ COPY (
     sum(hours) as hours
   FROM vessel_positions
   GROUP BY lat, lon
+  ORDER BY lat DESC, lon ASC
 ) TO 'data/vessel_activity.csv' (HEADER, DELIMITER ',');
 "
 
-# Create VRT file for GDAL
-echo "Creating VRT for GDAL..."
-cat > data/vessel_activity.vrt << EOF
-<OGRVRTDataSource>
-  <OGRVRTLayer name="vessel_activity">
-    <SrcDataSource>$(pwd)/data/vessel_activity.csv</SrcDataSource>
-    <GeometryType>wkbPoint</GeometryType>
-    <LayerSRS>EPSG:4326</LayerSRS>
-    <GeometryField encoding="PointFromColumns" x="lon" y="lat" z="hours"/>
-  </OGRVRTLayer>
-</OGRVRTDataSource>
-EOF
-
-# Generate raster heatmap using gdal_rasterize
-echo "Generating raster heatmap..."
-gdal_rasterize -l vessel_activity \
-  -a hours \
-  -tr 0.05 0.05 \
-  -a_nodata 0.0 \
-  -te -180 56 180 90 \
-  -ot Float32 \
-  -co COMPRESS=LZW \
-  -co TILED=YES \
-  data/vessel_activity.vrt \
-  data/vessel_activity.tif
+# Generate raster directly from gridded CSV data (no rasterization needed!)
+# The vessel_positions data is already gridded at 0.01° intervals
+echo "Creating raster directly from gridded vessel data..."
+uv run --with "rasterio" --with "numpy" python scripts/create_raster.py
 
 # Apply color ramp with alpha channel
 echo "Applying color ramp..."
@@ -54,12 +34,14 @@ nv 0 0 0 0
 EOF
 
 # Convert to Cloud-Optimized GeoTIFF with internal overview pyramids
-echo "Creating Cloud-Optimized GeoTIFF..."
+# Use nearest-neighbor resampling to keep pixel boundaries crisp (no blur)
+echo "Creating Cloud-Optimized GeoTIFF with nearest-neighbor resampling..."
 gdal_translate \
   -of COG \
   -co COMPRESS=DEFLATE \
   -co PREDICTOR=2 \
   -co OVERVIEWS=AUTO \
+  -co RESAMPLING=NEAREST \
   data/vessel_activity_color.tif \
   data/vessel_heatmap.tif
 
@@ -75,9 +57,8 @@ tippecanoe -o data/protected_areas.pmtiles \
   --layer=protected_areas \
   data/protected_areas.geojson
 
-# Cleanup
-rm -f data/vessel_activity.csv data/vessel_activity.vrt \
-  data/vessel_activity.tif data/vessel_activity_color.tif
+# Cleanup intermediate files
+rm -f data/vessel_activity.csv data/vessel_activity.tif data/vessel_activity_color.tif
 
 echo "✓ Vessel heatmap: data/vessel_heatmap.tif"
 echo "✓ Protected areas tiles: data/protected_areas.pmtiles"

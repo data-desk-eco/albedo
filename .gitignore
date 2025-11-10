@@ -1,22 +1,41 @@
+# Data - raw and intermediate files
 data/gfw/
 data/temp/
+data/backups/
+data/tiles/
 data/*.json
 data/*.geojson
+data/*.csv
+data/*.vrt
+data/*.png
+data/*.wld
+data/*.aux.xml
+data/ne_10m_land.geojson
+data/protected_areas.geojson
+data/tiles.pmtiles
+
+# Data - keep final outputs but don't commit them
 data/*.duckdb
 data/*.pmtiles
-data/*.csv
 data/*.tif
-data/*.vrt
-data/tiles/
-data/backups/
+
+# dbt
+etl/target/
+etl/logs/
+etl/.user.yml
+etl/data/
 logs/
 target/
-.DS_Store
-etl/data/
 
 # Testing
 test_map.py
 map_*.png
+
+# Debug files
+progress.txt
+
+# System
+.DS_Store
 
 # Editor files
 *.swp

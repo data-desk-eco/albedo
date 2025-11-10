@@ -17,8 +17,8 @@ def tiles(z, x, y):
     """Serve raster tiles from COG"""
     try:
         with Reader(COG_PATH) as cog:
-            # Read tile
-            img = cog.tile(x, y, z, tilesize=256)
+            # Read tile with nearest-neighbor resampling for crisp pixels
+            img = cog.tile(x, y, z, tilesize=256, resampling_method="nearest")
 
             # Render to PNG
             png_data = img.render(img_format="PNG")
