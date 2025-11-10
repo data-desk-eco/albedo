@@ -42,10 +42,10 @@ gdal_rasterize -l vessel_activity \
   data/vessel_activity.vrt \
   data/vessel_activity.tif
 
-# Apply color ramp
+# Apply color ramp with alpha channel
 echo "Applying color ramp..."
-gdaldem color-relief data/vessel_activity.tif /dev/stdin data/vessel_activity_color.tif << 'EOF'
-0 224 224 224 0
+gdaldem color-relief data/vessel_activity.tif /dev/stdin data/vessel_activity_color.tif -alpha << 'EOF'
+0 0 0 0 0
 0.1 160 160 160 255
 1 96 96 96 255
 10 48 48 48 255
