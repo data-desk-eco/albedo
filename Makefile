@@ -25,7 +25,7 @@ tiles: transform
 	@./scripts/export_tiles.sh
 
 serve:
-	@source .venv/bin/activate && python tile_server.py
+	@uv run python scripts/tile_server.py
 
 clean:
 	rm -rf data
