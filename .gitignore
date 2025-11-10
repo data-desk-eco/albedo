@@ -4,6 +4,10 @@ data/*.json
 data/*.geojson
 data/*.duckdb
 data/*.pmtiles
+data/*.csv
+data/*.tif
+data/*.vrt
+data/tiles/
 data/backups/
 logs/
 target/
