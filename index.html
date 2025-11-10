@@ -66,6 +66,27 @@
           source: 'basemap'
         },
         {
+          id: 'protected-areas',
+          type: 'fill',
+          source: 'vessel-activity',
+          'source-layer': 'protected_areas',
+          paint: {
+            'fill-color': '#4a90e2',
+            'fill-opacity': 0.15
+          }
+        },
+        {
+          id: 'protected-areas-outline',
+          type: 'line',
+          source: 'vessel-activity',
+          'source-layer': 'protected_areas',
+          paint: {
+            'line-color': '#4a90e2',
+            'line-width': 1,
+            'line-opacity': 0.4
+          }
+        },
+        {
           id: 'vessel-grid',
           type: 'circle',
           source: 'vessel-activity',
