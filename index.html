@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Northern Sea Route Vessel Activity</title>
-  <script src="https://unpkg.com/maplibre-gl@5.0.1/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@5.0.1/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.css" rel="stylesheet">
   <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
   <style>
     body { margin: 0; padding: 0; }
@@ -42,12 +42,20 @@
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
   // Initialize map with globe projection
-  const map = new maplibregl.Map({
+  window.map = new maplibregl.Map({
     container: 'map',
-    projection: 'globe',
     style: {
       version: 8,
+      projection: {
+        type: 'globe'
+      },
       sources: {
+        'osm': {
+          type: 'raster',
+          tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '© OpenStreetMap contributors'
+        },
         'vessel-heatmap': {
           type: 'raster',
           tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png'],
@@ -66,6 +74,14 @@
           type: 'background',
           paint: {
             'background-color': 'hsl(0, 0%, 5%)'
+          }
+        },
+        {
+          id: 'osm',
+          type: 'raster',
+          source: 'osm',
+          paint: {
+            'raster-opacity': 1
           }
         },
         {
@@ -99,15 +115,15 @@
         }
       ]
     },
-    center: [100, 73],
-    zoom: 2.5,
-    pitch: 30,
+    center: [100, 75],
+    zoom: 2.0,
+    pitch: 0,
     bearing: 0,
     maxZoom: 10,
-    minZoom: 0
+    minZoom: 1.5
   });
 
-  map.on('load', () => {
+  window.map.on('load', () => {
     document.getElementById('stats').textContent =
       'Vessel activity heatmap (2024)\nDarker = more activity';
   });
