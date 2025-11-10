@@ -88,7 +88,8 @@
           type: 'raster',
           source: 'vessel-heatmap',
           paint: {
-            'raster-opacity': 0.8
+            'raster-opacity': 0.8,
+            'raster-resampling': 'nearest'  // Keep pixels crisp, no blur
           }
         },
         {
