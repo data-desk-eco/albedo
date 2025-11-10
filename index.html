@@ -4,12 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Northern Sea Route Vessel Activity</title>
-  <script src="https://unpkg.com/maplibre-gl@5.0.0-pre.3/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@5.0.0-pre.3/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.12.0/dist/maplibre-gl.css" rel="stylesheet">
   <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
   <style>
     body { margin: 0; padding: 0; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+      background: hsl(0, 0%, 2%);
+    }
     #controls {
       position: absolute;
       top: 10px;
@@ -35,10 +41,9 @@
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
-  // Initialize map with globe projection
+  // Initialize map
   const map = new maplibregl.Map({
     container: 'map',
-    projection: 'globe',
     style: {
       version: 8,
       sources: {
@@ -94,6 +99,11 @@
   });
 
   map.addControl(new maplibregl.NavigationControl());
+
+  // Set globe projection after style loads
+  map.on('style.load', () => {
+    map.setProjection({ type: 'globe' });
+  });
 
   map.on('load', () => {
     document.getElementById('stats').textContent =
