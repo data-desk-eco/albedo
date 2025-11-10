@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northern Sea Route Vessel Activity</title>
+  <script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/pmtiles@3/dist/pmtiles.js"></script>
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-width: 250px;
+    }
+    #controls label { display: block; margin: 5px 0; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="controls">
+  <strong>Vessel Activity</strong>
+  <div id="stats" style="margin-top: 10px; color: #666;"></div>
+</div>
+
+<script>
+  // Register PMTiles protocol
+  let protocol = new pmtiles.Protocol();
+  maplibregl.addProtocol('pmtiles', protocol.tile);
+
+  // Initialize map
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        'carto': {
+          type: 'raster',
+          tiles: ['https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+          tileSize: 256
+        },
+        'vessel-activity': {
+          type: 'vector',
+          url: 'pmtiles://./data/tiles.pmtiles',
+          attribution: 'Vessel data: Global Fishing Watch'
+        }
+      },
+      layers: [
+        {
+          id: 'background',
+          type: 'raster',
+          source: 'carto'
+        },
+        {
+          id: 'vessel-heat',
+          type: 'circle',
+          source: 'vessel-activity',
+          'source-layer': 'vessel_activity',
+          paint: {
+            'circle-radius': [
+              'interpolate', ['linear'], ['zoom'],
+              2, 2,
+              10, 8
+            ],
+            'circle-color': [
+              'interpolate', ['linear'], ['get', 'hours'],
+              0, '#440154',
+              50, '#31688e',
+              100, '#35b779',
+              200, '#fde724'
+            ],
+            'circle-opacity': 0.7,
+            'circle-blur': 0.5
+          }
+        }
+      ]
+    },
+    center: [90, 75],
+    zoom: 3,
+    maxZoom: 10
+  });
+
+  map.addControl(new maplibregl.NavigationControl());
+
+  // Update stats on load
+  map.on('load', () => {
+    document.getElementById('stats').textContent =
+      'Pan and zoom to explore\nvessel activity (2024)';
+  });
+
+  // Show popup on click
+  map.on('click', 'vessel-heat', (e) => {
+    const props = e.features[0].properties;
+    new maplibregl.Popup()
+      .setLngLat(e.lngLat)
+      .setHTML(`
+        <strong>Grid Cell</strong><br>
+        Unique vessels: ${props.vessels}<br>
+        Total hours: ${props.hours}<br>
+        Detections: ${props.detections}
+      `)
+      .addTo(map);
+  });
+
+  map.on('mouseenter', 'vessel-heat', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+
+  map.on('mouseleave', 'vessel-heat', () => {
+    map.getCanvas().style.cursor = '';
+  });
+</script>
+</body>
+</html>
