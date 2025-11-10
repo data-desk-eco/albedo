@@ -18,7 +18,7 @@
     }
     #controls {
       position: absolute;
-      top: 10px;
+      bottom: 10px;
       left: 10px;
       background: white;
       padding: 10px;
@@ -49,9 +49,9 @@
       sources: {
         'basemap': {
           type: 'raster',
-          tiles: ['https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png'],
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
           tileSize: 256,
-          attribution: 'CARTO'
+          attribution: '&copy; OpenStreetMap contributors'
         },
         'vessel-activity': {
           type: 'vector',
@@ -93,15 +93,13 @@
         }
       ]
     },
-    center: [0, 90],
-    zoom: 2.0,
-    pitch: 0,
+    center: [100, 90],
+    zoom: 1.75,
+    pitch: 30,
     bearing: 0,
     maxZoom: 10,
-    minZoom: 0
+    minZoom: 2.5
   });
-
-  map.addControl(new maplibregl.NavigationControl());
 
   // Set globe projection after style loads
   map.on('style.load', () => {
@@ -111,6 +109,21 @@
   map.on('load', () => {
     document.getElementById('stats').textContent =
       'Pan and zoom to explore\nvessel activity (2024)';
+
+    // Debug: Update stats on move
+    const updateStats = () => {
+      const zoom = map.getZoom().toFixed(2);
+      const center = map.getCenter();
+      const features = map.queryRenderedFeatures({ layers: ['vessel-grid'] });
+      document.getElementById('stats').textContent =
+        `Pan and zoom to explore vessel activity (2024)\n\n` +
+        `Zoom: ${zoom}\n` +
+        `Center: [${center.lng.toFixed(2)}, ${center.lat.toFixed(2)}]\n` +
+        `Visible points: ${features.length}`;
+    };
+
+    map.on('move', updateStats);
+    updateStats();
   });
 
   // Show popup on click
