@@ -47,11 +47,11 @@
     style: {
       version: 8,
       sources: {
-        'satellite': {
+        'basemap': {
           type: 'raster',
-          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tiles: ['https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'],
           tileSize: 256,
-          attribution: 'Esri'
+          attribution: 'CARTO'
         },
         'vessel-activity': {
           type: 'vector',
@@ -61,9 +61,9 @@
       },
       layers: [
         {
-          id: 'satellite',
+          id: 'basemap',
           type: 'raster',
-          source: 'satellite'
+          source: 'basemap'
         },
         {
           id: 'vessel-heat',
