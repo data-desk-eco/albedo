@@ -46,7 +46,7 @@ echo "Generating PMTiles..."
 tippecanoe -o data/tiles.pmtiles \
   --force \
   --maximum-zoom=10 \
-  --minimum-zoom=2 \
+  --minimum-zoom=0 \
   --drop-densest-as-needed \
   --extend-zooms-if-still-dropping \
   --accumulate-attribute=vessels:sum \
