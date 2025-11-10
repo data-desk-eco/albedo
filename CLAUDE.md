@@ -8,7 +8,11 @@ Map of shipping activity along Russia's Northern Sea Route. Consultancy project 
 make           # Fetch GFW data + protected areas
 make convert   # Convert JSON → Parquet
 make transform # Run dbt pipeline → data/data.duckdb
+make tiles     # Generate PMTiles → data/tiles.pmtiles (50MB)
+make serve     # Start server at http://localhost:8000
 ```
+
+**Note**: The server uses a custom Python HTTP handler with Range request support, required for PMTiles byte-serving.
 
 Configuration in `.env` — edit date ranges, study area, etc.
 
@@ -17,6 +21,7 @@ Configuration in `.env` — edit date ranges, study area, etc.
 1. **Fetch**: GFW 4Wings API → `data/gfw/*.json` (monthly)
 2. **Convert**: JSON → Parquet with DuckDB
 3. **Transform**: dbt models → `data/data.duckdb` (1.3GB)
+4. **Tiles**: DuckDB → PMTiles (50MB) for web display
 
 ## Database (data/data.duckdb)
 
@@ -30,5 +35,5 @@ Configuration in `.env` — edit date ranges, study area, etc.
 
 ## Stack
 
-- Bash + DuckDB + dbt
-- Output: static MapLibre map
+- Bash + DuckDB + dbt + tippecanoe
+- MapLibre GL JS + PMTiles for display

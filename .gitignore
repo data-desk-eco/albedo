@@ -3,6 +3,7 @@ data/temp/
 data/*.json
 data/*.geojson
 data/*.duckdb
+data/*.pmtiles
 data/backups/
 logs/
 target/

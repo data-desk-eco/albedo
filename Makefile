@@ -17,7 +17,13 @@ convert:
 transform: convert
 	cd etl && dbt run --profiles-dir .
 
+tiles: transform
+	@./scripts/export_tiles.sh
+
+serve:
+	@python3 serve.py
+
 clean:
 	rm -rf data
 
-.PHONY: all clean vessel-presence convert transform
+.PHONY: all clean vessel-presence convert transform tiles serve
