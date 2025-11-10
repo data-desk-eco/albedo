@@ -47,8 +47,9 @@ tippecanoe -o data/vessel_activity.pmtiles \
   --force \
   --maximum-zoom=10 \
   --minimum-zoom=0 \
-  --drop-densest-as-needed \
-  --extend-zooms-if-still-dropping \
+  --no-feature-limit \
+  --no-tile-size-limit \
+  --cluster-distance=5 \
   --accumulate-attribute=vessels:sum \
   --accumulate-attribute=hours:sum \
   --accumulate-attribute=detections:sum \
