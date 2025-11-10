@@ -5,6 +5,10 @@ export
 
 all: vessel-presence data/protected_areas.geojson
 
+install:
+	uv venv
+	uv pip install -r requirements.txt
+
 vessel-presence: scripts/fetch_vessel_presence.sh
 	@./scripts/fetch_vessel_presence.sh
 
@@ -21,9 +25,9 @@ tiles: transform
 	@./scripts/export_tiles.sh
 
 serve:
-	@python3 serve.py
+	@source .venv/bin/activate && python tile_server.py
 
 clean:
 	rm -rf data
 
-.PHONY: all clean vessel-presence convert transform tiles serve
+.PHONY: all clean vessel-presence convert transform tiles serve install

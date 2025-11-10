@@ -4,11 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Northern Sea Route Vessel Activity</title>
-  <script src="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.js"></script>
-  <link href="https://unpkg.com/maplibre-gl@4.7.0/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@5.0.1/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.0.1/dist/maplibre-gl.css" rel="stylesheet">
   <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
-  <script src="https://unpkg.com/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
-  <script src="https://unpkg.com/georaster-layer-for-maplibre@0.3.0/dist/georaster-layer-for-maplibre.min.js"></script>
   <style>
     body { margin: 0; padding: 0; }
     #map {
@@ -43,17 +41,18 @@
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
-  // Initialize map
+  // Initialize map with globe projection
   const map = new maplibregl.Map({
     container: 'map',
+    projection: 'globe',
     style: {
       version: 8,
       sources: {
-        'basemap': {
+        'vessel-heatmap': {
           type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png'],
           tileSize: 256,
-          attribution: '&copy; OpenStreetMap contributors'
+          attribution: 'GFW 4Wings'
         },
         'protected-areas': {
           type: 'vector',
@@ -63,9 +62,19 @@
       },
       layers: [
         {
-          id: 'basemap',
+          id: 'background',
+          type: 'background',
+          paint: {
+            'background-color': 'hsl(0, 0%, 5%)'
+          }
+        },
+        {
+          id: 'vessel-heatmap',
           type: 'raster',
-          source: 'basemap'
+          source: 'vessel-heatmap',
+          paint: {
+            'raster-opacity': 0.8
+          }
         },
         {
           id: 'protected-areas',
@@ -98,34 +107,9 @@
     minZoom: 0
   });
 
-  // Set globe projection after style loads
-  map.on('style.load', () => {
-    map.setProjection({ type: 'globe' });
-  });
-
-  map.on('load', async () => {
-    document.getElementById('stats').textContent = 'Loading vessel heatmap...';
-
-    // Load and display GeoTIFF heatmap
-    try {
-      const response = await fetch('./data/vessel_heatmap.tif');
-      const arrayBuffer = await response.arrayBuffer();
-      const georaster = await parseGeoraster(arrayBuffer);
-
-      const layer = new GeoRasterLayer({
-        georaster: georaster,
-        opacity: 0.8,
-        resolution: 256
-      });
-
-      layer.addTo(map);
-
-      document.getElementById('stats').textContent =
-        'Vessel activity heatmap (2024)\nDarker = more activity';
-    } catch (error) {
-      console.error('Error loading heatmap:', error);
-      document.getElementById('stats').textContent = 'Error loading heatmap';
-    }
+  map.on('load', () => {
+    document.getElementById('stats').textContent =
+      'Vessel activity heatmap (2024)\nDarker = more activity';
   });
 </script>
 </body>
