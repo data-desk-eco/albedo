@@ -60,20 +60,17 @@
         type: 'globe'
       },
       sources: {
-        'carto-dark': {
+        'yandex-dark': {
           type: 'raster',
           tiles: [
-            'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-            'https://d.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+            'https://core-renderer-tiles.maps.yandex.net/tiles?l=map&theme=dark&x={x}&y={y}&z={z}&scale=1&lang=ru_RU'
           ],
           tileSize: 256,
-          attribution: '© CARTO © OpenStreetMap contributors'
+          attribution: '© Yandex Maps'
         },
         'vessel-heatmap': {
           type: 'raster',
-          tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png?colormap=white'],
+          tiles: ['http://localhost:8000/tiles/{z}/{x}/{y}.png?colormap=yellow'],
           tileSize: 64,
           attribution: 'GFW 4Wings'
         },
@@ -88,13 +85,13 @@
           id: 'background',
           type: 'background',
           paint: {
-            'background-color': '#0a0a0a'
+            'background-color': '#000000'
           }
         },
         {
-          id: 'carto-dark',
+          id: 'yandex-dark',
           type: 'raster',
-          source: 'carto-dark',
+          source: 'yandex-dark',
           paint: {
             'raster-opacity': 1
           }
@@ -114,8 +111,8 @@
           source: 'protected-areas',
           'source-layer': 'protected_areas',
           paint: {
-            'fill-color': '#555',
-            'fill-opacity': 0.5
+            'fill-color': '#ffff00',
+            'fill-opacity': 0.2
           }
         },
         {
@@ -124,9 +121,9 @@
           source: 'protected-areas',
           'source-layer': 'protected_areas',
           paint: {
-            'line-color': '#606060',
-            'line-width': 1,
-            'line-opacity': 0.5
+            'line-color': '#ffff00',
+            'line-width': 1.5,
+            'line-opacity': 0.6
           }
         }
       ]
