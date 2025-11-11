@@ -8,7 +8,7 @@ Map of shipping activity along Russia's Northern Sea Route. Consultancy project 
 make           # Fetch GFW data + protected areas
 make convert   # Convert JSON → Parquet
 make transform # Run dbt pipeline → data/data.duckdb
-make tiles     # Generate COG heatmap + PMTiles → data/vessel_heatmap.tif (1.3MB) + data/protected_areas.pmtiles (24MB)
+make tiles     # Generate COG heatmap + PMTiles → data/vessel_heatmap.tif (1.3MB) + data/protected_areas.pmtiles (5.3MB)
 make serve     # Start tile server at http://localhost:8000
 ```
 
@@ -21,7 +21,7 @@ Configuration in `.env` — edit date ranges, study area, etc.
 1. **Fetch**: GFW 4Wings API → `data/gfw/*.json` (monthly)
 2. **Convert**: JSON → Parquet with DuckDB
 3. **Transform**: dbt models → `data/data.duckdb` (2.6GB)
-4. **Tiles**: DuckDB → COG heatmap (1.3MB) + vector tiles for protected areas (24MB)
+4. **Tiles**: Spatial filter → protected areas with vessel activity (5km buffer) → PMTiles (5.3MB)
 
 ## Database (data/data.duckdb)
 
@@ -50,7 +50,7 @@ Single `index.html` file with:
     ├── gfw/                # Raw GFW API responses
     ├── data.duckdb         # Transformed data (2.6GB)
     ├── vessel_heatmap.tif  # COG raster heatmap (1.3MB)
-    └── protected_areas.pmtiles  # Vector tiles (24MB)
+    └── protected_areas.pmtiles  # Vector tiles (5.3MB, 391 areas with vessel activity)
 ```
 
 ## Sources
