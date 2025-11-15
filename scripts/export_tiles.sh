@@ -74,9 +74,18 @@ echo "Filtering protected areas GeoJSON..."
 IDS=$(cat data/protected_areas_filter_ids.csv | jq -R . | jq -s .)
 jq --argjson ids "$IDS" -c '
   .features = [.features[] | select(.id as $id | $ids | index($id))]
-' data/protected_areas.geojson > data/protected_areas_filtered.geojson
+' data/protected_areas.geojson > data/protected_areas_filtered_temp.geojson
 
-echo "✓ Filtered to $(jq '.features | length' data/protected_areas_filtered.geojson) protected areas with nearby vessel activity"
+echo "✓ Filtered to $(jq '.features | length' data/protected_areas_filtered_temp.geojson) protected areas with nearby vessel activity"
+
+# Clip protected areas to study area (same as land basemap)
+echo "Clipping protected areas to northern cap..."
+ogr2ogr -f GeoJSON \
+  -clipsrc -180 ${SOUTH_LAT} 180 90 \
+  data/protected_areas_filtered.geojson \
+  data/protected_areas_filtered_temp.geojson
+
+echo "✓ Clipped protected areas to latitude ${SOUTH_LAT}° to 90°"
 
 # Generate protected areas vector tiles
 echo "Generating protected areas vector tiles..."
@@ -116,7 +125,7 @@ tippecanoe -o data/land.pmtiles \
   data/land_clipped.geojson
 
 # Cleanup intermediate files
-rm -f data/vessel_activity.csv data/vessel_activity.tif data/protected_areas_filtered.geojson data/protected_areas_filter_ids.csv data/land_clipped.geojson
+rm -f data/vessel_activity.csv data/vessel_activity.tif data/protected_areas_filtered.geojson data/protected_areas_filtered_temp.geojson data/protected_areas_filter_ids.csv data/land_clipped.geojson
 
 echo "✓ Vessel heatmap: data/vessel_heatmap.tif"
 echo "✓ Protected areas tiles: data/protected_areas.pmtiles"
