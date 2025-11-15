@@ -4,12 +4,23 @@ from flask import Flask, send_file, Response, request
 from flask_cors import CORS
 from rio_tiler.io import Reader
 from rio_tiler.colormap import cmap
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 import os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Support deployment under /arctic-shipping path
+PATH_PREFIX = os.environ.get('PATH_PREFIX', '')
+
 app = Flask(__name__, static_folder=PROJECT_ROOT, static_url_path='')
 CORS(app)
+
+# If deployed under a path prefix, wrap with middleware
+if PATH_PREFIX:
+    app.wsgi_app = DispatcherMiddleware(
+        Flask('dummy'),
+        {PATH_PREFIX: app.wsgi_app}
+    )
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
 
@@ -112,6 +123,7 @@ def static_files(path):
     return send_file(os.path.join(PROJECT_ROOT, path))
 
 if __name__ == '__main__':
-    print(f"Starting tile server at http://localhost:8000")
+    port = int(os.environ.get('PORT', 8000))
+    print(f"Starting tile server at http://0.0.0.0:{port}")
     print(f"Serving from: {PROJECT_ROOT}")
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
