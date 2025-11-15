@@ -3,7 +3,7 @@
 include .env
 export
 
-all: vessel-presence data/protected_areas.geojson
+all: vessel-presence data/protected_areas.geojson data/ne_10m_land/ne_10m_land.shp
 
 install:
 	uv venv
@@ -14,6 +14,9 @@ vessel-presence: scripts/fetch_vessel_presence.sh
 
 data/protected_areas.geojson: scripts/fetch_protected_areas.sh
 	@./scripts/fetch_protected_areas.sh
+
+data/ne_10m_land/ne_10m_land.shp: scripts/fetch_land.sh
+	@./scripts/fetch_land.sh
 
 convert:
 	@./scripts/convert.sh

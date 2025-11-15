@@ -3,6 +3,9 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# Load environment variables
+source .env
+
 # Export vessel activity from DuckDB to CSV
 echo "Exporting vessel activity from DuckDB..."
 duckdb data/data.duckdb -c "
@@ -87,8 +90,34 @@ tippecanoe -o data/protected_areas.pmtiles \
   --layer=protected_areas \
   data/protected_areas_filtered.geojson
 
+# Generate land basemap (clipped to study area)
+echo "Generating land basemap for study area..."
+
+# Clip land polygons to study area using ogr2ogr
+# SOUTH_LAT from .env, extends to North Pole (90), full longitude range
+ogr2ogr -f GeoJSON \
+  -clipsrc -180 ${SOUTH_LAT} 180 90 \
+  -simplify 0.01 \
+  data/land_clipped.geojson \
+  data/ne_10m_land/ne_10m_land.shp
+
+echo "✓ Clipped land to northern cap (latitude ${SOUTH_LAT}° to 90°)"
+
+# Generate land vector tiles
+echo "Generating land vector tiles..."
+tippecanoe -o data/land.pmtiles \
+  --force \
+  --maximum-zoom=10 \
+  --minimum-zoom=0 \
+  --no-feature-limit \
+  --no-tile-size-limit \
+  --simplification=10 \
+  --layer=land \
+  data/land_clipped.geojson
+
 # Cleanup intermediate files
-rm -f data/vessel_activity.csv data/vessel_activity.tif data/protected_areas_filtered.geojson data/protected_areas_filter_ids.csv
+rm -f data/vessel_activity.csv data/vessel_activity.tif data/protected_areas_filtered.geojson data/protected_areas_filter_ids.csv data/land_clipped.geojson
 
 echo "✓ Vessel heatmap: data/vessel_heatmap.tif"
 echo "✓ Protected areas tiles: data/protected_areas.pmtiles"
+echo "✓ Land basemap: data/land.pmtiles"
