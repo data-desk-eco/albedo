@@ -146,10 +146,24 @@
     },
     center: [100, 75],
     zoom: 2.0,
-    pitch: 0,
+    pitch: 20,  // Slight tilt to view Arctic region
     bearing: 0,
     maxZoom: 10,
-    minZoom: 1.5
+    minZoom: 1.5,
+    renderWorldCopies: false
+  });
+
+  // Constrain latitude to keep focus on Arctic
+  let isProgrammaticMove = false;
+  map.on('move', () => {
+    if (isProgrammaticMove) return;
+
+    const center = map.getCenter();
+    if (center.lat < 60) {
+      isProgrammaticMove = true;
+      map.setCenter([center.lng, 65]);
+      setTimeout(() => { isProgrammaticMove = false; }, 100);
+    }
   });
 
 </script>
