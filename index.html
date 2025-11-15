@@ -68,6 +68,32 @@
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
+  // Create diagonal cross-hatch pattern
+  function createCrosshatchPattern() {
+    const size = 16;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+
+    // Draw diagonal lines (/)
+    ctx.beginPath();
+    ctx.moveTo(0, size);
+    ctx.lineTo(size, 0);
+    ctx.stroke();
+
+    // Draw diagonal lines (\)
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(size, size);
+    ctx.stroke();
+
+    return ctx.getImageData(0, 0, size, size);
+  }
+
   const map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
@@ -84,7 +110,7 @@
         },
         'vessel-heatmap': {
           type: 'raster',
-          tiles: ['/tiles/{z}/{x}/{y}.png?colormap=white'],
+          tiles: ['/tiles/{z}/{x}/{y}.png?colormap=aqua'],
           tileSize: 64,
           attribution: 'GFW 4Wings'
         },
@@ -113,33 +139,22 @@
           }
         },
         {
+          id: 'protected-areas',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas',
+          paint: {
+            'fill-color': '#00ff00',
+            'fill-opacity': 0.75
+          }
+        },
+        {
           id: 'vessel-heatmap',
           type: 'raster',
           source: 'vessel-heatmap',
           paint: {
             'raster-opacity': 1,
             'raster-resampling': 'nearest'  // Keep pixels crisp, no blur
-          }
-        },
-        {
-          id: 'protected-areas',
-          type: 'fill',
-          source: 'protected-areas',
-          'source-layer': 'protected_areas',
-          paint: {
-            'fill-color': '#ffffff',
-            'fill-opacity': 0.15
-          }
-        },
-        {
-          id: 'protected-areas-outline',
-          type: 'line',
-          source: 'protected-areas',
-          'source-layer': 'protected_areas',
-          paint: {
-            'line-color': '#cccccc',
-            'line-width': 1.5,
-            'line-opacity': 0.5
           }
         }
       ]
@@ -151,6 +166,12 @@
     maxZoom: 10,
     minZoom: 1.5,
     renderWorldCopies: false
+  });
+
+  // Add crosshatch pattern when map loads
+  map.on('load', () => {
+    const imageData = createCrosshatchPattern();
+    map.addImage('crosshatch', imageData, { pixelRatio: 1 });
   });
 
   // Constrain latitude to keep focus on Arctic
