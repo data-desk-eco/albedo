@@ -154,7 +154,9 @@
           source: 'vessel-heatmap',
           paint: {
             'raster-opacity': 1,
-            'raster-resampling': 'nearest'  // Keep pixels crisp, no blur
+            'raster-resampling': 'nearest',  // Keep pixels crisp, no blur
+            'raster-brightness-max': 1,      // Boost brightness
+            'raster-contrast': 0.3           // Increase contrast to make it pop
           }
         }
       ]
