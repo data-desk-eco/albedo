@@ -37,9 +37,9 @@ COLORMAPS = {
     },
     'aqua': {
         0: (0, 0, 0, 0),
-        0.1: (0, 200, 200, 255),   # Boosted: bright cyan even at 0.1 hours
-        1: (0, 230, 230, 255),     # Boosted: very bright
-        10: (0, 250, 250, 255),    # Boosted: nearly full
+        0.1: (0, 255, 255, 255),   # Max brightness cyan at lowest values
+        1: (0, 255, 255, 255),
+        10: (0, 255, 255, 255),
         100: (0, 255, 255, 255),
         404475: (0, 255, 255, 255),
     },
