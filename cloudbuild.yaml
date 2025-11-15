@@ -1,0 +1,43 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/arctic-shipping:$BUILD_ID', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/arctic-shipping:latest', '.']
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/arctic-shipping:$BUILD_ID']
+
+  # Push latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/arctic-shipping:latest']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'arctic-shipping'
+      - '--image'
+      - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/arctic-shipping:$BUILD_ID'
+      - '--region'
+      - '${_REGION}'
+      - '--platform'
+      - 'managed'
+      - '--port'
+      - '8080'
+      - '--allow-unauthenticated'
+      - '--max-instances'
+      - '10'
+      - '--min-instances'
+      - '0'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+
+substitutions:
+  _REGION: europe-west1
+
+options:
+  logging: CLOUD_LOGGING_ONLY

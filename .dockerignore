@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Data (except what we need)
+data/gfw/
+data/data.duckdb
+data/data.duckdb.wal
+data/*.json
+data/*.geojson
+data/*.parquet
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Build
+*.log
+dist/
+build/
+
+# dbt
+etl/target/
+etl/logs/
+etl/dbt_packages/
+
+# OS
+.DS_Store
+Thumbs.db

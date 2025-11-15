@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Data (exclude source data, keep only tiles)
+data/gfw/
+data/data.duckdb
+data/data.duckdb.wal
+data/*.json
+data/*.geojson
+data/*.parquet
+
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Build
+*.log
+dist/
+build/
+
+# dbt
+etl/
+
+# Scripts (only need tile_server.py, not data processing)
+scripts/fetch_*.sh
+scripts/convert.sh
+scripts/export_tiles.sh
+
+# Docs
+README.md
+Makefile
+
+# OS
+.DS_Store
+Thumbs.db
