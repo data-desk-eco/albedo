@@ -68,6 +68,9 @@
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
 
+  // Arctic region focus
+  const ARCTIC_CENTER_LAT = 75;
+
   // Create diagonal cross-hatch pattern
   function createCrosshatchPattern() {
     const size = 16;
@@ -161,12 +164,14 @@
         }
       ]
     },
-    center: [100, 75],
-    zoom: 2.0,
+    center: [100, ARCTIC_CENTER_LAT],
+    zoom: 2.5,
     pitch: 20,  // Slight tilt to view Arctic region
     bearing: 0,
     maxZoom: 10,
-    minZoom: 1.5,
+    minZoom: 2.5,
+    minPitch: 0,
+    maxPitch: 30,
     renderWorldCopies: false
   });
 
@@ -176,16 +181,16 @@
     map.addImage('crosshatch', imageData, { pixelRatio: 1 });
   });
 
-  // Constrain latitude to keep focus on Arctic
-  let isProgrammaticMove = false;
-  map.on('move', () => {
-    if (isProgrammaticMove) return;
-
+  // Keep focus on Arctic region
+  map.on('moveend', () => {
     const center = map.getCenter();
-    if (center.lat < 60) {
-      isProgrammaticMove = true;
-      map.setCenter([center.lng, 65]);
-      setTimeout(() => { isProgrammaticMove = false; }, 100);
+    const zoom = map.getZoom();
+
+    // More permissive threshold when zoomed in
+    const threshold = zoom > 4 ? 50 : 60;
+
+    if (center.lat < threshold) {
+      map.panTo([center.lng, ARCTIC_CENTER_LAT]);
     }
   });
 

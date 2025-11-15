@@ -36,6 +36,7 @@ Single `index.html` file with:
 - PMTiles for protected areas (vector tiles)
 - Inline CSS/JS, no build step
 - Python tile server (`tile_server.py`) serves COG as XYZ tiles using rio-tiler
+- Arctic-focused navigation (pitch + zoom limits, latitude constraint on moveend)
 
 ## Structure
 
