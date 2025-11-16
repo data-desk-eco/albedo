@@ -97,7 +97,7 @@ def tiles(z, x, y):
 
         with Reader(COG_PATH) as cog:
             # Read tile with nearest-neighbor resampling for crisp pixels
-            img = cog.tile(x, y, z, tilesize=256, resampling_method="nearest")
+            img = cog.tile(x, y, z, tilesize=128, resampling_method="nearest")
 
             # Render to PNG with colormap
             png_data = img.render(img_format="PNG", colormap=colormap)
