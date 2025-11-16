@@ -29,6 +29,9 @@ tiles: transform
 serve:
 	@uv run python scripts/tile_server.py
 
+static:
+	@./scripts/build_static.sh
+
 clean:
 	rm -rf data
 
@@ -98,4 +101,4 @@ domain:
 		--project $(GCP_PROJECT) \
 		--format="value(status.resourceRecords)"
 
-.PHONY: all clean vessel-presence convert transform tiles serve install deploy update url logs domain
+.PHONY: all clean vessel-presence convert transform tiles serve static install deploy update url logs domain

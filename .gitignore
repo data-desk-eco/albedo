@@ -43,3 +43,6 @@ progress.txt
 *.swp
 *.swo
 *~
+
+# Static deployment bundle
+dist/
