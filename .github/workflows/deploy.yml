@@ -38,9 +38,6 @@ jobs:
             --region ${{ env.REGION }} \
             --project ${{ env.GCP_PROJECT }} \
             --allow-unauthenticated \
-            --port 8080 \
-            --max-instances 10 \
-            --memory 512Mi \
             --quiet
 
       - name: Get service URL
