@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'claude/**'  # Deploy from Claude Code sessions
   workflow_dispatch:  # Allow manual triggers
 
 env:
