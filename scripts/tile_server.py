@@ -1,21 +1,11 @@
 #!/usr/bin/env python3
 """Tile server for COG with static file serving"""
-from flask import Flask, send_file, Response, request, Blueprint
+from flask import Flask, send_file, Response
 from flask_cors import CORS
 from rio_tiler.io import Reader
-from rio_tiler.colormap import cmap
 import os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Support deployment under /albedo path
-PATH_PREFIX = os.environ.get('PATH_PREFIX', '').rstrip('/')
-
-# Create blueprint with url_prefix if specified
-if PATH_PREFIX:
-    bp = Blueprint('albedo', __name__, url_prefix=PATH_PREFIX)
-else:
-    bp = Blueprint('albedo', __name__)
 
 app = Flask(__name__, static_folder=PROJECT_ROOT, static_url_path='')
 CORS(app)
@@ -32,11 +22,10 @@ COLORMAP = {
     404475: (255, 0, 255, 255),
 }
 
-@bp.route('/tiles/<int:z>/<int:x>/<int:y>.png')
+@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
 def tiles(z, x, y):
     """Serve raster tiles from COG with bright pink colormap"""
     try:
-
         with Reader(COG_PATH) as cog:
             # Read tile with nearest-neighbor resampling for crisp pixels
             img = cog.tile(x, y, z, tilesize=256, resampling_method="nearest")
@@ -54,18 +43,15 @@ def tiles(z, x, y):
         # Return 204 No Content for missing tiles (common at edges)
         return Response(status=204)
 
-@bp.route('/')
+@app.route('/')
 def index():
     """Serve index.html"""
     return send_file(os.path.join(PROJECT_ROOT, 'index.html'))
 
-@bp.route('/<path:path>')
+@app.route('/<path:path>')
 def static_files(path):
     """Serve static files"""
     return send_file(os.path.join(PROJECT_ROOT, path))
-
-# Register blueprint
-app.register_blueprint(bp)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
