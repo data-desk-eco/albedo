@@ -2,7 +2,7 @@
 
 **Albedo** - Northern Sea Route vessel activity map
 
-Automated deployment via GitHub Actions. Already configured for `data-desk-web` project.
+Automated deployment via GitHub Actions to `data-desk-web` project.
 
 ## Quick start
 
