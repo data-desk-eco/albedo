@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
 """Tile server for COG with static file serving"""
-from flask import Flask, send_file, Response, request
+from flask import Flask, send_file, Response, request, Blueprint
 from flask_cors import CORS
 from rio_tiler.io import Reader
 from rio_tiler.colormap import cmap
-from werkzeug.middleware.dispatcher import DispatcherMiddleware
 import os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Support deployment under /albedo path
-PATH_PREFIX = os.environ.get('PATH_PREFIX', '')
+PATH_PREFIX = os.environ.get('PATH_PREFIX', '').rstrip('/')
+
+# Create blueprint with url_prefix if specified
+if PATH_PREFIX:
+    bp = Blueprint('albedo', __name__, url_prefix=PATH_PREFIX)
+else:
+    bp = Blueprint('albedo', __name__)
 
 app = Flask(__name__, static_folder=PROJECT_ROOT, static_url_path='')
 CORS(app)
-
-# If deployed under a path prefix, wrap with middleware
-if PATH_PREFIX:
-    app.wsgi_app = DispatcherMiddleware(
-        Flask('dummy'),
-        {PATH_PREFIX: app.wsgi_app}
-    )
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
 
@@ -34,7 +32,7 @@ COLORMAP = {
     404475: (255, 0, 255, 255),
 }
 
-@app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
+@bp.route('/tiles/<int:z>/<int:x>/<int:y>.png')
 def tiles(z, x, y):
     """Serve raster tiles from COG with bright pink colormap"""
     try:
@@ -56,15 +54,18 @@ def tiles(z, x, y):
         # Return 204 No Content for missing tiles (common at edges)
         return Response(status=204)
 
-@app.route('/')
+@bp.route('/')
 def index():
     """Serve index.html"""
     return send_file(os.path.join(PROJECT_ROOT, 'index.html'))
 
-@app.route('/<path:path>')
+@bp.route('/<path:path>')
 def static_files(path):
     """Serve static files"""
     return send_file(os.path.join(PROJECT_ROOT, path))
+
+# Register blueprint
+app.register_blueprint(bp)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
