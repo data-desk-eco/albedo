@@ -1,4 +1,4 @@
-# Northern Sea Route Traffic Analysis
+# Albedo - Northern Sea Route Traffic Analysis
 
 include .env
 export
@@ -6,8 +6,7 @@ export
 all: vessel-presence data/protected_areas.geojson data/ne_10m_land/ne_10m_land.shp
 
 install:
-	uv venv
-	uv pip install -r requirements.txt
+	uv sync
 
 vessel-presence: scripts/fetch_vessel_presence.sh
 	@./scripts/fetch_vessel_presence.sh
@@ -33,4 +32,70 @@ serve:
 clean:
 	rm -rf data
 
-.PHONY: all clean vessel-presence convert transform tiles serve install
+# Cloud Run deployment
+PROJECT_NAME := albedo
+GCP_PROJECT := data-desk-web
+REGION := europe-west1
+DOMAIN := tools.datadesk.eco
+
+deploy:
+	@echo "🚀 Deploying $(PROJECT_NAME) to Cloud Run..."
+	@gcloud run deploy $(PROJECT_NAME) \
+		--source . \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) \
+		--allow-unauthenticated \
+		--port 8080 \
+		--max-instances 10 \
+		--min-instances 0 \
+		--memory 1Gi \
+		--cpu 1 \
+		--quiet
+	@echo ""
+	@echo "✅ Deployment complete!"
+	@echo "🌐 Live at: $$(gcloud run services describe $(PROJECT_NAME) --region $(REGION) --project $(GCP_PROJECT) --format 'value(status.url)')"
+	@echo "🔓 App is publicly accessible"
+	@echo ""
+	@echo "To map custom domain $(PROJECT_NAME).$(DOMAIN):"
+	@echo "  Run: make domain"
+
+update:
+	@gcloud run deploy $(PROJECT_NAME) \
+		--source . \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) \
+		--allow-unauthenticated \
+		--quiet
+	@echo "✓ App updated"
+
+url:
+	@echo "Direct Cloud Run URL:"
+	@gcloud run services describe $(PROJECT_NAME) \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) \
+		--format 'value(status.url)'
+	@echo ""
+	@echo "Custom domain: https://$(PROJECT_NAME).$(DOMAIN)"
+
+logs:
+	@gcloud run logs read \
+		--service $(PROJECT_NAME) \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) \
+		--limit 50
+
+domain:
+	@echo "Setting up domain mapping for $(PROJECT_NAME).$(DOMAIN)..."
+	@gcloud run domain-mappings create \
+		--service $(PROJECT_NAME) \
+		--domain $(PROJECT_NAME).$(DOMAIN) \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) || echo "Domain mapping may already exist"
+	@echo "✅ Domain mapping configured"
+	@echo "Add these DNS records:"
+	@gcloud run domain-mappings describe $(PROJECT_NAME).$(DOMAIN) \
+		--region $(REGION) \
+		--project $(GCP_PROJECT) \
+		--format="value(status.resourceRecords)"
+
+.PHONY: all clean vessel-presence convert transform tiles serve install deploy update url logs domain

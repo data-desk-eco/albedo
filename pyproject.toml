@@ -1,0 +1,16 @@
+[project]
+name = "albedo"
+version = "0.1.0"
+description = "Northern Sea Route vessel activity map"
+requires-python = ">=3.11"
+dependencies = [
+    "rio-tiler>=6.0.0",
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "pillow>=10.0.0",
+    "gunicorn>=21.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
