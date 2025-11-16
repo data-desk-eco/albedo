@@ -14,10 +14,12 @@ data/ne_10m_land.geojson
 data/protected_areas.geojson
 data/tiles.pmtiles
 
-# Data - keep final outputs but don't commit them
+# Data - databases are too large
 data/*.duckdb
-data/*.pmtiles
-data/*.tif
+
+# Commit the final tile outputs (needed for deployment)
+# data/*.pmtiles
+# data/*.tif
 
 # dbt
 etl/target/
