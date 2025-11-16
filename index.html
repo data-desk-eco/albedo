@@ -114,6 +114,11 @@
     return ctx.getImageData(0, 0, size, size);
   }
 
+  // Get base path for tile URLs (works with /albedo or any path prefix)
+  const basePath = window.location.pathname.endsWith('/')
+    ? window.location.pathname
+    : window.location.pathname + '/';
+
   const map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
@@ -125,18 +130,18 @@
       sources: {
         'land': {
           type: 'vector',
-          url: 'pmtiles://./data/land.pmtiles',
+          url: 'pmtiles://' + basePath + 'data/land.pmtiles',
           attribution: '© Natural Earth'
         },
         'vessel-heatmap': {
           type: 'raster',
-          tiles: ['./tiles/{z}/{x}/{y}.png'],
+          tiles: [basePath + 'tiles/{z}/{x}/{y}.png'],
           tileSize: 128,
           attribution: 'GFW 4Wings'
         },
         'protected-areas': {
           type: 'vector',
-          url: 'pmtiles://./data/protected_areas.pmtiles',
+          url: 'pmtiles://' + basePath + 'data/protected_areas.pmtiles',
           attribution: 'Russian Ministry'
         }
       },
