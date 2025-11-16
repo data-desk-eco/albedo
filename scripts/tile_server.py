@@ -9,7 +9,7 @@ import os
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Support deployment under /arctic-shipping path
+# Support deployment under /albedo path
 PATH_PREFIX = os.environ.get('PATH_PREFIX', '')
 
 app = Flask(__name__, static_folder=PROJECT_ROOT, static_url_path='')

@@ -13,8 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ENV GDAL_CONFIG=/usr/bin/gdal-config
 
 # Copy and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml .
+RUN pip install --no-cache-dir -e .
 
 # Copy application code
 COPY scripts/ scripts/
@@ -30,5 +30,5 @@ ENV PYTHONUNBUFFERED=1
 # Expose port
 EXPOSE 8080
 
-# Run the tile server
-CMD ["python", "scripts/tile_server.py"]
+# Run with gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "60", "--chdir", "scripts", "tile_server:app"]

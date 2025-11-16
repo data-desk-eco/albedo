@@ -1,4 +1,4 @@
-# Northern Sea Route shipping map
+# Albedo
 
 Map of shipping activity along Russia's Northern Sea Route. Consultancy project for Arctida.
 
