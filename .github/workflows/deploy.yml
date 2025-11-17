@@ -34,7 +34,7 @@ jobs:
       - name: Build and push image
         run: |
           IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
-          gcloud builds submit --tag $IMAGE
+          gcloud builds submit --tag $IMAGE --suppress-logs
 
       - name: Deploy to Cloud Run
         run: |
