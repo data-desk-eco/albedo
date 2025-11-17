@@ -47,37 +47,43 @@
       position: absolute;
       bottom: 10px;
       left: 10px;
-      background: rgba(255, 255, 255, 0.9);
-      padding: 10px;
-      border-radius: 3px;
       font-family: sans-serif;
-      font-size: 11px;
-      line-height: 1.6;
+      font-size: 13px;
+      line-height: 1.8;
     }
     .legend-item {
       display: flex;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
     .legend-item:last-child {
       margin-bottom: 0;
     }
     .legend-symbol {
-      width: 16px;
-      height: 16px;
-      margin-right: 8px;
+      width: 18px;
+      height: 18px;
       flex-shrink: 0;
+      margin-right: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .legend-square {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
     }
     .legend-circle {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #ffffff;
       border: 2px solid #000000;
+      box-sizing: border-box;
+    }
+    .legend-text {
+      mix-blend-mode: exclusion;
+      color: #ffffff;
+      text-transform: lowercase;
     }
   </style>
 </head>
@@ -86,15 +92,15 @@
 <div id="legend">
   <div class="legend-item">
     <div class="legend-square" style="background: #cc00ff;"></div>
-    <div>Vessel activity</div>
+    <span class="legend-text">Vessel activity</span>
   </div>
   <div class="legend-item">
     <div class="legend-square" style="background: #00ff00;"></div>
-    <div>Protected areas</div>
+    <span class="legend-text">Protected areas</span>
   </div>
   <div class="legend-item">
     <div class="legend-circle"></div>
-    <div>Incursions</div>
+    <span class="legend-text">Incursions</span>
   </div>
 </div>
 <div id="logo-container">

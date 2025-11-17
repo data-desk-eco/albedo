@@ -31,31 +31,10 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Build and push image
-        run: |
-          IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
-          BUILD_ID=$(gcloud builds submit --tag $IMAGE --format="value(id)")
-          echo "Build ID: $BUILD_ID"
-
-          # Poll for build completion
-          while true; do
-            STATUS=$(gcloud builds describe $BUILD_ID --format="value(status)")
-            echo "Build status: $STATUS"
-            if [ "$STATUS" = "SUCCESS" ]; then
-              echo "Build completed successfully"
-              break
-            elif [ "$STATUS" = "FAILURE" ] || [ "$STATUS" = "CANCELLED" ] || [ "$STATUS" = "TIMEOUT" ]; then
-              echo "Build failed with status: $STATUS"
-              exit 1
-            fi
-            sleep 10
-          done
-
       - name: Deploy to Cloud Run
         run: |
-          IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
           gcloud run deploy ${{ env.PROJECT_NAME }} \
-            --image $IMAGE \
+            --source . \
             --region ${{ env.REGION }} \
             --project ${{ env.GCP_PROJECT }} \
             --allow-unauthenticated \
