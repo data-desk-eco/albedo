@@ -143,6 +143,11 @@
           type: 'vector',
           url: 'pmtiles://' + basePath + 'data/protected_areas.pmtiles',
           attribution: 'Russian Ministry'
+        },
+        'vessel-incursions': {
+          type: 'vector',
+          url: 'pmtiles://' + basePath + 'data/vessel_incursions.pmtiles',
+          attribution: 'GFW 4Wings'
         }
       },
       layers: [
@@ -183,6 +188,44 @@
             'raster-brightness-max': 1,      // Boost brightness
             'raster-contrast': 0.3           // Increase contrast to make it pop
           }
+        },
+        {
+          id: 'incursions',
+          type: 'circle',
+          source: 'vessel-incursions',
+          'source-layer': 'incursions',
+          minzoom: 0,
+          maxzoom: 24,
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              2.5, [
+                'interpolate',
+                ['linear'],
+                ['get', 'total_hours'],
+                1, 4,      // 1 hour → 4px at min zoom
+                24, 5,     // 1 day → 5px
+                168, 6,    // 1 week → 6px
+                720, 8     // 1 month → 8px
+              ],
+              10, [
+                'interpolate',
+                ['linear'],
+                ['get', 'total_hours'],
+                1, 8,      // 1 hour → 8px at max zoom
+                24, 10,    // 1 day → 10px
+                168, 12,   // 1 week → 12px
+                720, 16    // 1 month → 16px
+              ]
+            ],
+            'circle-color': '#ffffff',  // white fill
+            'circle-opacity': 0.5,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#000000',  // black
+            'circle-stroke-opacity': 1
+          }
         }
       ]
     },
@@ -214,6 +257,42 @@
     if (center.lat < threshold) {
       map.panTo([center.lng, ARCTIC_CENTER_LAT]);
     }
+  });
+
+  // Add popup for incursion points
+  map.on('click', 'incursions', (e) => {
+    const props = e.features[0].properties;
+    const hours = props.total_hours;
+    const days = (hours / 24).toFixed(1);
+
+    const html = `
+      <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4;">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px;">${props.area_name || 'Protected Area'}</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>Vessel:</strong></td><td>${props.ship_name || 'Unknown'}</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>MMSI:</strong></td><td>${props.mmsi}</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>Type:</strong></td><td>${props.vessel_type || 'Unknown'}</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>Flag:</strong></td><td>${props.flag || 'Unknown'}</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>Duration:</strong></td><td>${days} days (${hours.toFixed(1)} hours)</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>First seen:</strong></td><td>${props.first_seen.split('T')[0]}</td></tr>
+          <tr><td style="padding: 2px 8px 2px 0;"><strong>Last seen:</strong></td><td>${props.last_seen.split('T')[0]}</td></tr>
+        </table>
+      </div>
+    `;
+
+    new maplibregl.Popup()
+      .setLngLat(e.lngLat)
+      .setHTML(html)
+      .addTo(map);
+  });
+
+  // Change cursor on hover
+  map.on('mouseenter', 'incursions', () => {
+    map.getCanvas().style.cursor = 'pointer';
+  });
+
+  map.on('mouseleave', 'incursions', () => {
+    map.getCanvas().style.cursor = '';
   });
 
 </script>

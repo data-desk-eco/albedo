@@ -1,21 +1,11 @@
 -- Vessel incursions into protected areas
--- Identifies vessels spending 6+ hours within protected area boundaries
+-- Identifies vessels spending 1+ hours within protected area boundaries
 -- Calculates centroid of activity for visualization
+-- Uses ocean-only protected areas (excludes rivers/inland)
 
 {{ config(materialized='table') }}
 
-WITH protected_areas_geom AS (
-    SELECT
-        feature.id as feature_id,
-        feature.properties.title as area_name,
-        ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
-    FROM (
-        SELECT unnest(features) as feature
-        FROM read_json_auto('../data/protected_areas.geojson', maximum_object_size=200000000)
-    )
-),
-
-incursions_raw AS (
+WITH incursions_raw AS (
     SELECT
         pa.feature_id,
         pa.area_name,
@@ -31,7 +21,7 @@ incursions_raw AS (
         vp.entry_timestamp,
         vp.exit_timestamp
     FROM {{ ref('vessel_positions') }} vp
-    CROSS JOIN protected_areas_geom pa
+    CROSS JOIN {{ ref('protected_areas_ocean') }} pa
     WHERE ST_Within(
         ST_Point(vp.lon, vp.lat),
         pa.geometry
@@ -65,7 +55,7 @@ incursions_aggregated AS (
         flag,
         vessel_type,
         gear_type
-    HAVING sum(hours) >= 6  -- Minimum 6 hours threshold
+    HAVING sum(hours) >= 1  -- Minimum 1 hour threshold
 )
 
 SELECT
