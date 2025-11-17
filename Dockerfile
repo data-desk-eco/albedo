@@ -2,27 +2,28 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install GDAL and build dependencies
+# Install system dependencies (rarely changes)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
     libgdal-dev \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Set GDAL environment variables
 ENV GDAL_CONFIG=/usr/bin/gdal-config
 
-# Copy and install Python dependencies
+# Install Python dependencies (changes occasionally)
 COPY pyproject.toml .
 RUN pip install --no-cache-dir -e .
 
-# Copy application code
-COPY scripts/ scripts/
-COPY index.html .
+# Copy static data files (changes occasionally)
 COPY data/vessel_heatmap.tif data/vessel_heatmap.tif
 COPY data/protected_areas.pmtiles data/protected_areas.pmtiles
 COPY data/vessel_incursions.pmtiles data/vessel_incursions.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
+
+# Copy application code (changes most frequently)
+COPY scripts/ scripts/
+COPY index.html .
 
 # Set environment variables
 ENV PORT=8080
