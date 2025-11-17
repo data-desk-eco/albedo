@@ -21,6 +21,7 @@ COPY scripts/ scripts/
 COPY index.html .
 COPY data/vessel_heatmap.tif data/vessel_heatmap.tif
 COPY data/protected_areas.pmtiles data/protected_areas.pmtiles
+COPY data/vessel_incursions.pmtiles data/vessel_incursions.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
 
 # Set environment variables
