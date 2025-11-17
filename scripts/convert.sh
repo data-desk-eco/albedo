@@ -4,13 +4,13 @@
 set -e
 
 for month in 01 02 03 04 05 06 07 08 09 10 11 12; do
-    json="data/gfw/2024-${month}.json"
-    parquet="data/gfw/2024-${month}.parquet"
+    json="data/gfw/2025-${month}.json"
+    parquet="data/gfw/2025-${month}.parquet"
 
     [ ! -f "$json" ] && continue
-    [ -f "$parquet" ] && [ -s "$parquet" ] && echo "✓ 2024-${month}" && continue
+    [ -f "$parquet" ] && [ -s "$parquet" ] && echo "✓ 2025-${month}" && continue
 
-    echo "→ 2024-${month}"
+    echo "→ 2025-${month}"
 
     duckdb :memory: << EOF
 SET preserve_insertion_order=false;
