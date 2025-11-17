@@ -264,9 +264,9 @@ if [ -f data/vessel_incursions.geojson ] && [ $(jq '.features | length' data/ves
     --force \
     --maximum-zoom=10 \
     --minimum-zoom=0 \
+    --drop-rate=0 \
     --no-feature-limit \
     --no-tile-size-limit \
-    --drop-densest-as-needed \
     --layer=incursions \
     data/vessel_incursions.geojson
 
