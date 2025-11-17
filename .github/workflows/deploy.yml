@@ -31,10 +31,16 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Build and push image
+        run: |
+          IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
+          gcloud builds submit --tag $IMAGE
+
       - name: Deploy to Cloud Run
         run: |
+          IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
           gcloud run deploy ${{ env.PROJECT_NAME }} \
-            --source . \
+            --image $IMAGE \
             --region ${{ env.REGION }} \
             --project ${{ env.GCP_PROJECT }} \
             --allow-unauthenticated \
