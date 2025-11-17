@@ -48,7 +48,21 @@ for year in $(seq $start_year $end_year); do
       -d "{\"geojson\":{\"type\":\"Polygon\",\"coordinates\":[[[-180,${SOUTH_LAT}],[180,${SOUTH_LAT}],[180,90],[-180,90],[-180,${SOUTH_LAT}]]]}}" \
       -o "$output_file"
 
-    sleep 3
+    # Check if the response contains an error
+    if grep -q '"error"' "$output_file"; then
+      echo "    ✗ Error in response, waiting 2 minutes before retry..."
+      sleep 120
+      # Retry the request
+      curl -sS --location -g --request POST \
+        "https://gateway.api.globalfishingwatch.org/v3/4wings/report?spatial-resolution=${SPATIAL_RES}&temporal-resolution=${TEMPORAL_RES}&group-by=VESSEL_ID&datasets[0]=${DATASET}&date-range=${month_start}T00:00:00.000Z,${month_end}T23:59:59.999Z&format=JSON" \
+        -H "Authorization: Bearer ${GFW_API_TOKEN}" \
+        -H 'Content-Type: application/json' \
+        -d "{\"geojson\":{\"type\":\"Polygon\",\"coordinates\":[[[-180,${SOUTH_LAT}],[180,${SOUTH_LAT}],[180,90],[-180,90],[-180,${SOUTH_LAT}]]]}}" \
+        -o "$output_file"
+    fi
+
+    # Wait between requests to avoid rate limiting
+    sleep 10
   done
 done
 
