@@ -2,83 +2,69 @@
 -- This is much faster than reading JSON directly
 
 select
-    '2024-01' as month,
+    '2025-01' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-01.parquet')
+from read_parquet('../data/gfw/2025-01.parquet')
 
 union all
 
 select
-    '2024-02' as month,
+    '2025-02' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-02.parquet')
+from read_parquet('../data/gfw/2025-02.parquet')
 
 union all
 
 select
-    '2024-03' as month,
+    '2025-03' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-03.parquet')
+from read_parquet('../data/gfw/2025-03.parquet')
 
 union all
 
 select
-    '2024-04' as month,
+    '2025-04' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-04.parquet')
+from read_parquet('../data/gfw/2025-04.parquet')
 
 union all
 
 select
-    '2024-05' as month,
+    '2025-05' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-05.parquet')
+from read_parquet('../data/gfw/2025-05.parquet')
 
 union all
 
 select
-    '2024-06' as month,
+    '2025-06' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-06.parquet')
+from read_parquet('../data/gfw/2025-06.parquet')
 
 union all
 
 select
-    '2024-07' as month,
+    '2025-07' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-07.parquet')
+from read_parquet('../data/gfw/2025-07.parquet')
 
 union all
 
 select
-    '2024-08' as month,
+    '2025-08' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-08.parquet')
+from read_parquet('../data/gfw/2025-08.parquet')
 
 union all
 
 select
-    '2024-09' as month,
+    '2025-09' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-09.parquet')
+from read_parquet('../data/gfw/2025-09.parquet')
 
 union all
 
 select
-    '2024-10' as month,
+    '2025-10' as month,
     {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-10.parquet')
-
-union all
-
-select
-    '2024-11' as month,
-    {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-11.parquet')
-
-union all
-
-select
-    '2024-12' as month,
-    {{ flatten_vessel_json() }}
-from read_parquet('../data/gfw/2024-12.parquet')
+from read_parquet('../data/gfw/2025-10.parquet')
