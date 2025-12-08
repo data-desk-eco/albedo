@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tile server for COG with static file serving"""
-from flask import Flask, send_file, Response
+from flask import Flask, send_from_directory, Response
 from flask_cors import CORS
 from rio_tiler.io import Reader
 import os
@@ -12,7 +12,7 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SERVE_DIST = os.environ.get('SERVE_DIST', '').lower() in ('1', 'true')
 STATIC_ROOT = os.path.join(PROJECT_ROOT, 'dist') if SERVE_DIST else PROJECT_ROOT
 
-app = Flask(__name__, static_folder=STATIC_ROOT, static_url_path='')
+app = Flask(__name__)
 CORS(app)
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
@@ -154,15 +154,22 @@ def tiles(z, x, y):
         # Return 204 No Content for missing tiles (common at edges)
         return Response(status=204)
 
+DATA_ROOT = os.path.join(PROJECT_ROOT, 'data')
+
 @app.route('/')
 def index():
     """Serve index.html"""
-    return send_file(os.path.join(STATIC_ROOT, 'index.html'))
+    return send_from_directory(STATIC_ROOT, 'index.html')
+
+@app.route('/data/<path:path>')
+def data_files(path):
+    """Serve data files (pmtiles, etc.)"""
+    return send_from_directory(DATA_ROOT, path)
 
 @app.route('/<path:path>')
 def static_files(path):
     """Serve static files"""
-    return send_file(os.path.join(STATIC_ROOT, path))
+    return send_from_directory(STATIC_ROOT, path)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
