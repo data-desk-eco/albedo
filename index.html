@@ -82,9 +82,8 @@
     }
     .legend-line {
       width: 18px;
-      height: 3px;
-      background: #ffffff;
-      box-shadow: 0 0 0 1px #000000;
+      height: 2px;
+      background: linear-gradient(to right, #ffffff 50%, #000000 50%);
     }
     .legend-text {
       mix-blend-mode: exclusion;
@@ -149,7 +148,7 @@
 <body>
 <div id="map"></div>
 <div id="tooltip"></div>
-<button id="lang-toggle">RU</button>
+<button id="lang-toggle">РУ</button>
 <div id="legend">
   <div class="legend-item">
     <div class="legend-symbol">
@@ -271,7 +270,7 @@
 
   document.getElementById('lang-toggle').addEventListener('click', () => {
     lang = lang === 'en' ? 'ru' : 'en';
-    document.getElementById('lang-toggle').textContent = lang === 'en' ? 'RU' : 'EN';
+    document.getElementById('lang-toggle').textContent = lang === 'en' ? 'РУ' : 'EN';
     updateUI();
   });
 
@@ -368,24 +367,24 @@
           }
         },
         {
-          id: 'protected-areas-outline-black',
+          id: 'protected-areas-on-land',
           type: 'line',
           source: 'protected-areas',
-          'source-layer': 'protected_areas',
+          'source-layer': 'protected_areas_land',
           paint: {
             'line-color': '#000000',
-            'line-width': 5,
+            'line-width': 2,
             'line-opacity': 1
           }
         },
         {
-          id: 'protected-areas-outline-white',
+          id: 'protected-areas-on-sea',
           type: 'line',
           source: 'protected-areas',
-          'source-layer': 'protected_areas',
+          'source-layer': 'protected_areas_sea',
           paint: {
             'line-color': '#ffffff',
-            'line-width': 3,
+            'line-width': 2,
             'line-opacity': 1
           }
         },
@@ -492,7 +491,10 @@
             'text-ignore-placement': false
           },
           paint: {
-            'text-color': '#000000'
+            'text-color': '#666666',
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 1.5,
+            'text-halo-blur': 0.5
           }
         }
       ]

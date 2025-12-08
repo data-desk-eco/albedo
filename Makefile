@@ -27,7 +27,11 @@ transform: convert
 	cd etl && dbt run --profiles-dir .
 
 tiles: transform
-	@./scripts/export_tiles.sh
+	@./scripts/export_raster.sh
+	@./scripts/export_protected_areas.sh
+	@./scripts/export_land.sh
+	@./scripts/export_places.sh
+	@./scripts/export_crossings.sh
 
 serve:
 	@uv run python scripts/tile_server.py
@@ -39,9 +43,21 @@ clean:
 	rm -rf data
 
 # Quick iteration targets (skip long-running data fetching/transforms)
-# Regenerate just the raster heatmap from existing DuckDB data
+# Individual tile exports
 raster:
-	@./scripts/export_tiles.sh
+	@./scripts/export_raster.sh
+
+protected-areas:
+	@./scripts/export_protected_areas.sh
+
+land:
+	@./scripts/export_land.sh
+
+places:
+	@./scripts/export_places.sh
+
+crossings:
+	@./scripts/export_crossings.sh
 
 # Restart tile server (for testing tile_server.py changes)
 restart:
@@ -121,4 +137,4 @@ domain:
 		--project $(GCP_PROJECT) \
 		--format="value(status.resourceRecords)"
 
-.PHONY: all clean vessel-presence convert transform tiles serve static install deploy update url logs domain raster restart watch
+.PHONY: all clean vessel-presence convert transform tiles serve static install deploy update url logs domain raster protected-areas land places crossings restart watch
