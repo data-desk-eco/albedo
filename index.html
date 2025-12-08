@@ -84,6 +84,17 @@
       mix-blend-mode: exclusion;
       color: #ffffff;
       text-transform: lowercase;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    .legend-source {
+      mix-blend-mode: exclusion;
+      color: #ffffff;
+      font-style: italic;
+      font-size: 12px;
+      margin-top: 12px;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
   </style>
 </head>
@@ -92,9 +103,21 @@
 <div id="legend">
   <div class="legend-item">
     <div class="legend-symbol">
-      <div class="legend-square" style="background: #cc00ff;"></div>
+      <div class="legend-square" style="background: rgb(255, 100, 0);"></div>
     </div>
-    <span class="legend-text">vessel activity</span>
+    <span class="legend-text">2022</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-symbol">
+      <div class="legend-square" style="background: rgb(0, 200, 255);"></div>
+    </div>
+    <span class="legend-text">2023</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-symbol">
+      <div class="legend-square" style="background: rgb(255, 0, 200);"></div>
+    </div>
+    <span class="legend-text">2024</span>
   </div>
   <div class="legend-item">
     <div class="legend-symbol">
@@ -106,8 +129,9 @@
     <div class="legend-symbol">
       <div class="legend-circle"></div>
     </div>
-    <span class="legend-text">incursions</span>
+    <span class="legend-text">vessel crossings</span>
   </div>
+  <div class="legend-source">Data source: Global Fishing Watch</div>
 </div>
 <div id="logo-container">
   <a href="https://arctida.io/en" target="_blank" rel="noopener noreferrer">
