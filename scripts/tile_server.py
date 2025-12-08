@@ -13,12 +13,12 @@ CORS(app)
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
 
-# Year colors for multi-band raster (RGB tuples)
-# Band 1 = oldest year, Band 3 = newest year
+# Year colors for multi-band raster (RGB tuples) - no transparency
+# Band 1 = 2022 (Magenta), Band 2 = 2023 (Green), Band 3 = 2024 (Cyan)
 YEAR_COLORS = [
-    (255, 100, 0),    # Year 1 (oldest) - Orange
-    (0, 200, 255),    # Year 2 - Cyan
-    (255, 0, 200),    # Year 3 (newest) - Magenta
+    (255, 0, 255),    # 2022 - Magenta
+    (0, 255, 0),      # 2023 - Green
+    (0, 255, 255),    # 2024 - Cyan
 ]
 
 # Single-band colormap (bright pink gradient) - fallback for single-band rasters
@@ -55,56 +55,57 @@ def apply_colormap(data):
 def apply_multiband_colormap(data):
     """Colorize multi-band raster with dominant year coloring.
 
-    Shows the color of the dominant year (3x more activity than others).
-    Multi-year established routes show as gray, brightness reflects total activity.
+    Pixels where one year has >=60% of activity get that year's color.
+    Otherwise pixels show as gray. Brightness based on total activity.
+    2022 = Magenta, 2023 = Green, 2024 = Cyan
     """
     num_bands = min(data.shape[0], len(YEAR_COLORS))
     height, width = data.shape[1], data.shape[2]
 
     # Get activity for each year
-    bands = [data[i].astype(np.float32) for i in range(num_bands)]
+    bands = np.array([data[i].astype(np.float32) for i in range(num_bands)])
 
-    # Total activity across all years
-    total = sum(bands)
+    # Total activity for brightness scaling
+    total = np.sum(bands, axis=0)
+    has_activity = total > 0
 
-    # Find dominant year (3x threshold)
-    DOMINANCE_THRESHOLD = 3.0
+    # Calculate proportion of each year
+    safe_total = np.where(total > 0, total, 1)
+    proportions = bands / safe_total
+
+    # Find dominant year and its proportion
+    dominant = np.argmax(bands, axis=0)
+    dominant_proportion = np.max(proportions, axis=0)
+
+    # Dominance threshold - must have >=60% to get color
+    DOMINANCE_THRESHOLD = 0.6
+    is_dominant_enough = dominant_proportion >= DOMINANCE_THRESHOLD
+
+    # Brightness based on total activity (log scale) - boosted
+    brightness = np.log1p(total) / np.log1p(50)  # Lower divisor = brighter
+    brightness = np.where(has_activity, np.maximum(brightness, 0.7), 0)  # Higher minimum
+    brightness = np.clip(brightness, 0, 1)
 
     # Initialize output RGBA
     out = np.zeros((4, height, width), dtype=np.float32)
 
-    # Normalize total activity for brightness (log scale)
-    brightness = np.log1p(total) / np.log1p(100)
-    brightness = np.where(total > 0, np.maximum(brightness, 0.7), 0)
-    brightness = np.clip(brightness, 0, 1)
-
-    # Check each year for dominance
+    # Assign color based on dominant year (only if dominant enough)
     for i in range(num_bands):
-        # Sum of other years
-        others = sum(bands[j] for j in range(num_bands) if j != i)
-        # This year is dominant if it's 3x the others (and others > 0 to avoid div by zero)
-        is_dominant = (bands[i] > others * DOMINANCE_THRESHOLD) & (bands[i] > 0)
-
+        is_this_dominant = (dominant == i) & has_activity & is_dominant_enough
         color = YEAR_COLORS[i]
-        out[0] = np.where(is_dominant, brightness * color[0], out[0])
-        out[1] = np.where(is_dominant, brightness * color[1], out[1])
-        out[2] = np.where(is_dominant, brightness * color[2], out[2])
+        out[0] = np.where(is_this_dominant, brightness * color[0], out[0])
+        out[1] = np.where(is_this_dominant, brightness * color[1], out[1])
+        out[2] = np.where(is_this_dominant, brightness * color[2], out[2])
 
-    # Non-dominant pixels with activity → gray (brightness based on total)
-    has_activity = total > 0
-    is_any_dominant = out[0] + out[1] + out[2] > 0
-    is_gray = has_activity & ~is_any_dominant
-
-    gray_value = brightness * 180  # Gray maxes at 180 to distinguish from white
+    # Gray for mixed pixels (not dominant enough)
+    is_gray = has_activity & ~is_dominant_enough
+    gray_value = brightness * 200
     out[0] = np.where(is_gray, gray_value, out[0])
     out[1] = np.where(is_gray, gray_value, out[1])
     out[2] = np.where(is_gray, gray_value, out[2])
 
-    # Alpha based on brightness
-    out[3] = brightness * 255
-
-    # Clip and convert to uint8
-    out = np.clip(out, 0, 255)
+    # Full opacity for pixels with activity, transparent for empty
+    out[3] = np.where(has_activity, 255, 0)
 
     return out.astype(np.uint8)
 
