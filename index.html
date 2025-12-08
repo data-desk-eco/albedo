@@ -96,10 +96,47 @@
       transform: translateZ(0);
       -webkit-transform: translateZ(0);
     }
+    #lang-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: transparent;
+      border: 1px solid #ffffff;
+      color: #ffffff;
+      font-family: sans-serif;
+      font-size: 12px;
+      padding: 4px 8px;
+      cursor: pointer;
+      mix-blend-mode: exclusion;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+    #lang-toggle:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .maplibregl-popup {
+      mix-blend-mode: exclusion;
+    }
+    .maplibregl-popup-content {
+      background: transparent;
+      border: 1px solid #ffffff;
+      border-radius: 0;
+      padding: 8px 10px;
+      box-shadow: none;
+    }
+    .maplibregl-popup-tip {
+      display: none;
+    }
+    .maplibregl-popup-close-button {
+      color: #ffffff;
+      font-size: 18px;
+      padding: 2px 6px;
+    }
   </style>
 </head>
 <body>
 <div id="map"></div>
+<button id="lang-toggle">RU</button>
 <div id="legend">
   <div class="legend-item">
     <div class="legend-symbol">
@@ -123,15 +160,15 @@
     <div class="legend-symbol">
       <div class="legend-square" style="background: #00ff00;"></div>
     </div>
-    <span class="legend-text">protected areas</span>
+    <span id="legend-protected" class="legend-text">protected areas</span>
   </div>
   <div class="legend-item">
     <div class="legend-symbol">
       <div class="legend-circle"></div>
     </div>
-    <span class="legend-text">vessel crossings</span>
+    <span id="legend-crossings" class="legend-text">vessel crossings</span>
   </div>
-  <div class="legend-source">Data source: Global Fishing Watch</div>
+  <div id="legend-source" class="legend-source">Data source: Global Fishing Watch</div>
 </div>
 <div id="logo-container">
   <a href="https://arctida.io/en" target="_blank" rel="noopener noreferrer">
@@ -167,6 +204,56 @@
 </div>
 
 <script>
+  // Internationalization
+  const i18n = {
+    en: {
+      protectedAreas: 'protected areas',
+      vesselCrossings: 'vessel crossings',
+      dataSource: 'Data source: Global Fishing Watch',
+      vessel: 'Vessel',
+      mmsi: 'MMSI',
+      type: 'Type',
+      flag: 'Flag',
+      duration: 'Duration',
+      days: 'days',
+      hours: 'hours',
+      firstSeen: 'First seen',
+      lastSeen: 'Last seen',
+      unknown: 'Unknown',
+      protectedArea: 'Protected Area'
+    },
+    ru: {
+      protectedAreas: 'охраняемые территории',
+      vesselCrossings: 'пересечения судов',
+      dataSource: 'Источник данных: Global Fishing Watch',
+      vessel: 'Судно',
+      mmsi: 'MMSI',
+      type: 'Тип',
+      flag: 'Флаг',
+      duration: 'Длительность',
+      days: 'дней',
+      hours: 'часов',
+      firstSeen: 'Первое обнаружение',
+      lastSeen: 'Последнее обнаружение',
+      unknown: 'Неизвестно',
+      protectedArea: 'Охраняемая территория'
+    }
+  };
+  let lang = 'en';
+  const t = (key) => i18n[lang][key];
+
+  function updateUI() {
+    document.getElementById('legend-protected').textContent = t('protectedAreas');
+    document.getElementById('legend-crossings').textContent = t('vesselCrossings');
+    document.getElementById('legend-source').textContent = t('dataSource');
+  }
+
+  document.getElementById('lang-toggle').addEventListener('click', () => {
+    lang = lang === 'en' ? 'ru' : 'en';
+    document.getElementById('lang-toggle').textContent = lang === 'en' ? 'RU' : 'EN';
+    updateUI();
+  });
+
   // Register PMTiles protocol
   let protocol = new pmtiles.Protocol();
   maplibregl.addProtocol('pmtiles', protocol.tile);
@@ -261,7 +348,7 @@
           'source-layer': 'protected_areas',
           paint: {
             'fill-color': '#00ff00',
-            'fill-opacity': 0.75
+            'fill-opacity': 0.6
           }
         },
         {
@@ -345,40 +432,39 @@
     }
   });
 
-  // Add popup for incursion points
-  map.on('click', 'incursions', (e) => {
+  // Popup for incursion points on hover
+  const popup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false
+  });
+
+  map.on('mouseenter', 'incursions', (e) => {
+    map.getCanvas().style.cursor = 'pointer';
+
     const props = e.features[0].properties;
     const hours = props.total_hours;
     const days = (hours / 24).toFixed(1);
 
     const html = `
-      <div style="font-family: sans-serif; font-size: 12px; line-height: 1.4;">
-        <h3 style="margin: 0 0 8px 0; font-size: 14px;">${props.area_name || 'Protected Area'}</h3>
+      <div style="font-family: sans-serif; font-size: 15px; line-height: 1.5; color: #ffffff; text-transform: lowercase;">
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>Vessel:</strong></td><td>${props.ship_name || 'Unknown'}</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>MMSI:</strong></td><td>${props.mmsi}</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>Type:</strong></td><td>${props.vessel_type || 'Unknown'}</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>Flag:</strong></td><td>${props.flag || 'Unknown'}</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>Duration:</strong></td><td>${days} days (${hours.toFixed(1)} hours)</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>First seen:</strong></td><td>${props.first_seen.split('T')[0]}</td></tr>
-          <tr><td style="padding: 2px 8px 2px 0;"><strong>Last seen:</strong></td><td>${props.last_seen.split('T')[0]}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('mmsi')}</td><td>${props.mmsi}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('duration')}</td><td>${days} ${t('days')} (${hours.toFixed(1)} ${t('hours')})</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('firstSeen')}</td><td>${props.first_seen.split('T')[0]}</td></tr>
+          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('lastSeen')}</td><td>${props.last_seen.split('T')[0]}</td></tr>
         </table>
       </div>
     `;
 
-    new maplibregl.Popup()
-      .setLngLat(e.lngLat)
-      .setHTML(html)
-      .addTo(map);
-  });
-
-  // Change cursor on hover
-  map.on('mouseenter', 'incursions', () => {
-    map.getCanvas().style.cursor = 'pointer';
+    popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
   });
 
   map.on('mouseleave', 'incursions', () => {
     map.getCanvas().style.cursor = '';
+    popup.remove();
   });
 
 </script>
