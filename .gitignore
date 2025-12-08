@@ -44,5 +44,12 @@ progress.txt
 *.swo
 *~
 
+# Python
+.venv/
+__pycache__/
+
+# Node.js
+node_modules/
+
 # Static deployment bundle
 dist/

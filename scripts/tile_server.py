@@ -8,7 +8,11 @@ import numpy as np
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-app = Flask(__name__, static_folder=PROJECT_ROOT, static_url_path='')
+# In production (Docker), serve from dist/; in dev, serve from project root
+SERVE_DIST = os.environ.get('SERVE_DIST', '').lower() in ('1', 'true')
+STATIC_ROOT = os.path.join(PROJECT_ROOT, 'dist') if SERVE_DIST else PROJECT_ROOT
+
+app = Flask(__name__, static_folder=STATIC_ROOT, static_url_path='')
 CORS(app)
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
@@ -153,15 +157,16 @@ def tiles(z, x, y):
 @app.route('/')
 def index():
     """Serve index.html"""
-    return send_file(os.path.join(PROJECT_ROOT, 'index.html'))
+    return send_file(os.path.join(STATIC_ROOT, 'index.html'))
 
 @app.route('/<path:path>')
 def static_files(path):
     """Serve static files"""
-    return send_file(os.path.join(PROJECT_ROOT, path))
+    return send_file(os.path.join(STATIC_ROOT, path))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
     print(f"Starting tile server at http://0.0.0.0:{port}")
-    print(f"Serving from: {PROJECT_ROOT}")
+    print(f"Serving static files from: {STATIC_ROOT}")
+    print(f"Serving tiles from: {COG_PATH}")
     app.run(host='0.0.0.0', port=port, debug=False)

@@ -1,3 +1,14 @@
+# Build stage - compile frontend
+FROM node:20-slim AS builder
+
+WORKDIR /app
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile
+COPY index.html vite.config.js ./
+COPY src/ src/
+RUN yarn build
+
+# Production stage
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -18,16 +29,20 @@ RUN pip install --no-cache-dir -e .
 # Copy static data files (changes occasionally)
 COPY data/vessel_heatmap.tif data/vessel_heatmap.tif
 COPY data/protected_areas.pmtiles data/protected_areas.pmtiles
-COPY data/vessel_incursions.pmtiles data/vessel_incursions.pmtiles
+COPY data/vessel_crossings.pmtiles data/vessel_crossings.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
+COPY data/places.pmtiles data/places.pmtiles
+
+# Copy built frontend from builder stage
+COPY --from=builder /app/dist dist/
 
 # Copy application code (changes most frequently)
 COPY scripts/ scripts/
-COPY index.html .
 
 # Set environment variables
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
+ENV SERVE_DIST=1
 
 # Expose port
 EXPOSE 8080
