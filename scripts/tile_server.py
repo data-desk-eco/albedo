@@ -4,6 +4,7 @@ from flask import Flask, send_file, Response
 from flask_cors import CORS
 from rio_tiler.io import Reader
 import os
+import numpy as np
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -12,15 +13,18 @@ CORS(app)
 
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
 
-# Bright pink gradient colormap - matching static build
-# Use numpy colormaps for fast interpolation
-import numpy as np
+# Year colors for multi-band raster (RGB tuples)
+# Band 1 = oldest year, Band 3 = newest year
+YEAR_COLORS = [
+    (255, 100, 0),    # Year 1 (oldest) - Orange
+    (0, 200, 255),    # Year 2 - Cyan
+    (255, 0, 200),    # Year 3 (newest) - Magenta
+]
 
-# Color stops from static build (8-bit values)
-# Adjusted to ensure low-value pixels (sparse vessel activity) are visible
+# Single-band colormap (bright pink gradient) - fallback for single-band rasters
 COLOR_STOPS = np.array([
     [0, 0, 0, 0, 0],              # value, R, G, B, A - transparent background
-    [0.25, 180, 0, 180, 255],     # Very low values - bright magenta (increased from 1)
+    [0.25, 180, 0, 180, 255],     # Very low values - bright magenta
     [20, 200, 0, 200, 255],
     [40, 220, 0, 220, 255],
     [60, 235, 0, 235, 255],
@@ -30,37 +34,63 @@ COLOR_STOPS = np.array([
     [160, 255, 120, 255, 255],
     [190, 255, 160, 255, 255],
     [220, 255, 200, 255, 255],
-    [255, 255, 230, 255, 255],     # High values - bright pink/white
+    [255, 255, 230, 255, 255],
 ], dtype=np.float32)
 
+
 def apply_colormap(data):
-    """Apply colormap using numpy interp for fast interpolation
-
-    Static build: gdal_translate -scale 0 1000 0 255
-    Scales raw [0-1000] → 8-bit [0-255], then color relief
-
-    Modified to ensure low-value pixels are visible:
-    - Values ≥1 get full opacity bright magenta
-    - Values are clamped to at least 0.25 in 8-bit space to avoid near-invisible pixels
-    """
-    # Scale raw data to 8-bit range, but ensure non-zero values are at least 0.25
-    # This makes sparse vessel activity visible
+    """Apply colormap for single-band raster using numpy interp."""
     scaled = data / 1000.0 * 255.0
     scaled = np.where(data > 0, np.maximum(scaled, 0.25), 0)
     scaled = np.clip(scaled, 0, 255)
 
-    # Interpolate each color channel
     r = np.interp(scaled, COLOR_STOPS[:, 0], COLOR_STOPS[:, 1])
     g = np.interp(scaled, COLOR_STOPS[:, 0], COLOR_STOPS[:, 2])
     b = np.interp(scaled, COLOR_STOPS[:, 0], COLOR_STOPS[:, 3])
     a = np.interp(scaled, COLOR_STOPS[:, 0], COLOR_STOPS[:, 4])
 
-    # Stack channels
     return np.stack([r, g, b, a], axis=0).astype(np.uint8)
+
+
+def apply_multiband_colormap(data):
+    """Colorize multi-band raster with configurable year colors.
+
+    Each input band represents a year's vessel activity hours.
+    Output is RGBA with additive color blending.
+    """
+    num_bands = data.shape[0]
+    height, width = data.shape[1], data.shape[2]
+
+    # Initialize output RGBA
+    out = np.zeros((4, height, width), dtype=np.float32)
+
+    for i in range(min(num_bands, len(YEAR_COLORS))):
+        band = data[i].astype(np.float32)
+        # Normalize band values (log scale for better visibility)
+        # Use log1p(100) as reference - most values are 1-100 hours
+        # Then boost to make even low values visible
+        normalized = np.log1p(band) / np.log1p(100)
+        # Ensure any non-zero value is visible (min brightness 0.4)
+        normalized = np.where(band > 0, np.maximum(normalized, 0.4), 0)
+        normalized = np.clip(normalized, 0, 1)
+
+        # Add this year's color contribution
+        color = YEAR_COLORS[i]
+        out[0] += normalized * color[0]  # R
+        out[1] += normalized * color[1]  # G
+        out[2] += normalized * color[2]  # B
+        out[3] = np.maximum(out[3], normalized * 255)  # A (max of all bands)
+
+    # Clip and convert to uint8
+    out[0:3] = np.clip(out[0:3], 0, 255)
+    out[3] = np.clip(out[3], 0, 255)
+
+    return out.astype(np.uint8)
+
 
 @app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
 def tiles(z, x, y):
-    """Serve raster tiles from COG with bright pink colormap"""
+    """Serve raster tiles from COG with colormap"""
     import time
     from io import BytesIO
     from PIL import Image
@@ -71,8 +101,12 @@ def tiles(z, x, y):
             # Read tile with nearest-neighbor resampling for crisp pixels
             img = cog.tile(x, y, z, tilesize=256, resampling_method="nearest")
 
-            # Apply custom colormap using numpy interpolation (fast!)
-            colored_data = apply_colormap(img.data[0])
+            if img.data.shape[0] == 1:
+                # Single band - use original colormap
+                colored_data = apply_colormap(img.data[0])
+            else:
+                # Multi-band - use year color mixing
+                colored_data = apply_multiband_colormap(img.data)
 
             # Convert to PIL Image and save as PNG
             pil_img = Image.fromarray(colored_data.transpose(1, 2, 0), mode='RGBA')
