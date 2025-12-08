@@ -114,28 +114,35 @@
     #lang-toggle:hover {
       background: rgba(255, 255, 255, 0.1);
     }
-    .maplibregl-popup {
+    #tooltip {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-family: sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      color: #ffffff;
+      text-transform: lowercase;
       mix-blend-mode: exclusion;
-    }
-    .maplibregl-popup-content {
-      background: transparent;
-      border: 1px solid #ffffff;
-      border-radius: 0;
-      padding: 8px 10px;
-      box-shadow: none;
-    }
-    .maplibregl-popup-tip {
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      pointer-events: none;
       display: none;
     }
-    .maplibregl-popup-close-button {
-      color: #ffffff;
-      font-size: 18px;
-      padding: 2px 6px;
+    #tooltip.visible {
+      display: block;
+    }
+    #tooltip td {
+      padding: 2px 12px 2px 0;
+    }
+    #tooltip td:first-child {
+      text-align: right;
     }
   </style>
 </head>
 <body>
 <div id="map"></div>
+<div id="tooltip"></div>
 <button id="lang-toggle">RU</button>
 <div id="legend">
   <div class="legend-item">
@@ -246,6 +253,14 @@
     document.getElementById('legend-protected').textContent = t('protectedAreas');
     document.getElementById('legend-crossings').textContent = t('vesselCrossings');
     document.getElementById('legend-source').textContent = t('dataSource');
+
+    // Update place labels language if map is loaded
+    if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
+      const nameField = lang === 'ru' ? 'name_ru' : 'name_en';
+      map.setLayoutProperty('place-labels', 'text-field',
+        ['coalesce', ['get', nameField], ['get', lang === 'ru' ? 'name_en' : 'name_ru']]
+      );
+    }
   }
 
   document.getElementById('lang-toggle').addEventListener('click', () => {
@@ -321,6 +336,11 @@
           type: 'vector',
           url: 'pmtiles://' + basePath + 'data/vessel_incursions.pmtiles',
           attribution: 'GFW 4Wings'
+        },
+        'places': {
+          type: 'vector',
+          url: 'pmtiles://' + basePath + 'data/places.pmtiles',
+          attribution: 'Natural Earth'
         }
       },
       layers: [
@@ -399,6 +419,31 @@
             'circle-stroke-color': '#000000',  // black
             'circle-stroke-opacity': 1
           }
+        },
+        {
+          id: 'place-labels',
+          type: 'symbol',
+          source: 'places',
+          'source-layer': 'places',
+          minzoom: 2,
+          layout: {
+            'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name_ru']],
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-size': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              2.5, ['case', ['<=', ['get', 'scalerank'], 1], 14, 12],
+              10, ['case', ['<=', ['get', 'scalerank'], 1], 28, 20]
+            ],
+            'text-anchor': 'center',
+            'text-padding': 2,
+            'text-allow-overlap': false,
+            'text-ignore-placement': false
+          },
+          paint: {
+            'text-color': '#000000'
+          }
         }
       ]
     },
@@ -432,11 +477,8 @@
     }
   });
 
-  // Popup for incursion points on hover
-  const popup = new maplibregl.Popup({
-    closeButton: false,
-    closeOnClick: false
-  });
+  // Tooltip for incursion points on hover
+  const tooltip = document.getElementById('tooltip');
 
   map.on('mouseenter', 'incursions', (e) => {
     map.getCanvas().style.cursor = 'pointer';
@@ -445,26 +487,23 @@
     const hours = props.total_hours;
     const days = (hours / 24).toFixed(1);
 
-    const html = `
-      <div style="font-family: sans-serif; font-size: 15px; line-height: 1.5; color: #ffffff; text-transform: lowercase;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('mmsi')}</td><td>${props.mmsi}</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('duration')}</td><td>${days} ${t('days')} (${hours.toFixed(1)} ${t('hours')})</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('firstSeen')}</td><td>${props.first_seen.split('T')[0]}</td></tr>
-          <tr><td style="padding: 2px 12px 2px 0; text-align: right;">${t('lastSeen')}</td><td>${props.last_seen.split('T')[0]}</td></tr>
-        </table>
-      </div>
+    tooltip.innerHTML = `
+      <table>
+        <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
+        <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
+        <tr><td>${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
+        <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
+        <tr><td>${t('duration')}</td><td>${days} ${t('days')} (${hours.toFixed(1)} ${t('hours')})</td></tr>
+        <tr><td>${t('firstSeen')}</td><td>${props.first_seen.split('T')[0]}</td></tr>
+        <tr><td>${t('lastSeen')}</td><td>${props.last_seen.split('T')[0]}</td></tr>
+      </table>
     `;
-
-    popup.setLngLat(e.lngLat).setHTML(html).addTo(map);
+    tooltip.classList.add('visible');
   });
 
   map.on('mouseleave', 'incursions', () => {
     map.getCanvas().style.cursor = '';
-    popup.remove();
+    tooltip.classList.remove('visible');
   });
 
 </script>

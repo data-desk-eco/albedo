@@ -6,34 +6,73 @@ cd "$(dirname "$0")/.."
 # Load environment variables
 source .env
 
-# Export vessel activity from DuckDB to CSV
-echo "Exporting vessel activity from DuckDB..."
-duckdb data/data.duckdb -c "
-COPY (
-  SELECT
-    lon,
-    lat,
-    sum(hours) as hours
-  FROM vessel_positions
-  GROUP BY lat, lon
-  ORDER BY lat DESC, lon ASC
-) TO 'data/vessel_activity.csv' (HEADER, DELIMITER ',');
-"
+# Parse YEARS env var
+IFS=',' read -ra YEAR_ARRAY <<< "$YEARS"
 
-# Generate raster directly from gridded CSV data (no rasterization needed!)
-# The vessel_positions data is already gridded at 0.01° intervals
-echo "Creating raster directly from gridded vessel data..."
-uv run --with "rasterio" --with "numpy" python scripts/create_raster.py
+# Export per-year vessel activity from DuckDB to CSV
+echo "Exporting vessel activity per year from DuckDB..."
+for year in "${YEAR_ARRAY[@]}"; do
+  echo "  → Exporting ${year}..."
+  duckdb data/data.duckdb -c "
+  COPY (
+    SELECT
+      lon,
+      lat,
+      sum(hours) as hours
+    FROM vessel_positions
+    WHERE year = ${year}
+    GROUP BY lat, lon
+    ORDER BY lat DESC, lon ASC
+  ) TO 'data/vessel_activity_${year}.csv' (HEADER, DELIMITER ',');
+  "
+done
 
-# Convert grayscale to Cloud-Optimized GeoTIFF for dynamic coloring
-echo "Creating Cloud-Optimized GeoTIFF (grayscale) with nearest-neighbor resampling..."
+# Generate per-year rasters
+echo "Creating per-year rasters..."
+for year in "${YEAR_ARRAY[@]}"; do
+  echo "  → Rasterizing ${year}..."
+  INPUT_CSV="data/vessel_activity_${year}.csv" \
+  OUTPUT_PATH="data/vessel_activity_${year}.tif" \
+  uv run --with "rasterio" --with "numpy" python scripts/create_raster.py
+done
+
+# Combine into 3-band RGB raster (band order = year order)
+echo "Combining years into multi-band raster..."
+uv run --with "rasterio" --with "numpy" python3 << COMBINE_EOF
+import rasterio
+import numpy as np
+
+years = "${YEARS}".split(',')
+print(f"Combining {len(years)} year rasters...")
+
+# Read the first raster to get metadata
+with rasterio.open(f"data/vessel_activity_{years[0]}.tif") as src:
+    profile = src.profile.copy()
+    height, width = src.height, src.width
+
+# Update profile for multi-band output
+profile.update(count=len(years))
+
+# Create output raster
+with rasterio.open("data/vessel_multiband.tif", 'w', **profile) as dst:
+    for i, year in enumerate(years):
+        with rasterio.open(f"data/vessel_activity_{year}.tif") as src:
+            data = src.read(1)
+            dst.write(data, i + 1)
+            print(f"  Added band {i+1}: {year}")
+
+print("✓ Created multi-band raster")
+COMBINE_EOF
+
+# Convert to Cloud-Optimized GeoTIFF
+echo "Creating Cloud-Optimized GeoTIFF with nearest-neighbor resampling..."
 gdal_translate \
   -of COG \
   -co COMPRESS=DEFLATE \
   -co PREDICTOR=2 \
   -co OVERVIEWS=AUTO \
   -co RESAMPLING=NEAREST \
-  data/vessel_activity.tif \
+  data/vessel_multiband.tif \
   data/vessel_heatmap.tif
 
 # Filter protected areas to only those with vessel activity within 5km
@@ -187,40 +226,79 @@ tippecanoe -o data/land.pmtiles \
   --layer=land \
   data/land_clipped.geojson
 
-# Export vessel incursions to GeoJSON
-echo "Exporting vessel incursions to GeoJSON..."
-duckdb data/data.duckdb << 'SQL_EOF'
+# Generate place labels (Natural Earth populated places)
+echo "Generating place labels for study area..."
+
+# Filter and convert places to GeoJSON with only needed fields (Russia only)
+ogr2ogr -f GeoJSON \
+  -sql "SELECT NAME as name_en, NAME_RU as name_ru, POP_MAX as population, SCALERANK as scalerank, FEATURECLA as feature_class FROM ne_10m_populated_places WHERE SCALERANK <= 5 AND LATITUDE >= ${SOUTH_LAT} AND ADM0_A3 = 'RUS'" \
+  data/places_filtered.geojson \
+  data/ne_10m_populated_places/ne_10m_populated_places.shp
+
+echo "✓ Filtered places to study area (latitude >= ${SOUTH_LAT}°, scalerank <= 5)"
+
+# Generate place labels vector tiles
+echo "Generating place labels vector tiles..."
+tippecanoe -o data/places.pmtiles \
+  --force \
+  --maximum-zoom=10 \
+  --minimum-zoom=0 \
+  --drop-rate=0 \
+  --no-feature-limit \
+  --no-tile-size-limit \
+  --layer=places \
+  data/places_filtered.geojson
+
+# Export vessel crossings to GeoJSON (filtered to only include points within displayed protected areas)
+echo "Exporting vessel crossings to GeoJSON..."
+duckdb data/data.duckdb << SQL_EOF
 INSTALL spatial;
 LOAD spatial;
 
+-- Load the displayed protected areas (already filtered to ocean-only)
+CREATE TEMP TABLE display_protected_areas AS
+WITH features AS (
+  SELECT unnest(features) as f
+  FROM read_json_auto('data/protected_areas_filtered.geojson')
+)
+SELECT
+  f.feature.id as feature_id,
+  ST_GeomFromGeoJSON(json(f.feature.geometry)) as geometry
+FROM features;
+
+-- Export only crossings that are within the displayed protected areas
 COPY (
   SELECT
-    feature_id,
-    area_name,
-    vessel_id,
-    mmsi,
-    ship_name,
-    flag,
-    vessel_type,
-    gear_type,
-    total_hours,
-    first_seen,
-    last_seen,
-    centroid_lon as lon,
-    centroid_lat as lat,
-    position_count
-  FROM vessel_incursions
-) TO 'data/vessel_incursions.csv' (HEADER, DELIMITER ',');
+    vc.feature_id,
+    vc.area_name,
+    vc.vessel_id,
+    vc.mmsi,
+    vc.ship_name,
+    vc.flag,
+    vc.vessel_type,
+    vc.gear_type,
+    vc.total_hours,
+    vc.first_seen,
+    vc.last_seen,
+    vc.centroid_lon as lon,
+    vc.centroid_lat as lat,
+    vc.position_count
+  FROM vessel_crossings vc
+  WHERE EXISTS (
+    SELECT 1 FROM display_protected_areas pa
+    WHERE ST_Within(ST_Point(vc.centroid_lon, vc.centroid_lat), pa.geometry)
+  )
+) TO 'data/vessel_crossings.csv' (HEADER, DELIMITER ',');
 SQL_EOF
 
-# Convert incursions CSV to GeoJSON with point geometries
-echo "Converting incursions to GeoJSON..."
+# Convert crossings CSV to GeoJSON with point geometries
+echo "Converting crossings to GeoJSON..."
 python3 << 'PYTHON_EOF'
 import csv
 import json
 
 features = []
-with open('data/vessel_incursions.csv', 'r') as f:
+with open('data/vessel_crossings.csv', 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
         feature = {
@@ -251,33 +329,34 @@ geojson = {
     "features": features
 }
 
-with open('data/vessel_incursions.geojson', 'w') as f:
+with open('data/vessel_crossings.geojson', 'w') as f:
     json.dump(geojson, f)
 
-print(f"✓ Exported {len(features)} incursions")
+print(f"✓ Exported {len(features)} crossings")
 PYTHON_EOF
 
-# Generate incursions vector tiles
-if [ -f data/vessel_incursions.geojson ] && [ $(jq '.features | length' data/vessel_incursions.geojson) -gt 0 ]; then
-  echo "Generating vessel incursions vector tiles..."
-  tippecanoe -o data/vessel_incursions.pmtiles \
+# Generate crossings vector tiles
+if [ -f data/vessel_crossings.geojson ] && [ $(jq '.features | length' data/vessel_crossings.geojson) -gt 0 ]; then
+  echo "Generating vessel crossings vector tiles..."
+  tippecanoe -o data/vessel_crossings.pmtiles \
     --force \
     --maximum-zoom=10 \
     --minimum-zoom=0 \
     --drop-rate=0 \
     --no-feature-limit \
     --no-tile-size-limit \
-    --layer=incursions \
-    data/vessel_incursions.geojson
+    --layer=crossings \
+    data/vessel_crossings.geojson
 
-  echo "✓ Vessel incursions tiles: data/vessel_incursions.pmtiles"
+  echo "✓ Vessel crossings tiles: data/vessel_crossings.pmtiles"
 else
-  echo "⚠ No vessel incursions found - skipping tile generation"
+  echo "⚠ No vessel crossings found - skipping tile generation"
 fi
 
 # Cleanup intermediate files
-rm -f data/vessel_activity.csv data/vessel_activity.tif data/protected_areas_filtered.geojson data/protected_areas_filtered_temp.geojson data/protected_areas_clipped.geojson data/protected_areas_maritime_features.jsonl data/protected_areas_filter_ids.csv data/land_clipped.geojson data/vessel_incursions.csv data/vessel_incursions.geojson
+rm -f data/vessel_activity_*.csv data/vessel_activity_*.tif data/vessel_multiband.tif data/protected_areas_filtered_temp.geojson data/protected_areas_clipped.geojson data/protected_areas_maritime_features.jsonl data/protected_areas_filter_ids.csv data/vessel_crossings.csv data/vessel_crossings.geojson data/land_clipped.geojson data/protected_areas_filtered.geojson data/places_filtered.geojson
 
 echo "✓ Vessel heatmap: data/vessel_heatmap.tif"
 echo "✓ Protected areas tiles: data/protected_areas.pmtiles"
 echo "✓ Land basemap: data/land.pmtiles"
+echo "✓ Place labels: data/places.pmtiles"

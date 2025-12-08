@@ -3,7 +3,7 @@
 include .env
 export
 
-all: vessel-presence data/protected_areas.geojson data/ne_10m_land/ne_10m_land.shp
+all: vessel-presence data/protected_areas.geojson data/ne_10m_land/ne_10m_land.shp data/ne_10m_populated_places/ne_10m_populated_places.shp
 
 install:
 	uv sync
@@ -16,6 +16,9 @@ data/protected_areas.geojson: scripts/fetch_protected_areas.sh
 
 data/ne_10m_land/ne_10m_land.shp: scripts/fetch_land.sh
 	@./scripts/fetch_land.sh
+
+data/ne_10m_populated_places/ne_10m_populated_places.shp: scripts/fetch_places.sh
+	@./scripts/fetch_places.sh
 
 convert:
 	@./scripts/convert.sh
