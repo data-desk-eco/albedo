@@ -53,37 +53,58 @@ def apply_colormap(data):
 
 
 def apply_multiband_colormap(data):
-    """Colorize multi-band raster with configurable year colors.
+    """Colorize multi-band raster with dominant year coloring.
 
-    Each input band represents a year's vessel activity hours.
-    Output is RGBA with additive color blending.
+    Shows the color of the dominant year (3x more activity than others).
+    Multi-year established routes show as gray, brightness reflects total activity.
     """
-    num_bands = data.shape[0]
+    num_bands = min(data.shape[0], len(YEAR_COLORS))
     height, width = data.shape[1], data.shape[2]
+
+    # Get activity for each year
+    bands = [data[i].astype(np.float32) for i in range(num_bands)]
+
+    # Total activity across all years
+    total = sum(bands)
+
+    # Find dominant year (3x threshold)
+    DOMINANCE_THRESHOLD = 3.0
 
     # Initialize output RGBA
     out = np.zeros((4, height, width), dtype=np.float32)
 
-    for i in range(min(num_bands, len(YEAR_COLORS))):
-        band = data[i].astype(np.float32)
-        # Normalize band values (log scale for better visibility)
-        # Use log1p(100) as reference - most values are 1-100 hours
-        # Then boost to make even low values visible
-        normalized = np.log1p(band) / np.log1p(100)
-        # Ensure any non-zero value is visible (min brightness 0.4)
-        normalized = np.where(band > 0, np.maximum(normalized, 0.4), 0)
-        normalized = np.clip(normalized, 0, 1)
+    # Normalize total activity for brightness (log scale)
+    brightness = np.log1p(total) / np.log1p(100)
+    brightness = np.where(total > 0, np.maximum(brightness, 0.7), 0)
+    brightness = np.clip(brightness, 0, 1)
 
-        # Add this year's color contribution
+    # Check each year for dominance
+    for i in range(num_bands):
+        # Sum of other years
+        others = sum(bands[j] for j in range(num_bands) if j != i)
+        # This year is dominant if it's 3x the others (and others > 0 to avoid div by zero)
+        is_dominant = (bands[i] > others * DOMINANCE_THRESHOLD) & (bands[i] > 0)
+
         color = YEAR_COLORS[i]
-        out[0] += normalized * color[0]  # R
-        out[1] += normalized * color[1]  # G
-        out[2] += normalized * color[2]  # B
-        out[3] = np.maximum(out[3], normalized * 255)  # A (max of all bands)
+        out[0] = np.where(is_dominant, brightness * color[0], out[0])
+        out[1] = np.where(is_dominant, brightness * color[1], out[1])
+        out[2] = np.where(is_dominant, brightness * color[2], out[2])
+
+    # Non-dominant pixels with activity → gray (brightness based on total)
+    has_activity = total > 0
+    is_any_dominant = out[0] + out[1] + out[2] > 0
+    is_gray = has_activity & ~is_any_dominant
+
+    gray_value = brightness * 180  # Gray maxes at 180 to distinguish from white
+    out[0] = np.where(is_gray, gray_value, out[0])
+    out[1] = np.where(is_gray, gray_value, out[1])
+    out[2] = np.where(is_gray, gray_value, out[2])
+
+    # Alpha based on brightness
+    out[3] = brightness * 255
 
     # Clip and convert to uint8
-    out[0:3] = np.clip(out[0:3], 0, 255)
-    out[3] = np.clip(out[3], 0, 255)
+    out = np.clip(out, 0, 255)
 
     return out.astype(np.uint8)
 
