@@ -1,0 +1,200 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+:root {
+  --ui-font-size: 16px;
+  --ui-font-family: 'Inter', sans-serif;
+}
+
+body { margin: 0; padding: 0; }
+
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  background: hsl(0, 0%, 2%);
+}
+
+#logo-container {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  mix-blend-mode: exclusion;
+  margin-bottom: -5px;
+  margin-right: -2px;
+  display: flex;
+  align-items: flex-end;
+}
+
+#logo-container > * {
+  margin-left: 8px;
+}
+
+@media (max-width: 600px) {
+  #logo-container {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  #logo-container > * {
+    margin-left: 0;
+    margin-top: 0;
+  }
+  #logo-container > a:first-child {
+    margin-right: 22px;
+  }
+  #logo-separator {
+    position: absolute;
+    right: 4px;
+    bottom: 34px;
+  }
+  #logo-container > a:last-child {
+    margin-top: 2px;
+  }
+}
+
+.logo path, .logo polygon {
+  fill: #ffffff;
+}
+
+#arctida-logo {
+  height: 22px;
+}
+
+#datadesk-logo {
+  height: 28px;
+}
+
+#logo-separator {
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+#legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  line-height: 1.4;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.legend-item:last-child {
+  margin-bottom: 0;
+}
+
+.legend-symbol {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-square {
+  width: 18px;
+  height: 18px;
+}
+
+.legend-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  mix-blend-mode: exclusion;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.legend-hatch {
+  width: 18px;
+  height: 18px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 2px,
+    #fff 2px,
+    #fff 3px
+  );
+  border: 2px solid #fff;
+  box-sizing: border-box;
+  mix-blend-mode: exclusion;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.legend-text {
+  mix-blend-mode: exclusion;
+  color: #ffffff;
+  text-transform: lowercase;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.legend-source {
+  mix-blend-mode: exclusion;
+  color: #ffffff;
+  font-style: italic;
+  font-size: var(--ui-font-size);
+  margin-top: 12px;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+#lang-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: 1px solid #ffffff;
+  color: #ffffff;
+  font-family: var(--ui-font-family);
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  mix-blend-mode: exclusion;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+#lang-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#tooltip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  line-height: 1.5;
+  color: #ffffff;
+  text-transform: lowercase;
+  mix-blend-mode: exclusion;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  pointer-events: none;
+  display: none;
+}
+
+#tooltip.visible {
+  display: block;
+}
+
+#tooltip td {
+  padding: 2px 12px 2px 0;
+}
+
+#tooltip td:first-child {
+  text-align: right;
+}

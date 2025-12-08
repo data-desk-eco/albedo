@@ -5,14 +5,13 @@ Map of shipping activity along Russia's Northern Sea Route. Consultancy project 
 ## Setup
 
 ```bash
+yarn install   # Install frontend dependencies
 make           # Fetch GFW data + protected areas
 make convert   # Convert JSON → Parquet
 make transform # Run dbt pipeline → data/data.duckdb
-make tiles     # Generate COG heatmap + PMTiles → data/vessel_heatmap.tif (1.3MB) + data/protected_areas.pmtiles (5.3MB)
-make serve     # Start tile server at http://localhost:8000
+make tiles     # Generate COG heatmap + PMTiles
+make dev       # Start dev server at http://localhost:5173
 ```
-
-**Note**: The tile server (`tile_server.py`) serves the COG (Cloud-Optimized GeoTIFF) as XYZ raster tiles on-the-fly using rio-tiler.
 
 Configuration in `.env` — edit date ranges, study area, etc.
 
@@ -30,28 +29,32 @@ Configuration in `.env` — edit date ranges, study area, etc.
 
 ## Frontend
 
-Single `index.html` file with:
+Vite-based build with:
 - MapLibre GL JS for rendering
 - Globe projection with raster heatmap visualization
 - PMTiles for protected areas (vector tiles)
-- Inline CSS/JS, no build step
-- Python tile server (`tile_server.py`) serves COG as XYZ tiles using rio-tiler
+- Python tile server (`scripts/tile_server.py`) serves COG as XYZ tiles using rio-tiler
 - Arctic-focused navigation (pitch + zoom limits, latitude constraint on moveend)
 
 ## Structure
 
 ```
 .
-├── index.html              # Web map interface
-├── tile_server.py          # Tile server for COG + static files
+├── index.html              # HTML entry point
+├── src/
+│   ├── main.js             # App logic + map
+│   └── style.css           # Styles
+├── vite.config.js          # Vite configuration
+├── package.json            # Frontend dependencies
 ├── Makefile                # Pipeline orchestration
-├── scripts/                # Data fetching & processing scripts
+├── scripts/                # Data fetching & processing
+│   └── tile_server.py      # Tile server for COG + static files
 ├── etl/                    # dbt models & configuration
 └── data/                   # Generated data (gitignored)
     ├── gfw/                # Raw GFW API responses
     ├── data.duckdb         # Transformed data (2.6GB)
-    ├── vessel_heatmap.tif  # COG raster heatmap (1.3MB)
-    └── protected_areas.pmtiles  # Vector tiles (5.3MB, 391 areas with vessel activity)
+    ├── vessel_heatmap.tif  # COG raster heatmap
+    └── *.pmtiles           # Vector tiles
 ```
 
 ## Sources
@@ -64,4 +67,4 @@ Single `index.html` file with:
 - **Data**: DuckDB + dbt
 - **Tiles**: GDAL (COG generation) + tippecanoe (vector tiles)
 - **Server**: Flask + rio-tiler (serves COG as XYZ tiles)
-- **Frontend**: MapLibre GL JS + PMTiles
+- **Frontend**: Vite + MapLibre GL JS + PMTiles

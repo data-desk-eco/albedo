@@ -36,6 +36,9 @@ tiles: transform
 serve:
 	@uv run python scripts/tile_server.py
 
+dev:
+	@uv run python scripts/tile_server.py & PID=$$!; trap "kill $$PID 2>/dev/null" EXIT INT TERM; yarn dev
+
 static:
 	@./scripts/build_static.sh
 
@@ -58,18 +61,6 @@ places:
 
 crossings:
 	@./scripts/export_crossings.sh
-
-# Restart tile server (for testing tile_server.py changes)
-restart:
-	@pkill -f tile_server.py || true
-	@sleep 1
-	@uv run python scripts/tile_server.py &
-	@echo "Tile server restarted at http://localhost:8000"
-
-# Watch for changes and auto-reload (requires entr: brew install entr)
-watch:
-	@echo "Watching for changes... (Ctrl+C to stop)"
-	@find scripts/tile_server.py index.html | entr -r make restart
 
 # Cloud Run deployment
 PROJECT_NAME := albedo
@@ -137,4 +128,4 @@ domain:
 		--project $(GCP_PROJECT) \
 		--format="value(status.resourceRecords)"
 
-.PHONY: all clean vessel-presence convert transform tiles serve static install deploy update url logs domain raster protected-areas land places crossings restart watch
+.PHONY: all clean vessel-presence convert transform tiles serve dev static install deploy update url logs domain raster protected-areas land places crossings

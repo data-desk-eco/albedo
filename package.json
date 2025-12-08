@@ -1,0 +1,21 @@
+{
+  "name": "albedo",
+  "version": "1.0.0",
+  "type": "module",
+  "repository": "https://github.com/data-desk-eco/albedo.git",
+  "author": "Louis Goddard <louisgoddard@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fontsource/inter": "^5.2.8",
+    "maplibre-gl": "^5.14.0",
+    "pmtiles": "^4.3.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.7"
+  }
+}

@@ -1,0 +1,391 @@
+import './style.css'
+import maplibregl from 'maplibre-gl'
+import * as pmtiles from 'pmtiles'
+
+// Internationalization
+const i18n = {
+  en: {
+    protectedAreas: 'protected areas',
+    vesselCrossings: 'vessel crossings',
+    dataSource: 'data: Global Fishing Watch',
+    vessel: 'Vessel',
+    mmsi: 'MMSI',
+    type: 'Type',
+    flag: 'Flag',
+    duration: 'Duration',
+    days: 'days',
+    hours: 'hours',
+    firstSeen: 'First seen',
+    lastSeen: 'Last seen',
+    unknown: 'Unknown',
+    protectedArea: 'Protected Area'
+  },
+  ru: {
+    protectedAreas: 'охраняемые территории',
+    vesselCrossings: 'пересечения судов',
+    dataSource: 'данные: Global Fishing Watch',
+    vessel: 'Судно',
+    mmsi: 'MMSI',
+    type: 'Тип',
+    flag: 'Флаг',
+    duration: 'Длительность',
+    days: 'дней',
+    hours: 'часов',
+    firstSeen: 'Первое обнаружение',
+    lastSeen: 'Последнее обнаружение',
+    unknown: 'Неизвестно',
+    protectedArea: 'Охраняемая территория'
+  }
+}
+
+let lang = 'en'
+const t = (key) => i18n[lang][key]
+
+function updateUI() {
+  document.getElementById('legend-protected').textContent = t('protectedAreas')
+  document.getElementById('legend-crossings').textContent = t('vesselCrossings')
+  document.getElementById('legend-source').textContent = t('dataSource')
+
+  // Update place labels language if map is loaded
+  if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
+    const nameField = lang === 'ru' ? 'name_ru' : 'name_en'
+    map.setLayoutProperty('place-labels', 'text-field',
+      ['coalesce', ['get', nameField], ['get', lang === 'ru' ? 'name_en' : 'name_ru']]
+    )
+  }
+}
+
+document.getElementById('lang-toggle').addEventListener('click', () => {
+  lang = lang === 'en' ? 'ru' : 'en'
+  document.getElementById('lang-toggle').textContent = lang === 'en' ? 'РУ' : 'EN'
+  updateUI()
+})
+
+// Register PMTiles protocol
+const protocol = new pmtiles.Protocol()
+maplibregl.addProtocol('pmtiles', protocol.tile)
+
+// Arctic region focus
+const ARCTIC_CENTER_LAT = 75
+
+// Create diagonal hatch pattern with given color (single direction)
+function createHatchPattern(color, size = 6) {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1
+
+  // Draw diagonal lines (/) - with wrap for seamless tiling
+  ctx.beginPath()
+  ctx.moveTo(0, size)
+  ctx.lineTo(size, 0)
+  ctx.moveTo(-size, size)
+  ctx.lineTo(size, -size)
+  ctx.moveTo(0, size * 2)
+  ctx.lineTo(size * 2, 0)
+  ctx.stroke()
+
+  return ctx.getImageData(0, 0, size, size)
+}
+
+// Get base path for tile URLs (works with /albedo or any path prefix)
+const basePath = window.location.pathname.endsWith('/')
+  ? window.location.pathname
+  : window.location.pathname + '/'
+
+const map = new maplibregl.Map({
+  container: 'map',
+  attributionControl: false,
+  style: {
+    version: 8,
+    projection: {
+      type: 'globe'
+    },
+    sources: {
+      'land': {
+        type: 'vector',
+        url: 'pmtiles://' + basePath + 'data/land.pmtiles',
+        attribution: '© Natural Earth'
+      },
+      'vessel-heatmap': {
+        type: 'raster',
+        tiles: [basePath + 'tiles/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: 'GFW 4Wings'
+      },
+      'protected-areas': {
+        type: 'vector',
+        url: 'pmtiles://' + basePath + 'data/protected_areas.pmtiles',
+        attribution: 'Russian Ministry'
+      },
+      'vessel-crossings': {
+        type: 'vector',
+        url: 'pmtiles://' + basePath + 'data/vessel_crossings.pmtiles',
+        attribution: 'GFW 4Wings'
+      },
+      'places': {
+        type: 'vector',
+        url: 'pmtiles://' + basePath + 'data/places.pmtiles',
+        attribution: 'Natural Earth'
+      }
+    },
+    layers: [
+      {
+        id: 'background',
+        type: 'background',
+        paint: {
+          'background-color': '#000000'
+        }
+      },
+      {
+        id: 'land',
+        type: 'fill',
+        source: 'land',
+        'source-layer': 'land',
+        paint: {
+          'fill-color': '#ffffff',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-land-sm',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_land',
+        maxzoom: 4,
+        paint: {
+          'fill-pattern': 'hatch-black-sm',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-land-md',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_land',
+        minzoom: 4,
+        maxzoom: 7,
+        paint: {
+          'fill-pattern': 'hatch-black-md',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-land-lg',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_land',
+        minzoom: 7,
+        paint: {
+          'fill-pattern': 'hatch-black-lg',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-land-border',
+        type: 'line',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_land',
+        paint: {
+          'line-color': '#000000',
+          'line-width': 2,
+          'line-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-sea-sm',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_sea',
+        maxzoom: 4,
+        paint: {
+          'fill-pattern': 'hatch-white-sm',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-sea-md',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_sea',
+        minzoom: 4,
+        maxzoom: 7,
+        paint: {
+          'fill-pattern': 'hatch-white-md',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-sea-lg',
+        type: 'fill',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_sea',
+        minzoom: 7,
+        paint: {
+          'fill-pattern': 'hatch-white-lg',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-on-sea-border',
+        type: 'line',
+        source: 'protected-areas',
+        'source-layer': 'protected_areas_sea',
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2,
+          'line-opacity': 1
+        }
+      },
+      {
+        id: 'vessel-heatmap',
+        type: 'raster',
+        source: 'vessel-heatmap',
+        paint: {
+          'raster-opacity': 1,
+          'raster-resampling': 'nearest',  // Keep pixels crisp, no blur
+          'raster-brightness-max': 1,      // Boost brightness
+          'raster-contrast': 0.3           // Increase contrast to make it pop
+        }
+      },
+      {
+        id: 'crossings',
+        type: 'circle',
+        source: 'vessel-crossings',
+        'source-layer': 'crossings',
+        minzoom: 0,
+        maxzoom: 24,
+        paint: {
+          'circle-radius': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2.5, [
+              'interpolate',
+              ['linear'],
+              ['get', 'total_hours'],
+              1, 3,      // 1 hour → 3px at min zoom
+              24, 5,     // 1 day → 5px
+              168, 10,   // 1 week → 10px
+              720, 18    // 1 month → 18px
+            ],
+            10, [
+              'interpolate',
+              ['linear'],
+              ['get', 'total_hours'],
+              1, 6,      // 1 hour → 6px at max zoom
+              24, 10,    // 1 day → 10px
+              168, 20,   // 1 week → 20px
+              720, 36    // 1 month → 36px
+            ]
+          ],
+          'circle-color': [
+            'match',
+            ['get', 'year'],
+            2022, 'rgb(255, 0, 255)',   // magenta
+            2023, 'rgb(0, 255, 0)',     // green
+            2024, 'rgb(0, 255, 255)',   // cyan
+            '#ffffff'                   // default fallback
+          ],
+          'circle-opacity': 1,
+          'circle-stroke-width': 0
+        }
+      },
+      {
+        id: 'place-labels',
+        type: 'symbol',
+        source: 'places',
+        'source-layer': 'places',
+        minzoom: 2,
+        layout: {
+          'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name_ru']],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-size': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            2.5, ['case', ['<=', ['get', 'scalerank'], 1], 14, 12],
+            10, ['case', ['<=', ['get', 'scalerank'], 1], 28, 20]
+          ],
+          'text-anchor': 'center',
+          'text-padding': 2,
+          'text-allow-overlap': false,
+          'text-ignore-placement': false
+        },
+        paint: {
+          'text-color': '#666666',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.5,
+          'text-halo-blur': 0.5
+        }
+      }
+    ]
+  },
+  center: [100, ARCTIC_CENTER_LAT],
+  zoom: 2.5,
+  pitch: 20,  // Slight tilt to view Arctic region
+  bearing: 0,
+  maxZoom: 10,
+  minZoom: 2.5,
+  minPitch: 0,
+  maxPitch: 30,
+  renderWorldCopies: false
+})
+
+// Add hatch patterns at different sizes for zoom levels
+map.on('load', () => {
+  // Small/tight patterns for zoomed out (z0-4)
+  map.addImage('hatch-white-sm', createHatchPattern('#ffffff', 6), { pixelRatio: 1 })
+  map.addImage('hatch-black-sm', createHatchPattern('#000000', 6), { pixelRatio: 1 })
+  // Medium patterns (z4-7)
+  map.addImage('hatch-white-md', createHatchPattern('#ffffff', 10), { pixelRatio: 1 })
+  map.addImage('hatch-black-md', createHatchPattern('#000000', 10), { pixelRatio: 1 })
+  // Large/loose patterns for zoomed in (z7+)
+  map.addImage('hatch-white-lg', createHatchPattern('#ffffff', 16), { pixelRatio: 1 })
+  map.addImage('hatch-black-lg', createHatchPattern('#000000', 16), { pixelRatio: 1 })
+})
+
+// Keep focus on Arctic region
+map.on('moveend', () => {
+  const center = map.getCenter()
+  const zoom = map.getZoom()
+
+  // More permissive threshold when zoomed in
+  const threshold = zoom > 4 ? 50 : 60
+
+  if (center.lat < threshold) {
+    map.panTo([center.lng, ARCTIC_CENTER_LAT])
+  }
+})
+
+// Tooltip for incursion points on hover
+const tooltip = document.getElementById('tooltip')
+
+map.on('mouseenter', 'crossings', (e) => {
+  map.getCanvas().style.cursor = 'pointer'
+
+  const props = e.features[0].properties
+  const hours = props.total_hours
+  const days = (hours / 24).toFixed(1)
+
+  tooltip.innerHTML = `
+    <table>
+      <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
+      <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
+      <tr><td>${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
+      <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
+      <tr><td>${t('duration')}</td><td>${days} ${t('days')} (${hours.toFixed(1)} ${t('hours')})</td></tr>
+      <tr><td>${t('firstSeen')}</td><td>${props.first_seen.split('T')[0]}</td></tr>
+      <tr><td>${t('lastSeen')}</td><td>${props.last_seen.split('T')[0]}</td></tr>
+    </table>
+  `
+  tooltip.classList.add('visible')
+})
+
+map.on('mouseleave', 'crossings', () => {
+  map.getCanvas().style.cursor = ''
+  tooltip.classList.remove('visible')
+})
