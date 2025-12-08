@@ -5,24 +5,14 @@ set -e
 cd "$(dirname "$0")/.."
 source .env
 
-# Export vessel crossings to GeoJSON (filtered to only include points within displayed protected areas)
+# Export vessel crossings to GeoJSON
+# Uses protected_areas_ocean from the dbt models which filters to ocean-only areas
 echo "Exporting vessel crossings to GeoJSON..."
 duckdb data/data.duckdb << SQL_EOF
 INSTALL spatial;
 LOAD spatial;
 
--- Load the displayed protected areas (already filtered to ocean-only)
-CREATE TEMP TABLE display_protected_areas AS
-WITH features AS (
-  SELECT unnest(features) as f
-  FROM read_json_auto('data/protected_areas_filtered.geojson')
-)
-SELECT
-  f.feature.id as feature_id,
-  ST_GeomFromGeoJSON(json(f.feature.geometry)) as geometry
-FROM features;
-
--- Export only crossings that are within the displayed protected areas
+-- Export all crossings (they're already filtered to ocean protected areas by the dbt model)
 COPY (
   SELECT
     vc.feature_id,
@@ -36,14 +26,11 @@ COPY (
     vc.total_hours,
     vc.first_seen,
     vc.last_seen,
+    vc.year,
     vc.centroid_lon as lon,
     vc.centroid_lat as lat,
     vc.position_count
   FROM vessel_crossings vc
-  WHERE EXISTS (
-    SELECT 1 FROM display_protected_areas pa
-    WHERE ST_Within(ST_Point(vc.centroid_lon, vc.centroid_lat), pa.geometry)
-  )
 ) TO 'data/vessel_crossings.csv' (HEADER, DELIMITER ',');
 SQL_EOF
 
@@ -75,6 +62,7 @@ with open('data/vessel_crossings.csv', 'r') as f:
                 "total_hours": float(row['total_hours']),
                 "first_seen": row['first_seen'],
                 "last_seen": row['last_seen'],
+                "year": int(row['year']),
                 "position_count": int(row['position_count'])
             }
         }

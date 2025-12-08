@@ -119,8 +119,8 @@ echo ']}' >> data/protected_areas_filtered.geojson
 MARITIME_COUNT=$(jq '.features | length' data/protected_areas_filtered.geojson)
 echo "✓ Filtered to ${MARITIME_COUNT} maritime/coastal protected areas (excluded inland areas)"
 
-# Split protected area boundaries into sea and land portions for inversion effect
-echo "Splitting protected area boundaries into sea/land portions..."
+# Split protected areas into sea and land portions for fill patterns
+echo "Splitting protected areas into sea/land portions..."
 duckdb << SQL_EOF
 INSTALL spatial;
 LOAD spatial;
@@ -160,32 +160,24 @@ SELECT
 FROM features
 WHERE f.feature.geometry.type != 'Point';
 
--- Extract boundaries as linestrings
-CREATE TEMP TABLE pa_boundaries AS
-SELECT
-  id,
-  properties,
-  ST_Boundary(geometry) as geometry
-FROM protected_areas;
-
--- Clip boundaries to land (black lines)
+-- Clip protected areas to land (polygons with black crosshatch)
 CREATE TEMP TABLE pa_on_land AS
 SELECT
   id,
   properties,
   ST_Intersection(pa.geometry, land.geometry) as geometry
-FROM pa_boundaries pa, land_union land
+FROM protected_areas pa, land_union land
 WHERE ST_Intersects(pa.geometry, land.geometry);
 
--- Clip boundaries to sea (white lines) - difference from land
+-- Clip protected areas to sea (polygons with white crosshatch) - difference from land
 CREATE TEMP TABLE pa_on_sea AS
 SELECT
   id,
   properties,
   ST_Difference(pa.geometry, land.geometry) as geometry
-FROM pa_boundaries pa, land_union land;
+FROM protected_areas pa, land_union land;
 
--- Export land portions as GeoJSON features
+-- Export land portions as GeoJSON features (polygons)
 COPY (
   SELECT json_object(
     'type', 'Feature',
@@ -198,7 +190,7 @@ COPY (
     AND NOT ST_IsEmpty(geometry)
 ) TO 'data/pa_land_features.jsonl';
 
--- Export sea portions as GeoJSON features
+-- Export sea portions as GeoJSON features (polygons)
 COPY (
   SELECT json_object(
     'type', 'Feature',

@@ -23,11 +23,32 @@
       mix-blend-mode: exclusion;
       margin-bottom: -5px;
       margin-right: -2px;
+      display: flex;
+      align-items: flex-end;
     }
     #logo-container > * {
-      display: inline-block;
-      vertical-align: bottom;
       margin-left: 8px;
+    }
+    @media (max-width: 600px) {
+      #logo-container {
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      #logo-container > * {
+        margin-left: 0;
+        margin-top: 0;
+      }
+      #logo-container > a:first-child {
+        margin-right: 22px;
+      }
+      #logo-separator {
+        position: absolute;
+        right: 4px;
+        bottom: 34px;
+      }
+      #logo-container > a:last-child {
+        margin-top: 2px;
+      }
     }
     .logo path, .logo polygon {
       fill: #ffffff;
@@ -72,18 +93,27 @@
       width: 18px;
       height: 18px;
     }
-    .legend-circle-outline {
-      width: 14px;
-      height: 14px;
+    .legend-circle {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      background: transparent;
-      box-shadow: inset 0 0 0 3px #ffffff, 0 0 0 1px #000000;
-      box-sizing: border-box;
+      background: #ffffff;
     }
-    .legend-line {
+    .legend-hatch {
       width: 18px;
-      height: 2px;
-      background: linear-gradient(to right, #ffffff 50%, #000000 50%);
+      height: 18px;
+      background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 2px,
+        #fff 2px,
+        #fff 3px
+      );
+      border: 2px solid #fff;
+      box-sizing: border-box;
+      mix-blend-mode: exclusion;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
     }
     .legend-text {
       mix-blend-mode: exclusion;
@@ -170,13 +200,13 @@
   </div>
   <div class="legend-item">
     <div class="legend-symbol">
-      <div class="legend-line"></div>
+      <div class="legend-hatch"></div>
     </div>
     <span id="legend-protected" class="legend-text">protected areas</span>
   </div>
   <div class="legend-item">
     <div class="legend-symbol">
-      <div class="legend-circle-outline"></div>
+      <div class="legend-circle"></div>
     </div>
     <span id="legend-crossings" class="legend-text">vessel crossings</span>
   </div>
@@ -281,27 +311,24 @@
   // Arctic region focus
   const ARCTIC_CENTER_LAT = 75;
 
-  // Create diagonal cross-hatch pattern
-  function createCrosshatchPattern() {
-    const size = 16;
+  // Create diagonal hatch pattern with given color (single direction)
+  function createHatchPattern(color, size = 6) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    ctx.strokeStyle = '#cccccc';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 1;
 
-    // Draw diagonal lines (/)
+    // Draw diagonal lines (/) - with wrap for seamless tiling
     ctx.beginPath();
     ctx.moveTo(0, size);
     ctx.lineTo(size, 0);
-    ctx.stroke();
-
-    // Draw diagonal lines (\)
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(size, size);
+    ctx.moveTo(-size, size);
+    ctx.lineTo(size, -size);
+    ctx.moveTo(0, size * 2);
+    ctx.lineTo(size * 2, 0);
     ctx.stroke();
 
     return ctx.getImageData(0, 0, size, size);
@@ -337,9 +364,9 @@
           url: 'pmtiles://' + basePath + 'data/protected_areas.pmtiles',
           attribution: 'Russian Ministry'
         },
-        'vessel-incursions': {
+        'vessel-crossings': {
           type: 'vector',
-          url: 'pmtiles://' + basePath + 'data/vessel_incursions.pmtiles',
+          url: 'pmtiles://' + basePath + 'data/vessel_crossings.pmtiles',
           attribution: 'GFW 4Wings'
         },
         'places': {
@@ -367,7 +394,41 @@
           }
         },
         {
-          id: 'protected-areas-on-land',
+          id: 'protected-areas-on-land-sm',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_land',
+          maxzoom: 4,
+          paint: {
+            'fill-pattern': 'hatch-black-sm',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-land-md',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_land',
+          minzoom: 4,
+          maxzoom: 7,
+          paint: {
+            'fill-pattern': 'hatch-black-md',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-land-lg',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_land',
+          minzoom: 7,
+          paint: {
+            'fill-pattern': 'hatch-black-lg',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-land-border',
           type: 'line',
           source: 'protected-areas',
           'source-layer': 'protected_areas_land',
@@ -378,7 +439,41 @@
           }
         },
         {
-          id: 'protected-areas-on-sea',
+          id: 'protected-areas-on-sea-sm',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_sea',
+          maxzoom: 4,
+          paint: {
+            'fill-pattern': 'hatch-white-sm',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-sea-md',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_sea',
+          minzoom: 4,
+          maxzoom: 7,
+          paint: {
+            'fill-pattern': 'hatch-white-md',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-sea-lg',
+          type: 'fill',
+          source: 'protected-areas',
+          'source-layer': 'protected_areas_sea',
+          minzoom: 7,
+          paint: {
+            'fill-pattern': 'hatch-white-lg',
+            'fill-opacity': 1
+          }
+        },
+        {
+          id: 'protected-areas-on-sea-border',
           type: 'line',
           source: 'protected-areas',
           'source-layer': 'protected_areas_sea',
@@ -400,45 +495,10 @@
           }
         },
         {
-          id: 'incursions-outer',
+          id: 'crossings',
           type: 'circle',
-          source: 'vessel-incursions',
-          'source-layer': 'incursions',
-          minzoom: 0,
-          maxzoom: 24,
-          paint: {
-            'circle-radius': [
-              'interpolate',
-              ['linear'],
-              ['zoom'],
-              2.5, [
-                'interpolate',
-                ['linear'],
-                ['get', 'total_hours'],
-                1, 6,      // 1 hour → 6px at min zoom (includes stroke)
-                24, 7,     // 1 day → 7px
-                168, 8,    // 1 week → 8px
-                720, 10    // 1 month → 10px
-              ],
-              10, [
-                'interpolate',
-                ['linear'],
-                ['get', 'total_hours'],
-                1, 10,     // 1 hour → 10px at max zoom
-                24, 12,    // 1 day → 12px
-                168, 14,   // 1 week → 14px
-                720, 18    // 1 month → 18px
-              ]
-            ],
-            'circle-color': '#000000',
-            'circle-opacity': 1
-          }
-        },
-        {
-          id: 'incursions',
-          type: 'circle',
-          source: 'vessel-incursions',
-          'source-layer': 'incursions',
+          source: 'vessel-crossings',
+          'source-layer': 'crossings',
           minzoom: 0,
           maxzoom: 24,
           paint: {
@@ -465,8 +525,16 @@
                 720, 16    // 1 month → 16px
               ]
             ],
-            'circle-color': '#ffffff',
-            'circle-opacity': 1
+            'circle-color': [
+              'match',
+              ['get', 'year'],
+              2022, 'rgb(255, 0, 255)',   // magenta
+              2023, 'rgb(0, 255, 0)',     // green
+              2024, 'rgb(0, 255, 255)',   // cyan
+              '#ffffff'                   // default fallback
+            ],
+            'circle-opacity': 1,
+            'circle-stroke-width': 0
           }
         },
         {
@@ -510,10 +578,17 @@
     renderWorldCopies: false
   });
 
-  // Add crosshatch pattern when map loads
+  // Add hatch patterns at different sizes for zoom levels
   map.on('load', () => {
-    const imageData = createCrosshatchPattern();
-    map.addImage('crosshatch', imageData, { pixelRatio: 1 });
+    // Small/tight patterns for zoomed out (z0-4)
+    map.addImage('hatch-white-sm', createHatchPattern('#ffffff', 6), { pixelRatio: 1 });
+    map.addImage('hatch-black-sm', createHatchPattern('#000000', 6), { pixelRatio: 1 });
+    // Medium patterns (z4-7)
+    map.addImage('hatch-white-md', createHatchPattern('#ffffff', 10), { pixelRatio: 1 });
+    map.addImage('hatch-black-md', createHatchPattern('#000000', 10), { pixelRatio: 1 });
+    // Large/loose patterns for zoomed in (z7+)
+    map.addImage('hatch-white-lg', createHatchPattern('#ffffff', 16), { pixelRatio: 1 });
+    map.addImage('hatch-black-lg', createHatchPattern('#000000', 16), { pixelRatio: 1 });
   });
 
   // Keep focus on Arctic region
@@ -532,7 +607,7 @@
   // Tooltip for incursion points on hover
   const tooltip = document.getElementById('tooltip');
 
-  map.on('mouseenter', 'incursions', (e) => {
+  map.on('mouseenter', 'crossings', (e) => {
     map.getCanvas().style.cursor = 'pointer';
 
     const props = e.features[0].properties;
@@ -553,7 +628,7 @@
     tooltip.classList.add('visible');
   });
 
-  map.on('mouseleave', 'incursions', () => {
+  map.on('mouseleave', 'crossings', () => {
     map.getCanvas().style.cursor = '';
     tooltip.classList.remove('visible');
   });
