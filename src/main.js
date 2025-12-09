@@ -262,6 +262,7 @@ const map = new maplibregl.Map({
         minzoom: 0,
         maxzoom: 24,
         layout: {
+          'visibility': 'none',
           'circle-sort-key': ['get', 'year']
         },
         paint: {
