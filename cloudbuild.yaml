@@ -1,15 +1,11 @@
 steps:
-  # Build the container image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:$BUILD_ID', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:latest', '.']
-
-  # Push the container image to Artifact Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:$BUILD_ID']
-
-  # Push latest tag
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:latest']
+  # Build with kaniko for layer caching
+  - name: 'gcr.io/kaniko-project/executor:latest'
+    args:
+      - --destination=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:$BUILD_ID
+      - --destination=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/albedo:latest
+      - --cache=true
+      - --cache-ttl=168h
 
   # Deploy container image to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
