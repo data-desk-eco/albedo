@@ -1,0 +1,1 @@
+- Update vessel crossings legend item to match rendering
