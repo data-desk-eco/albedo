@@ -1,15 +1,3 @@
-{% macro generate_vessel_staging_cte(year, month) %}
-    select
-        '{{ year }}-{{ month }}' as month,
-        unnest(
-            json_extract(
-                content,
-                '$.entries[0]."public-global-presence:v3.0"'
-            )::JSON[]
-        ) as vessel
-    from read_text('../data/gfw/{{ year }}-{{ month }}.json')
-{% endmacro %}
-
 {% macro flatten_vessel_json() %}
     vessel->>'mmsi' as mmsi,
     vessel->>'imo' as imo,

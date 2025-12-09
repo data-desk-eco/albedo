@@ -25,8 +25,8 @@ select
     min(lon) as min_lon,
     max(lon) as max_lon,
 
-    -- Monthly presence
-    array_agg(distinct month order by month) as months_active
+    -- Yearly presence
+    array_agg(distinct year order by year) as years_active
 
 from vessel_data
 group by

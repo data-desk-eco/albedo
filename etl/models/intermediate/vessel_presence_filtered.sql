@@ -3,7 +3,7 @@ with vessel_data as (
 )
 
 select
-    month,
+    year,
     mmsi,
     imo,
     ship_name,
@@ -22,7 +22,7 @@ select
     first_transmission_date,
     last_transmission_date,
     -- Create a unique activity key for deduplication using rounded coords
-    concat(vessel_id, '_', month, '_', round(lat, 2), '_', round(lon, 2)) as activity_key
+    concat(vessel_id, '_', year, '_', round(lat, 2), '_', round(lon, 2)) as activity_key
 
 from vessel_data
 where

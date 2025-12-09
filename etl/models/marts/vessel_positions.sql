@@ -13,7 +13,7 @@ select
     hours,
     entry_timestamp,
     exit_timestamp,
-    month,
+    year,
     activity_key
 
 from {{ ref('vessel_presence_filtered') }}
