@@ -53,3 +53,5 @@ SELECT
 FROM protected_areas_geom pa
 CROSS JOIN ocean_mask o
 WHERE ST_Intersects(pa.geometry, o.geometry)
+  -- Exclude Большой Арктический (Great Arctic) - boundary too complex for visualization
+  AND pa.feature_id != 'oopt_wth_details.fid-e747cd5_19a6f70ccf9_-2215'

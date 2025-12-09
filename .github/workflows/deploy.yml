@@ -33,17 +33,8 @@ jobs:
 
       - name: Build and deploy
         run: |
-          IMAGE="gcr.io/${{ env.GCP_PROJECT }}/${{ env.PROJECT_NAME }}"
-
-          # Build
-          BUILD=$(gcloud builds submit --tag $IMAGE --async --format="value(id)")
-          until STATUS=$(gcloud builds describe $BUILD --format='value(status)' 2>/dev/null); \
-                [ "$STATUS" = "SUCCESS" ] || [ "$STATUS" = "FAILURE" ]; do sleep 10; done
-          [ "$STATUS" = "SUCCESS" ] || exit 1
-
-          # Deploy
-          gcloud run deploy ${{ env.PROJECT_NAME }} \
-            --image $IMAGE \
-            --region ${{ env.REGION }} \
-            --allow-unauthenticated \
+          # Submit build using cloudbuild.yaml (Kaniko with layer caching)
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=_REGION=${{ env.REGION }} \
             --quiet

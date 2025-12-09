@@ -8,17 +8,24 @@ __pycache__/
 venv/
 ENV/
 
-# Data (except what we need)
+# Data - exclude everything except tile files needed for deployment
 data/gfw/
 data/data.duckdb
 data/data.duckdb.wal
 data/*.json
 data/*.geojson
 data/*.parquet
+data/*.csv
+data/*-journal
+data/*.zip
+data/ne_10m_land/
+data/ne_10m_populated_places/
+data/vessel_incursions.pmtiles
 
 # Git
 .git/
 .gitignore
+.github/
 
 # IDE
 .vscode/
@@ -30,15 +37,26 @@ data/*.parquet
 .env
 .env.local
 
-# Build
+# Build artifacts
 *.log
 dist/
 build/
+node_modules/
 
 # dbt
-etl/target/
-etl/logs/
-etl/dbt_packages/
+etl/
+
+# Scripts not needed at runtime
+scripts/fetch_*.sh
+scripts/convert.sh
+scripts/export_*.sh
+scripts/build_static.sh
+scripts/create_raster.py
+
+# Docs
+*.md
+Makefile
+uv.lock
 
 # OS
 .DS_Store
