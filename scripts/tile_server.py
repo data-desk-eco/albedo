@@ -18,12 +18,19 @@ CORS(app)
 COG_PATH = os.path.join(PROJECT_ROOT, 'data/vessel_heatmap.tif')
 
 # Year colors for multi-band raster (RGB tuples) - no transparency
-# Band 1 = 2022 (Magenta), Band 2 = 2023 (Green), Band 3 = 2024 (Cyan)
+# Band 1 = 2022 (Cyan), Band 2 = 2023 (Green), Band 3 = 2024 (Magenta/Pink)
 YEAR_COLORS = [
-    (255, 0, 255),    # 2022 - Magenta
-    (0, 255, 0),      # 2023 - Green
-    (0, 255, 255),    # 2024 - Cyan
+    (0, 255, 255),    # 2022 - Cyan (oldest)
+    (0, 255, 0),      # 2023 - Green (middle)
+    (255, 0, 255),    # 2024 - Magenta/Pink (latest)
 ]
+
+# Map year to band index
+YEAR_TO_BAND = {
+    2022: 0,
+    2023: 1,
+    2024: 2,
+}
 
 # Single-band colormap (bright pink gradient) - fallback for single-band rasters
 COLOR_STOPS = np.array([
@@ -56,12 +63,119 @@ def apply_colormap(data):
     return np.stack([r, g, b, a], axis=0).astype(np.uint8)
 
 
+def apply_single_year_colormap(data, band_index):
+    """Colorize a single band (year) with its designated color.
+
+    Shows pixels where this year was dominant (>=60%) in color,
+    plus gray pixels where no year was dominant.
+    """
+    num_bands = min(data.shape[0], len(YEAR_COLORS))
+    height, width = data.shape[1], data.shape[2]
+    color = YEAR_COLORS[band_index]
+
+    # Get all bands to calculate dominance
+    bands = np.array([data[i].astype(np.float32) for i in range(num_bands)])
+    total = np.sum(bands, axis=0)
+    has_activity = total > 0
+
+    # Calculate proportion of each year
+    safe_total = np.where(total > 0, total, 1)
+    proportions = bands / safe_total
+
+    # Find dominant year and its proportion
+    dominant_band = np.argmax(bands, axis=0)
+    dominant_proportion = np.max(proportions, axis=0)
+
+    DOMINANCE_THRESHOLD = 0.6
+    is_dominant_enough = dominant_proportion >= DOMINANCE_THRESHOLD
+    is_this_year_dominant = (dominant_band == band_index) & has_activity & is_dominant_enough
+    is_gray = has_activity & ~is_dominant_enough
+
+    # Brightness based on total activity (log scale)
+    brightness = np.log1p(total) / np.log1p(50)
+    brightness = np.where(has_activity, np.maximum(brightness, 0.7), 0)
+    brightness = np.clip(brightness, 0, 1)
+
+    # Initialize output RGBA
+    out = np.zeros((4, height, width), dtype=np.float32)
+
+    # Apply color where this year is dominant
+    out[0] = np.where(is_this_year_dominant, brightness * color[0], 0)
+    out[1] = np.where(is_this_year_dominant, brightness * color[1], 0)
+    out[2] = np.where(is_this_year_dominant, brightness * color[2], 0)
+
+    # Gray for mixed pixels
+    gray_value = brightness * 200
+    out[0] = np.where(is_gray, gray_value, out[0])
+    out[1] = np.where(is_gray, gray_value, out[1])
+    out[2] = np.where(is_gray, gray_value, out[2])
+
+    # Opacity for dominant or gray pixels
+    out[3] = np.where(is_this_year_dominant | is_gray, 255, 0)
+
+    return out.astype(np.uint8)
+
+
+def apply_multiband_colormap_filtered(data, selected_bands):
+    """Colorize multi-band raster showing only selected bands/years.
+
+    Shows pixels where one of the selected years was dominant (>=60%) in color,
+    plus gray pixels where no year was dominant.
+    """
+    num_bands = min(data.shape[0], len(YEAR_COLORS))
+    height, width = data.shape[1], data.shape[2]
+
+    # Get ALL bands to calculate true dominance
+    all_bands = np.array([data[i].astype(np.float32) for i in range(num_bands)])
+    total = np.sum(all_bands, axis=0)
+    has_activity = total > 0
+
+    # Calculate proportion of each year against total
+    safe_total = np.where(total > 0, total, 1)
+    all_proportions = all_bands / safe_total
+
+    # Find which year is dominant overall
+    dominant_band = np.argmax(all_bands, axis=0)
+    dominant_proportion = np.max(all_proportions, axis=0)
+
+    # Dominance threshold
+    DOMINANCE_THRESHOLD = 0.6
+    is_dominant_enough = dominant_proportion >= DOMINANCE_THRESHOLD
+    is_gray = has_activity & ~is_dominant_enough
+
+    # Brightness based on total activity (log scale)
+    brightness = np.log1p(total) / np.log1p(50)
+    brightness = np.where(has_activity, np.maximum(brightness, 0.7), 0)
+    brightness = np.clip(brightness, 0, 1)
+
+    # Initialize output RGBA
+    out = np.zeros((4, height, width), dtype=np.float32)
+
+    # Only show pixels where one of the SELECTED bands is dominant
+    for band_idx in selected_bands:
+        is_this_dominant = (dominant_band == band_idx) & has_activity & is_dominant_enough
+        color = YEAR_COLORS[band_idx]
+        out[0] = np.where(is_this_dominant, brightness * color[0], out[0])
+        out[1] = np.where(is_this_dominant, brightness * color[1], out[1])
+        out[2] = np.where(is_this_dominant, brightness * color[2], out[2])
+        out[3] = np.where(is_this_dominant, 255, out[3])
+
+    # Gray for mixed pixels (no year dominant)
+    gray_value = brightness * 200
+    out[0] = np.where(is_gray, gray_value, out[0])
+    out[1] = np.where(is_gray, gray_value, out[1])
+    out[2] = np.where(is_gray, gray_value, out[2])
+    out[3] = np.where(is_gray, 255, out[3])
+
+    return out.astype(np.uint8)
+
+
 def apply_multiband_colormap(data):
     """Colorize multi-band raster with dominant year coloring.
 
     Pixels where one year has >=60% of activity get that year's color.
     Otherwise pixels show as gray. Brightness based on total activity.
-    2022 = Magenta, 2023 = Green, 2024 = Cyan
+    2022 = Cyan, 2023 = Green, 2024 = Magenta/Pink
     """
     num_bands = min(data.shape[0], len(YEAR_COLORS))
     height, width = data.shape[1], data.shape[2]
@@ -116,11 +230,28 @@ def apply_multiband_colormap(data):
 
 @app.route('/tiles/<int:z>/<int:x>/<int:y>.png')
 def tiles(z, x, y):
-    """Serve raster tiles from COG with colormap"""
+    """Serve raster tiles from COG with colormap.
+
+    Query params:
+        years: comma-separated list of years to show (e.g., "2022,2024")
+               If not provided, shows all years.
+    """
     import time
     from io import BytesIO
     from PIL import Image
+    from flask import request
     start = time.time()
+
+    # Parse years filter
+    years_param = request.args.get('years', '')
+    if years_param:
+        try:
+            selected_years = [int(y) for y in years_param.split(',')]
+            selected_bands = [YEAR_TO_BAND[y] for y in selected_years if y in YEAR_TO_BAND]
+        except (ValueError, KeyError):
+            selected_bands = None  # Show all on invalid input
+    else:
+        selected_bands = None  # Show all
 
     try:
         with Reader(COG_PATH) as cog:
@@ -130,8 +261,14 @@ def tiles(z, x, y):
             if img.data.shape[0] == 1:
                 # Single band - use original colormap
                 colored_data = apply_colormap(img.data[0])
+            elif selected_bands is not None and len(selected_bands) == 1:
+                # Single year selected - use single year colormap
+                colored_data = apply_single_year_colormap(img.data, selected_bands[0])
+            elif selected_bands is not None and len(selected_bands) > 1:
+                # Multiple specific years - filter and use multiband
+                colored_data = apply_multiband_colormap_filtered(img.data, selected_bands)
             else:
-                # Multi-band - use year color mixing
+                # All years - use standard multiband colormap
                 colored_data = apply_multiband_colormap(img.data)
 
             # Convert to PIL Image and save as PNG
@@ -141,11 +278,15 @@ def tiles(z, x, y):
             png_data = buf.getvalue()
 
             response = Response(png_data, mimetype='image/png')
-            response.headers['Cache-Control'] = 'public, max-age=86400'
+            # Cache unfiltered tiles longer, filtered tiles shorter
+            if selected_bands is None:
+                response.headers['Cache-Control'] = 'public, max-age=86400'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=300'
             response.headers['Access-Control-Allow-Origin'] = '*'
 
             elapsed = time.time() - start
-            print(f"Tile {z}/{x}/{y}: {elapsed*1000:.0f}ms")
+            print(f"Tile {z}/{x}/{y} (years={years_param or 'all'}): {elapsed*1000:.0f}ms")
 
             return response
 

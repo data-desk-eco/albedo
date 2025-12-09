@@ -104,6 +104,19 @@ body { margin: 0; padding: 0; }
   margin-bottom: 0;
 }
 
+.legend-toggle {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.legend-toggle:not(.active) {
+  opacity: 0.3;
+}
+
+.legend-toggle.active:hover {
+  opacity: 1;
+}
+
 .legend-symbol {
   width: 18px;
   height: 18px;
@@ -123,10 +136,8 @@ body { margin: 0; padding: 0; }
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #ffffff;
-  mix-blend-mode: exclusion;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
+  background: transparent;
+  border: 2px solid #ffffff;
 }
 
 .legend-hatch {
