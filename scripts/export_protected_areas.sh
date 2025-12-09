@@ -7,7 +7,11 @@ source .env
 
 # Filter protected areas to only those with vessel activity within 5km
 echo "Finding protected areas with vessel activity (5km buffer)..."
-duckdb data/data.duckdb << 'SQL_EOF'
+
+# Exclude: Большой Арктический (Great Arctic) - boundary too complex for visualization
+EXCLUDE_ID="oopt_wth_details.fid-e747cd5_19a6f70ccf9_-2215"
+
+duckdb data/data.duckdb << SQL_EOF
 INSTALL spatial;
 LOAD spatial;
 
@@ -20,7 +24,8 @@ WITH features AS (
 SELECT
   feature.id as feature_id,
   ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
-FROM features;
+FROM features
+WHERE feature.id != '${EXCLUDE_ID}';
 
 -- Find protected areas within 5km of vessel positions
 -- Export list of IDs to CSV

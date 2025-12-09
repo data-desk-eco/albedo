@@ -16,7 +16,7 @@ WORKDIR /app
 # Layer 1: System dependencies + Python packages in single layer (cached together)
 RUN apk add --no-cache python3 py3-pip gcc g++ python3-dev musl-dev && \
     pip install --no-cache-dir --break-system-packages \
-        rio-tiler flask flask-cors pillow gunicorn && \
+        fastapi uvicorn rio-tiler pillow && \
     apk del gcc g++ python3-dev musl-dev && \
     rm -rf /root/.cache
 
@@ -39,4 +39,4 @@ ENV SERVE_DIST=1
 
 EXPOSE 8080
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "4", "--timeout", "60", "--chdir", "scripts", "tile_server:app"]
+CMD ["uvicorn", "scripts.tile_server:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
