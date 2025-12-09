@@ -369,6 +369,14 @@ map.on('moveend', () => {
 // Tooltip for incursion points on hover
 const tooltip = document.getElementById('tooltip')
 
+const formatDate = (isoString) => {
+  const date = new Date(isoString)
+  const day = date.getDate()
+  const month = date.toLocaleString('en', { month: 'short' })
+  const year = date.getFullYear()
+  return `${day} ${month} ${year}`
+}
+
 map.on('mouseenter', 'crossings', (e) => {
   map.getCanvas().style.cursor = 'pointer'
 
@@ -377,14 +385,15 @@ map.on('mouseenter', 'crossings', (e) => {
   const days = (hours / 24).toFixed(1)
 
   tooltip.innerHTML = `
+    <div class="ui-panel-bg"></div>
     <table>
       <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
       <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
       <tr><td>${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
       <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
-      <tr><td>${t('duration')}</td><td>${days} ${t('days')} (${hours.toFixed(1)} ${t('hours')})</td></tr>
-      <tr><td>${t('firstSeen')}</td><td>${props.first_seen.split('T')[0]}</td></tr>
-      <tr><td>${t('lastSeen')}</td><td>${props.last_seen.split('T')[0]}</td></tr>
+      <tr><td>${t('duration')}</td><td>${days} ${t('days')}</td></tr>
+      <tr><td>${t('firstSeen')}</td><td>${formatDate(props.first_seen)}</td></tr>
+      <tr><td>${t('lastSeen')}</td><td>${formatDate(props.last_seen)}</td></tr>
     </table>
   `
   tooltip.classList.add('visible')
