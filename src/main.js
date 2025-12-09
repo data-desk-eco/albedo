@@ -388,7 +388,6 @@ map.on('mouseenter', 'crossings', (e) => {
   const days = (hours / 24).toFixed(1)
 
   tooltip.innerHTML = `
-    <div class="ui-panel-bg"></div>
     <table>
       <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
       <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
