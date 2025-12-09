@@ -261,6 +261,9 @@ const map = new maplibregl.Map({
         'source-layer': 'crossings',
         minzoom: 0,
         maxzoom: 24,
+        layout: {
+          'circle-sort-key': ['get', 'year']
+        },
         paint: {
           'circle-radius': [
             'interpolate',
@@ -290,12 +293,12 @@ const map = new maplibregl.Map({
           'circle-stroke-color': [
             'match',
             ['get', 'year'],
-            2022, 'rgb(255, 0, 255)',   // magenta
-            2023, 'rgb(0, 255, 0)',     // green
-            2024, 'rgb(0, 255, 255)',   // cyan
+            2022, 'rgb(0, 255, 255)',   // cyan (oldest)
+            2023, 'rgb(0, 255, 0)',     // green (middle)
+            2024, 'rgb(255, 0, 255)',   // magenta/pink (latest)
             '#ffffff'                   // default fallback
           ],
-          'circle-stroke-width': 1,
+          'circle-stroke-width': 2,
           'circle-stroke-opacity': 1
         }
       },
@@ -402,4 +405,83 @@ map.on('mouseenter', 'crossings', (e) => {
 map.on('mouseleave', 'crossings', () => {
   map.getCanvas().style.cursor = ''
   tooltip.classList.remove('visible')
+})
+
+// Layer visibility toggles
+const activeYears = new Set([2022, 2023, 2024])
+
+// Protected area layer IDs
+const protectedAreaLayers = [
+  'protected-areas-on-land-sm',
+  'protected-areas-on-land-md',
+  'protected-areas-on-land-lg',
+  'protected-areas-on-land-border',
+  'protected-areas-on-sea-sm',
+  'protected-areas-on-sea-md',
+  'protected-areas-on-sea-lg',
+  'protected-areas-on-sea-border'
+]
+
+function updateHeatmapSource() {
+  const years = Array.from(activeYears).sort()
+
+  // Hide heatmap layer if no years selected
+  if (years.length === 0) {
+    map.setLayoutProperty('vessel-heatmap', 'visibility', 'none')
+    return
+  }
+
+  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
+  const yearsParam = years.length < 3 ? `&years=${years.join(',')}` : ''
+  const newTileUrl = basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}${yearsParam}`
+
+  // Update the tile source URL and force refresh
+  const source = map.getSource('vessel-heatmap')
+  if (source) {
+    source.setTiles([newTileUrl])
+    // Clear tile cache to force reload with new params
+    const sourceCache = map.style?.sourceCaches?.['vessel-heatmap']
+    if (sourceCache) {
+      sourceCache.clearTiles()
+    }
+    map.triggerRepaint()
+  }
+}
+
+function toggleYear(year) {
+  if (activeYears.has(year)) {
+    activeYears.delete(year)
+  } else {
+    activeYears.add(year)
+  }
+  updateHeatmapSource()
+}
+
+function toggleLayer(layerId) {
+  if (layerId === 'protected-areas') {
+    const isVisible = map.getLayoutProperty(protectedAreaLayers[0], 'visibility') !== 'none'
+    const visibility = isVisible ? 'none' : 'visible'
+    protectedAreaLayers.forEach(id => {
+      map.setLayoutProperty(id, 'visibility', visibility)
+    })
+  } else if (layerId === 'crossings') {
+    const isVisible = map.getLayoutProperty('crossings', 'visibility') !== 'none'
+    map.setLayoutProperty('crossings', 'visibility', isVisible ? 'none' : 'visible')
+  }
+}
+
+// Set up legend toggle click handlers
+document.querySelectorAll('.legend-toggle').forEach(item => {
+  item.addEventListener('click', () => {
+    const year = item.dataset.year
+    const layer = item.dataset.layer
+
+    if (year) {
+      toggleYear(parseInt(year))
+      item.classList.toggle('active', activeYears.has(parseInt(year)))
+    } else if (layer) {
+      toggleLayer(layer)
+      item.classList.toggle('active')
+    }
+  })
 })
