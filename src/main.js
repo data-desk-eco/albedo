@@ -96,6 +96,9 @@ const basePath = window.location.pathname.endsWith('/')
   ? window.location.pathname
   : window.location.pathname + '/'
 
+// Tile cache version - bump this when data changes to invalidate browser caches
+const TILE_VERSION = 2
+
 const map = new maplibregl.Map({
   container: 'map',
   attributionControl: false,
@@ -112,7 +115,7 @@ const map = new maplibregl.Map({
       },
       'vessel-heatmap': {
         type: 'raster',
-        tiles: [basePath + 'tiles/{z}/{x}/{y}.png'],
+        tiles: [basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}`],
         tileSize: 256,
         attribution: 'GFW 4Wings'
       },
@@ -282,7 +285,9 @@ const map = new maplibregl.Map({
               720, 36    // 1 month → 36px
             ]
           ],
-          'circle-color': [
+          'circle-color': 'transparent',
+          'circle-opacity': 0,
+          'circle-stroke-color': [
             'match',
             ['get', 'year'],
             2022, 'rgb(255, 0, 255)',   // magenta
@@ -290,8 +295,8 @@ const map = new maplibregl.Map({
             2024, 'rgb(0, 255, 255)',   // cyan
             '#ffffff'                   // default fallback
           ],
-          'circle-opacity': 1,
-          'circle-stroke-width': 0
+          'circle-stroke-width': 1,
+          'circle-stroke-opacity': 1
         }
       },
       {
