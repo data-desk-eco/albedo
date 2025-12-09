@@ -10,9 +10,14 @@ data/*.vrt
 data/*.png
 data/*.wld
 data/*.aux.xml
+data/*.zip
+data/*-journal
 data/ne_10m_land.geojson
+data/ne_10m_populated_places/
 data/protected_areas.geojson
 data/tiles.pmtiles
+data/vessel_activity_*.tif
+data/vessel_multiband.tif
 
 # Data - databases are too large
 data/*.duckdb

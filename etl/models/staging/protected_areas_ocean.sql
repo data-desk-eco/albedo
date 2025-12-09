@@ -45,11 +45,11 @@ protected_areas_geom AS (
     FROM protected_areas_raw
 )
 
--- Keep only protected areas that intersect ocean (excludes rivers/inland)
+-- Clip protected areas to ocean only (removes land portions)
 SELECT
     pa.feature_id,
     pa.area_name,
-    pa.geometry
+    ST_Intersection(pa.geometry, o.geometry) as geometry
 FROM protected_areas_geom pa
 CROSS JOIN ocean_mask o
 WHERE ST_Intersects(pa.geometry, o.geometry)

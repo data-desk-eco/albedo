@@ -5,11 +5,11 @@ import numpy as np
 import rasterio
 from rasterio.transform import from_bounds
 import csv
-import sys
+import os
 
-# Configuration
-INPUT_CSV = "data/vessel_activity.csv"
-OUTPUT_PATH = "data/vessel_activity.tif"
+# Configuration - can be overridden via environment variables
+INPUT_CSV = os.environ.get("INPUT_CSV", "data/vessel_activity.csv")
+OUTPUT_PATH = os.environ.get("OUTPUT_PATH", "data/vessel_activity.tif")
 
 # Raster bounds and resolution
 MIN_LON, MAX_LON = -180.0, 180.0
