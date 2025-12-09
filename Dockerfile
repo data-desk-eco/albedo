@@ -8,23 +8,18 @@ COPY index.html vite.config.js ./
 COPY src/ src/
 RUN yarn build
 
-# Production stage
-FROM python:3.12-slim
+# Production stage - use official GDAL image
+FROM ghcr.io/osgeo/gdal:alpine-small-latest
 
 WORKDIR /app
 
-# Install system dependencies (rarely changes)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gdal-bin \
-    libgdal-dev \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV GDAL_CONFIG=/usr/bin/gdal-config
+# Install Python, pip, and build dependencies
+RUN apk add --no-cache python3 py3-pip gcc g++ python3-dev musl-dev
 
 # Install Python dependencies (changes occasionally)
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir --break-system-packages -e . && \
+    apk del gcc g++ python3-dev musl-dev
 
 # Copy static data files (changes occasionally)
 COPY data/vessel_heatmap.tif data/vessel_heatmap.tif
