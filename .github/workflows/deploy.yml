@@ -35,6 +35,7 @@ jobs:
         run: |
           # Submit build using cloudbuild.yaml (Kaniko with layer caching)
           gcloud builds submit \
+            --async \
             --config=cloudbuild.yaml \
             --substitutions=_REGION=${{ env.REGION }} \
             --quiet
