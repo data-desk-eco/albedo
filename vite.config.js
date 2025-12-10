@@ -9,7 +9,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/tiles': 'http://localhost:8000',
-      '/data': 'http://localhost:8000'
+      '/data': 'http://localhost:8000',
+      '/places': 'http://localhost:8000'
     }
   }
 })
