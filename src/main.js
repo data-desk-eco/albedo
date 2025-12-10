@@ -337,7 +337,7 @@ const map = new maplibregl.Map({
   zoom: 2.5,
   pitch: 20,  // Slight tilt to view Arctic region
   bearing: 0,
-  maxZoom: 10,
+  maxZoom: 14,
   minZoom: 2.5,
   minPitch: 0,
   maxPitch: 30,
@@ -355,6 +355,9 @@ map.on('load', () => {
   // Large/loose patterns for zoomed in (z7+)
   map.addImage('hatch-white-lg', createHatchPattern('#ffffff', 16), { pixelRatio: 1 })
   map.addImage('hatch-black-lg', createHatchPattern('#000000', 16), { pixelRatio: 1 })
+
+  // Show first place of interest
+  showPlace(0)
 })
 
 // Keep focus on Arctic region
@@ -485,3 +488,62 @@ document.querySelectorAll('.legend-toggle').forEach(item => {
     }
   })
 })
+
+// Places of interest
+const places = [
+  {
+    id: 'test-site',
+    name: 'Test Site',
+    description: 'High vessel activity area near Yamal Peninsula',
+    center: [80.49, 73.16],
+    zoom: 10,
+    bounds: [[80.24, 73.12], [80.74, 73.20]]
+  }
+]
+
+let currentPlaceIndex = 0
+
+function showPlace(index) {
+  const place = places[index]
+  if (!place) return
+
+  document.getElementById('places-info').innerHTML =
+    `<strong>${place.name}</strong><br><span style="font-size:12px">${place.description}</span>`
+
+  // Fly to location
+  map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
+
+  // Add/update satellite overlay
+  const sourceId = 'place-satellite'
+  const layerId = 'place-satellite-layer'
+
+  if (map.getSource(sourceId)) {
+    map.removeLayer(layerId)
+    map.removeSource(sourceId)
+  }
+
+  map.addSource(sourceId, {
+    type: 'raster',
+    tiles: [basePath + `places/${place.id}/{z}/{x}/{y}.png`],
+    tileSize: 256,
+    bounds: [place.bounds[0][0], place.bounds[0][1], place.bounds[1][0], place.bounds[1][1]]
+  })
+
+  map.addLayer({
+    id: layerId,
+    type: 'raster',
+    source: sourceId,
+    paint: { 'raster-opacity': 0.9 }
+  }, 'vessel-heatmap')
+}
+
+document.getElementById('places-prev').addEventListener('click', () => {
+  currentPlaceIndex = (currentPlaceIndex - 1 + places.length) % places.length
+  showPlace(currentPlaceIndex)
+})
+
+document.getElementById('places-next').addEventListener('click', () => {
+  currentPlaceIndex = (currentPlaceIndex + 1) % places.length
+  showPlace(currentPlaceIndex)
+})
+

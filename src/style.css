@@ -197,3 +197,44 @@ body { margin: 0; padding: 0; }
 #tooltip td:first-child {
   text-align: right;
 }
+
+#places {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+  color: #fff;
+}
+
+#places.hidden {
+  display: none;
+}
+
+#places button {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#places button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+#places-info {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 12px;
+  max-width: 300px;
+}
