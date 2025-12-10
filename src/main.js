@@ -7,6 +7,7 @@ const i18n = {
   en: {
     protectedAreas: 'protected areas',
     vesselCrossings: 'vessel crossings',
+    satellite: 'satellite',
     dataSource: 'data: Global Fishing Watch',
     vessel: 'Vessel',
     mmsi: 'MMSI',
@@ -23,6 +24,7 @@ const i18n = {
   ru: {
     protectedAreas: 'охраняемые территории',
     vesselCrossings: 'пересечения судов',
+    satellite: 'спутник',
     dataSource: 'данные: Global Fishing Watch',
     vessel: 'Судно',
     mmsi: 'MMSI',
@@ -44,6 +46,7 @@ const t = (key) => i18n[lang][key]
 function updateUI() {
   document.getElementById('legend-protected').textContent = t('protectedAreas')
   document.getElementById('legend-crossings').textContent = t('vesselCrossings')
+  document.getElementById('legend-satellite').textContent = t('satellite')
   document.getElementById('legend-source').textContent = t('dataSource')
 
   // Update place labels language if map is loaded
@@ -52,6 +55,11 @@ function updateUI() {
     map.setLayoutProperty('place-labels', 'text-field',
       ['coalesce', ['get', nameField], ['get', lang === 'ru' ? 'name_en' : 'name_ru']]
     )
+  }
+
+  // Update places panel if places are loaded
+  if (places.length > 0) {
+    showPlace(currentPlaceIndex)
   }
 }
 
@@ -113,6 +121,13 @@ const map = new maplibregl.Map({
         url: 'pmtiles://' + basePath + 'data/land.pmtiles',
         attribution: '© Natural Earth'
       },
+      'sentinel-2': {
+        type: 'raster',
+        tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'],
+        tileSize: 256,
+        bounds: [-180, 56, 180, 90],
+        attribution: '© EOX IT Services GmbH - Sentinel-2 cloudless'
+      },
       'vessel-heatmap': {
         type: 'raster',
         tiles: [basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}`],
@@ -151,6 +166,17 @@ const map = new maplibregl.Map({
         paint: {
           'fill-color': '#ffffff',
           'fill-opacity': 1
+        }
+      },
+      {
+        id: 'sentinel-2',
+        type: 'raster',
+        source: 'sentinel-2',
+        layout: {
+          'visibility': 'none'
+        },
+        paint: {
+          'raster-opacity': 1
         }
       },
       {
@@ -356,8 +382,8 @@ map.on('load', () => {
   map.addImage('hatch-white-lg', createHatchPattern('#ffffff', 16), { pixelRatio: 1 })
   map.addImage('hatch-black-lg', createHatchPattern('#000000', 16), { pixelRatio: 1 })
 
-  // Show first place of interest
-  showPlace(0)
+  // Load places of interest from JSON
+  loadPlaces()
 })
 
 // Keep focus on Arctic region
@@ -412,6 +438,7 @@ map.on('mouseleave', 'crossings', () => {
 
 // Layer visibility toggles
 const activeYears = new Set([2022, 2023, 2024])
+let satelliteMode = false
 
 // Protected area layer IDs
 const protectedAreaLayers = [
@@ -424,6 +451,16 @@ const protectedAreaLayers = [
   'protected-areas-on-sea-lg',
   'protected-areas-on-sea-border'
 ]
+
+// Update protected area styling based on satellite mode
+function updateProtectedAreaColors() {
+  const landColor = satelliteMode ? 'white' : 'black'
+  // Land hatching patterns
+  map.setPaintProperty('protected-areas-on-land-sm', 'fill-pattern', `hatch-${landColor}-sm`)
+  map.setPaintProperty('protected-areas-on-land-md', 'fill-pattern', `hatch-${landColor}-md`)
+  map.setPaintProperty('protected-areas-on-land-lg', 'fill-pattern', `hatch-${landColor}-lg`)
+  map.setPaintProperty('protected-areas-on-land-border', 'line-color', satelliteMode ? '#ffffff' : '#000000')
+}
 
 function updateHeatmapSource() {
   const years = Array.from(activeYears).sort()
@@ -470,6 +507,10 @@ function toggleLayer(layerId) {
   } else if (layerId === 'crossings') {
     const isVisible = map.getLayoutProperty('crossings', 'visibility') !== 'none'
     map.setLayoutProperty('crossings', 'visibility', isVisible ? 'none' : 'visible')
+  } else if (layerId === 'satellite') {
+    satelliteMode = !satelliteMode
+    map.setLayoutProperty('sentinel-2', 'visibility', satelliteMode ? 'visible' : 'none')
+    updateProtectedAreaColors()
   }
 }
 
@@ -489,60 +530,50 @@ document.querySelectorAll('.legend-toggle').forEach(item => {
   })
 })
 
-// Places of interest
-const places = [
-  {
-    id: 'test-site',
-    name: 'Test Site',
-    description: 'High vessel activity area near Yamal Peninsula',
-    center: [80.49, 73.16],
-    zoom: 10,
-    bounds: [[80.24, 73.12], [80.74, 73.20]]
-  }
-]
-
+// Places of interest - loaded from JSON
+let places = []
 let currentPlaceIndex = 0
+
+async function loadPlaces() {
+  try {
+    const response = await fetch(basePath + 'data/places/places.json')
+    const data = await response.json()
+    places = data.places
+    if (places.length > 0) {
+      document.getElementById('places').classList.remove('hidden')
+      showPlace(0)
+    }
+  } catch (err) {
+    console.warn('Could not load places:', err)
+    document.getElementById('places').classList.add('hidden')
+  }
+}
 
 function showPlace(index) {
   const place = places[index]
   if (!place) return
 
+  const name = lang === 'ru' ? place.name_ru : place.name_en
+  const description = lang === 'ru' ? place.description_ru : place.description_en
+
   document.getElementById('places-info').innerHTML =
-    `<strong>${place.name}</strong><br><span style="font-size:12px">${place.description}</span>`
+    `<strong>${name}</strong><br><span style="font-size:12px">${description}</span>`
+
+  // Update counter
+  document.getElementById('places-counter').textContent = `${index + 1}/${places.length}`
 
   // Fly to location
   map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
-
-  // Add/update satellite overlay
-  const sourceId = 'place-satellite'
-  const layerId = 'place-satellite-layer'
-
-  if (map.getSource(sourceId)) {
-    map.removeLayer(layerId)
-    map.removeSource(sourceId)
-  }
-
-  map.addSource(sourceId, {
-    type: 'raster',
-    tiles: [basePath + `places/${place.id}/{z}/{x}/{y}.png`],
-    tileSize: 256,
-    bounds: [place.bounds[0][0], place.bounds[0][1], place.bounds[1][0], place.bounds[1][1]]
-  })
-
-  map.addLayer({
-    id: layerId,
-    type: 'raster',
-    source: sourceId,
-    paint: { 'raster-opacity': 0.9 }
-  }, 'vessel-heatmap')
 }
 
 document.getElementById('places-prev').addEventListener('click', () => {
+  if (places.length === 0) return
   currentPlaceIndex = (currentPlaceIndex - 1 + places.length) % places.length
   showPlace(currentPlaceIndex)
 })
 
 document.getElementById('places-next').addEventListener('click', () => {
+  if (places.length === 0) return
   currentPlaceIndex = (currentPlaceIndex + 1) % places.length
   showPlace(currentPlaceIndex)
 })
