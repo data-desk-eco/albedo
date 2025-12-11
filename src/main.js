@@ -409,10 +409,6 @@ map.on('load', () => {
   loadPlaces()
 })
 
-// Initialize UI text after map is created (but before it's fully loaded)
-// This ensures the map variable exists for the updateUI function
-updateUI()
-
 // Set up legend toggle click handlers
 document.querySelectorAll('.legend-toggle').forEach(item => {
   item.addEventListener('click', () => {
@@ -560,6 +556,9 @@ function toggleLayer(layerId) {
 // Places of interest - loaded from JSON
 let places = []
 let currentPlaceIndex = 0
+
+// Initialize UI text after places variable is declared
+updateUI()
 
 async function loadPlaces() {
   try {
