@@ -77,8 +77,8 @@ function updateUI() {
     )
   }
 
-  // Update places panel if places are loaded
-  if (places.length > 0) {
+  // Update places panel if places are loaded (check if places is defined first)
+  if (typeof places !== 'undefined' && places.length > 0) {
     showPlace(currentPlaceIndex)
   }
 }
