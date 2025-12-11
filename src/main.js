@@ -39,7 +39,8 @@ const i18n = {
     firstSeen: 'First seen',
     lastSeen: 'Last seen',
     unknown: 'Unknown',
-    protectedArea: 'Protected Area'
+    protectedArea: 'Protected Area',
+    selectPlace: 'select place of interest'
   },
   ru: {
     protectedAreas: 'охраняемые территории',
@@ -56,7 +57,8 @@ const i18n = {
     firstSeen: 'Первое обнаружение',
     lastSeen: 'Последнее обнаружение',
     unknown: 'Неизвестно',
-    protectedArea: 'Охраняемая территория'
+    protectedArea: 'Охраняемая территория',
+    selectPlace: 'выберите место'
   }
 }
 
@@ -77,9 +79,16 @@ function updateUI() {
     )
   }
 
-  // Update places panel if places are loaded (check if places is defined first)
+  // Update places dropdown if places are loaded (check if places is defined first)
   if (typeof places !== 'undefined' && places.length > 0) {
-    showPlace(currentPlaceIndex)
+    const select = document.getElementById('places-select')
+    const selectedValue = select.value
+    populatePlacesDropdown()
+    select.value = selectedValue
+    // Update the description text if a place is selected
+    if (selectedValue !== '') {
+      showPlace(parseInt(selectedValue))
+    }
   }
 }
 
@@ -567,7 +576,7 @@ async function loadPlaces() {
     places = data.places
     if (places.length > 0) {
       document.getElementById('places').classList.remove('hidden')
-      showPlace(0)
+      populatePlacesDropdown()
     }
   } catch (err) {
     console.warn('Could not load places:', err)
@@ -575,32 +584,43 @@ async function loadPlaces() {
   }
 }
 
+function populatePlacesDropdown() {
+  const select = document.getElementById('places-select')
+  // Clear existing options except the default
+  select.innerHTML = `<option value="">${t('selectPlace')}</option>`
+
+  places.forEach((place, index) => {
+    const option = document.createElement('option')
+    option.value = index
+    option.textContent = lang === 'ru' ? place.name_ru : place.name_en
+    select.appendChild(option)
+  })
+}
+
 function showPlace(index) {
   const place = places[index]
-  if (!place) return
+  const infoEl = document.getElementById('places-info')
 
-  const name = lang === 'ru' ? place.name_ru : place.name_en
+  if (!place) {
+    infoEl.classList.add('hidden')
+    return
+  }
+
   const description = lang === 'ru' ? place.description_ru : place.description_en
-
-  document.getElementById('places-info').innerHTML =
-    `<strong>${name}</strong><br><span style="font-size:12px">${description}</span>`
-
-  // Update counter
-  document.getElementById('places-counter').textContent = `${index + 1}/${places.length}`
+  infoEl.innerHTML = `<span>${description}</span>`
+  infoEl.classList.remove('hidden')
 
   // Fly to location
   map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
 }
 
-document.getElementById('places-prev').addEventListener('click', () => {
-  if (places.length === 0) return
-  currentPlaceIndex = (currentPlaceIndex - 1 + places.length) % places.length
-  showPlace(currentPlaceIndex)
-})
-
-document.getElementById('places-next').addEventListener('click', () => {
-  if (places.length === 0) return
-  currentPlaceIndex = (currentPlaceIndex + 1) % places.length
+document.getElementById('places-select').addEventListener('change', (e) => {
+  const value = e.target.value
+  if (value === '') {
+    document.getElementById('places-info').classList.add('hidden')
+    return
+  }
+  currentPlaceIndex = parseInt(value)
   showPlace(currentPlaceIndex)
 })
 
