@@ -40,7 +40,7 @@ const i18n = {
     lastSeen: 'Last seen',
     unknown: 'Unknown',
     protectedArea: 'Protected Area',
-    selectPlace: 'select place of interest'
+    selectPlace: 'select a place of interest'
   },
   ru: {
     protectedAreas: 'охраняемые территории',
@@ -464,6 +464,11 @@ map.on('mouseenter', 'crossings', (e) => {
   const props = e.features[0].properties
   const hours = props.total_hours
   const days = (hours / 24).toFixed(1)
+
+  // Position tooltip below places container
+  const placesEl = document.getElementById('places')
+  const placesRect = placesEl.getBoundingClientRect()
+  tooltip.style.top = (placesRect.bottom + 8) + 'px'
 
   tooltip.innerHTML = `
     <table>
