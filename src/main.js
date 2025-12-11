@@ -2,6 +2,26 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import * as pmtiles from 'pmtiles'
 
+// Set random favicon from legend colors
+function setRandomFavicon() {
+  const colors = ['rgb(255, 0, 255)', 'rgb(0, 255, 0)', 'rgb(0, 255, 255)']
+  const randomColor = colors[Math.floor(Math.random() * colors.length)]
+  
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='${randomColor}'/></svg>`
+  const encodedSvg = encodeURIComponent(svg)
+  
+  const link = document.querySelector("link[rel*='icon']") || document.createElement('link')
+  link.type = 'image/svg+xml'
+  link.rel = 'icon'
+  link.href = `data:image/svg+xml,${encodedSvg}`
+  
+  if (!document.querySelector("link[rel*='icon']")) {
+    document.head.appendChild(link)
+  } else {
+    document.querySelector("link[rel*='icon']").href = `data:image/svg+xml,${encodedSvg}`
+  }
+}
+
 // Internationalization
 const i18n = {
   en: {
@@ -68,6 +88,9 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
   document.getElementById('lang-toggle').textContent = lang === 'en' ? 'РУ' : 'EN'
   updateUI()
 })
+
+// Set random favicon on page load
+setRandomFavicon()
 
 // Register PMTiles protocol
 const protocol = new pmtiles.Protocol()

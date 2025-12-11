@@ -25,11 +25,9 @@ logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data"
 COG_PATH = DATA_ROOT / "vessel_heatmap.tif"
-PLACES_DIR = DATA_ROOT / "places"
 
 # Global COG reader (opened once, reused)
 cog_reader: Reader | None = None
-place_readers: dict[str, Reader] = {}
 
 
 @asynccontextmanager
@@ -168,41 +166,6 @@ async def tile(
         # TileOutsideBounds is expected for edge tiles, don't log
         if "outside bounds" not in str(e).lower():
             logger.warning(f"Tile error {z}/{x}/{y}: {e}")
-        return Response(status_code=204)
-
-
-@app.get("/places/{name}/{z}/{x}/{y}.png")
-async def place_tile(name: str, z: int, x: int, y: int):
-    """Serve tiles from place-specific GeoTIFFs."""
-    global place_readers
-    tif_path = PLACES_DIR / f"{name}.tif"
-    if not tif_path.exists():
-        return Response(status_code=404)
-
-    if name not in place_readers:
-        place_readers[name] = Reader(str(tif_path))
-
-    try:
-        img = place_readers[name].tile(x, y, z, tilesize=256)
-        data = img.array
-        mask = img.mask  # 0 = nodata, 255 = valid
-
-        # RGB image - convert to RGBA with mask
-        rgba = np.zeros((256, 256, 4), dtype=np.uint8)
-        rgba[:, :, 0] = data[0]
-        rgba[:, :, 1] = data[1]
-        rgba[:, :, 2] = data[2]
-        rgba[:, :, 3] = mask  # Use mask as alpha
-
-        pil_img = Image.fromarray(rgba, mode="RGBA")
-        buf = BytesIO()
-        pil_img.save(buf, format="PNG")
-        return Response(
-            content=buf.getvalue(),
-            media_type="image/png",
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
-    except Exception:
         return Response(status_code=204)
 
 

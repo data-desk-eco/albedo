@@ -4,14 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Albedo</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%2300ffff'/></svg>">
 </head>
 <body>
 <div id="map"></div>
 <div id="tooltip"></div>
-<div id="places">
+<div id="places" class="hidden">
   <button id="places-prev">‹</button>
   <div id="places-info"></div>
+  <span id="places-counter"></span>
   <button id="places-next">›</button>
 </div>
 <button id="lang-toggle">РУ</button>
@@ -45,6 +45,12 @@
       <div class="legend-circle"></div>
     </div>
     <span id="legend-crossings" class="legend-text">vessel crossings</span>
+  </div>
+  <div class="legend-item legend-toggle" data-layer="satellite">
+    <div class="legend-symbol">
+      <div class="legend-satellite"></div>
+    </div>
+    <span id="legend-satellite" class="legend-text">satellite</span>
   </div>
   <div id="legend-source" class="legend-source">data: Global Fishing Watch</div>
 </div>
