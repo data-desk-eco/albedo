@@ -53,6 +53,16 @@ body { margin: 0; padding: 0; }
   #logo-container > a:last-child {
     margin-top: 2px;
   }
+  :root {
+    --ui-panel-width: auto;
+  }
+  .legend-symbol {
+    margin-right: 8px;
+  }
+  #places-select,
+  #places-info {
+    max-width: 200px;
+  }
 }
 
 .logo path, .logo polygon {

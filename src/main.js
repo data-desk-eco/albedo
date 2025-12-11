@@ -33,9 +33,13 @@ function setRandomFavicon() {
 const i18n = {
   en: {
     protectedAreas: 'protected areas',
+    protectedAreasShort: 'prot.',
     vesselCrossings: 'vessel crossings',
+    vesselCrossingsShort: 'vess.',
     satellite: 'satellite imagery',
+    satelliteShort: 'sat.',
     dataSource: 'data: Global Fishing Watch',
+    dataSourceShort: 'data: GFW',
     vessel: 'Vessel',
     mmsi: 'MMSI',
     type: 'Type',
@@ -51,9 +55,13 @@ const i18n = {
   },
   ru: {
     protectedAreas: 'охраняемые территории',
+    protectedAreasShort: 'охр.',
     vesselCrossings: 'пересечения судов',
+    vesselCrossingsShort: 'пер.',
     satellite: 'спутниковые снимки',
+    satelliteShort: 'спут.',
     dataSource: 'данные: Global Fishing Watch',
+    dataSourceShort: 'данные: GFW',
     vessel: 'Судно',
     mmsi: 'MMSI',
     type: 'Тип',
@@ -73,10 +81,11 @@ let lang = 'en'
 const t = (key) => i18n[lang][key]
 
 function updateUI() {
-  document.getElementById('legend-protected').textContent = t('protectedAreas')
-  document.getElementById('legend-crossings').textContent = t('vesselCrossings')
-  document.getElementById('legend-satellite').textContent = t('satellite')
-  document.getElementById('legend-source').textContent = t('dataSource')
+  const isNarrow = window.innerWidth <= 600
+  document.getElementById('legend-protected').textContent = t(isNarrow ? 'protectedAreasShort' : 'protectedAreas')
+  document.getElementById('legend-crossings').textContent = t(isNarrow ? 'vesselCrossingsShort' : 'vesselCrossings')
+  document.getElementById('legend-satellite').textContent = t(isNarrow ? 'satelliteShort' : 'satellite')
+  document.getElementById('legend-source').textContent = t(isNarrow ? 'dataSourceShort' : 'dataSource')
 
   // Update place labels language if map is loaded
   if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
@@ -104,6 +113,9 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
   document.getElementById('lang-toggle').textContent = lang === 'en' ? 'РУ' : 'EN'
   updateUI()
 })
+
+// Update UI on resize for responsive legend labels
+window.addEventListener('resize', updateUI)
 
 // Set random favicon on page load
 setRandomFavicon()
