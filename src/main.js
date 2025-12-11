@@ -92,6 +92,9 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 // Set random favicon on page load
 setRandomFavicon()
 
+// Initialize UI text on page load
+updateUI()
+
 // Register PMTiles protocol
 const protocol = new pmtiles.Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
