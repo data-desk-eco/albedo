@@ -413,6 +413,22 @@ map.on('load', () => {
 // This ensures the map variable exists for the updateUI function
 updateUI()
 
+// Set up legend toggle click handlers
+document.querySelectorAll('.legend-toggle').forEach(item => {
+  item.addEventListener('click', () => {
+    const year = item.dataset.year
+    const layer = item.dataset.layer
+
+    if (year) {
+      toggleYear(parseInt(year))
+      item.classList.toggle('active', activeYears.has(parseInt(year)))
+    } else if (layer) {
+      toggleLayer(layer)
+      item.classList.toggle('active')
+    }
+  })
+})
+
 // Keep focus on Arctic region
 map.on('moveend', () => {
   const center = map.getCenter()
@@ -540,22 +556,6 @@ function toggleLayer(layerId) {
     updateProtectedAreaColors()
   }
 }
-
-// Set up legend toggle click handlers
-document.querySelectorAll('.legend-toggle').forEach(item => {
-  item.addEventListener('click', () => {
-    const year = item.dataset.year
-    const layer = item.dataset.layer
-
-    if (year) {
-      toggleYear(parseInt(year))
-      item.classList.toggle('active', activeYears.has(parseInt(year)))
-    } else if (layer) {
-      toggleLayer(layer)
-      item.classList.toggle('active')
-    }
-  })
-})
 
 // Places of interest - loaded from JSON
 let places = []
