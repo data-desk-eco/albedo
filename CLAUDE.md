@@ -5,15 +5,15 @@ Map of shipping activity along Russia's Northern Sea Route. Consultancy project 
 ## Setup
 
 ```bash
-yarn install   # Install frontend dependencies
-make           # Fetch GFW data + protected areas
+make install   # Install Python + JS dependencies
+make fetch     # Fetch GFW data + protected areas + basemaps
 make convert   # Convert JSON → Parquet
 make transform # Run dbt pipeline → data/data.duckdb
 make tiles     # Generate COG heatmap + PMTiles
 make dev       # Start dev server at http://localhost:5173
 ```
 
-Configuration in `.env` — edit date ranges, study area, etc.
+Configuration in `.env` — edit date ranges, study area, tile version, etc.
 
 ## Data pipeline
 
@@ -66,5 +66,5 @@ Vite-based build with:
 
 - **Data**: DuckDB + dbt
 - **Tiles**: GDAL (COG generation) + tippecanoe (vector tiles)
-- **Server**: Flask + rio-tiler (serves COG as XYZ tiles)
+- **Server**: FastAPI + rio-tiler (serves COG as XYZ tiles)
 - **Frontend**: Vite + MapLibre GL JS + PMTiles

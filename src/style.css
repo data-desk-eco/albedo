@@ -92,6 +92,9 @@ body { margin: 0; padding: 0; }
   box-sizing: border-box;
 }
 
+#legend-years .legend-item:last-child {
+  margin-bottom: 8px;
+}
 
 .legend-item {
   display: flex;

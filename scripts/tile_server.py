@@ -15,10 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from rio_tiler.io import Reader
 
-# Suppress noisy rasterio warnings
 warnings.filterwarnings("ignore", message=".*NoData.*")
 logging.getLogger("rasterio._err").setLevel(logging.ERROR)
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -26,7 +24,6 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data"
 COG_PATH = DATA_ROOT / "vessel_heatmap.tif"
 
-# Global COG reader (opened once, reused)
 cog_reader: Reader | None = None
 
 
@@ -40,15 +37,16 @@ async def lifespan(app: FastAPI):
     cog_reader.close()
     logger.info("COG reader closed")
 
-# In production (Docker), serve from dist/; in dev, serve from project root
+
 SERVE_DIST = os.environ.get("SERVE_DIST", "").lower() in ("1", "true")
 STATIC_ROOT = PROJECT_ROOT / "dist" if SERVE_DIST else PROJECT_ROOT
 
-# Year colors (RGB) - Band 1=2022, Band 2=2023, Band 3=2024
+# Year colors (RGB) - must match YEAR_COLORS in src/main.js
+# Band 0=2022 (cyan), Band 1=2023 (green), Band 2=2024 (magenta)
 YEAR_COLORS = np.array([
-    [0, 255, 255],    # 2022 - Cyan
-    [0, 255, 0],      # 2023 - Green
-    [255, 0, 255],    # 2024 - Magenta
+    [0, 255, 255],    # 2022
+    [0, 255, 0],      # 2023
+    [255, 0, 255],    # 2024
 ], dtype=np.float32)
 
 YEAR_TO_BAND = {2022: 0, 2023: 1, 2024: 2}
