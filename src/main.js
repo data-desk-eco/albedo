@@ -431,18 +431,24 @@ const map = new maplibregl.Map({
   renderWorldCopies: false
 })
 
-// Add hatch patterns at different sizes for zoom levels
-map.on('load', () => {
-  // Small/tight patterns for zoomed out (z0-4)
-  map.addImage('hatch-white-sm', createHatchPattern('#ffffff', 6), { pixelRatio: 1 })
-  map.addImage('hatch-black-sm', createHatchPattern('#000000', 6), { pixelRatio: 1 })
-  // Medium patterns (z4-7)
-  map.addImage('hatch-white-md', createHatchPattern('#ffffff', 10), { pixelRatio: 1 })
-  map.addImage('hatch-black-md', createHatchPattern('#000000', 10), { pixelRatio: 1 })
-  // Large/loose patterns for zoomed in (z7+)
-  map.addImage('hatch-white-lg', createHatchPattern('#ffffff', 16), { pixelRatio: 1 })
-  map.addImage('hatch-black-lg', createHatchPattern('#000000', 16), { pixelRatio: 1 })
+// Generate hatch patterns on demand to avoid "image not found" warnings
+const hatchPatterns = {
+  'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
+  'hatch-black-sm': () => createHatchPattern('#000000', 6),
+  'hatch-white-md': () => createHatchPattern('#ffffff', 10),
+  'hatch-black-md': () => createHatchPattern('#000000', 10),
+  'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
+  'hatch-black-lg': () => createHatchPattern('#000000', 16)
+}
 
+map.on('styleimagemissing', (e) => {
+  const id = e.id
+  if (hatchPatterns[id]) {
+    map.addImage(id, hatchPatterns[id](), { pixelRatio: 1 })
+  }
+})
+
+map.on('load', () => {
   // Load places of interest from JSON
   loadPlaces()
 })
