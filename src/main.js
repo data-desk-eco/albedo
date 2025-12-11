@@ -148,7 +148,7 @@ const map = new maplibregl.Map({
         type: 'raster',
         tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'],
         tileSize: 256,
-        bounds: [-180, 56, 180, 90],
+        bounds: [-180, 65, 180, 90],
         attribution: '© EOX IT Services GmbH - Sentinel-2 cloudless'
       },
       'vessel-heatmap': {
