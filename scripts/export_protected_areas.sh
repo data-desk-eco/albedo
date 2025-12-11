@@ -61,8 +61,8 @@ ogr2ogr -f GeoJSON \
 
 echo "✓ Clipped protected areas to latitude ${SOUTH_LAT}° to 90°"
 
-# Filter out inland-only protected areas (keep only those in/touching ocean)
-echo "Filtering to ocean-only protected areas..."
+# Filter to maritime areas and split into sea/land portions - all in one DuckDB session
+echo "Filtering to ocean areas and splitting into sea/land portions..."
 duckdb << SQL_EOF
 INSTALL spatial;
 LOAD spatial;
@@ -96,74 +96,23 @@ SELECT ST_Difference(
 ) as geometry;
 
 -- Load protected areas
-CREATE TEMP TABLE protected_areas_geom AS
+CREATE TEMP TABLE protected_areas_all AS
 WITH features AS (
   SELECT unnest(features) as feature
-  FROM read_json_auto('data/protected_areas_clipped.geojson')
+  FROM read_json_auto('data/protected_areas_clipped.geojson', maximum_object_size=200000000)
 )
 SELECT
-  feature,
+  feature.id as id,
+  feature.properties as properties,
   ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
-FROM features;
-
--- Keep only protected areas that intersect with ocean
--- This excludes rivers and inland areas
-COPY (
-  SELECT json(feature) as feature
-  FROM protected_areas_geom pa, ocean_mask o
-  WHERE ST_Intersects(pa.geometry, o.geometry)
-) TO 'data/protected_areas_maritime_features.jsonl';
-SQL_EOF
-
-# Reconstruct GeoJSON from filtered features
-echo "Reconstructing GeoJSON..."
-echo '{"type":"FeatureCollection","features":[' > data/protected_areas_filtered.geojson
-cat data/protected_areas_maritime_features.jsonl | jq -s '.' | jq -c '.[]' | sed '$!s/$/,/' >> data/protected_areas_filtered.geojson
-echo ']}' >> data/protected_areas_filtered.geojson
-
-MARITIME_COUNT=$(jq '.features | length' data/protected_areas_filtered.geojson)
-echo "✓ Filtered to ${MARITIME_COUNT} maritime/coastal protected areas (excluded inland areas)"
-
-# Split protected areas into sea and land portions for fill patterns
-echo "Splitting protected areas into sea/land portions..."
-duckdb << SQL_EOF
-INSTALL spatial;
-LOAD spatial;
-
--- Load land polygons (clipped to study area)
-CREATE TEMP TABLE land_raw AS
-FROM ST_Read('data/ne_10m_land/ne_10m_land.shp');
-
-CREATE TEMP TABLE study_area AS
-SELECT ST_GeomFromText('POLYGON((-180 ${SOUTH_LAT}, 180 ${SOUTH_LAT}, 180 90, -180 90, -180 ${SOUTH_LAT}))') as geometry;
-
-CREATE TEMP TABLE land_clipped AS
-SELECT ST_Intersection(
-  ST_GeomFromWKB(ST_AsWKB(geom)),
-  (SELECT geometry FROM study_area)
-) as geometry
-FROM land_raw
-WHERE ST_Intersects(
-  ST_GeomFromWKB(ST_AsWKB(geom)),
-  (SELECT geometry FROM study_area)
-);
-
--- Union all land into single geometry
-CREATE TEMP TABLE land_union AS
-SELECT ST_Union_Agg(geometry) as geometry FROM land_clipped;
-
--- Load protected areas (handle nested structure from reconstruction)
-CREATE TEMP TABLE protected_areas AS
-WITH features AS (
-  SELECT unnest(features) as f
-  FROM read_json_auto('data/protected_areas_filtered.geojson')
-)
-SELECT
-  f.feature.id as id,
-  f.feature.properties as properties,
-  ST_GeomFromGeoJSON(json(f.feature.geometry)) as geometry
 FROM features
-WHERE f.feature.geometry.type != 'Point';
+WHERE feature.geometry.type != 'Point';
+
+-- Keep only protected areas that intersect with ocean (excludes rivers and inland areas)
+CREATE TEMP TABLE protected_areas AS
+SELECT pa.*
+FROM protected_areas_all pa, ocean_mask o
+WHERE ST_Intersects(pa.geometry, o.geometry);
 
 -- Clip protected areas to land (polygons with black crosshatch)
 CREATE TEMP TABLE pa_on_land AS
@@ -182,50 +131,40 @@ SELECT
   ST_Difference(pa.geometry, land.geometry) as geometry
 FROM protected_areas pa, land_union land;
 
--- Export land portions as GeoJSON features (polygons)
+-- Export land portions as GeoJSON FeatureCollection
 COPY (
-  SELECT json_object(
+  SELECT json_group_array(json_object(
     'type', 'Feature',
     'id', id,
     'properties', json(properties),
     'geometry', json(ST_AsGeoJSON(geometry))
-  ) as feature
+  )) as features
   FROM pa_on_land
-  WHERE geometry IS NOT NULL
-    AND NOT ST_IsEmpty(geometry)
-) TO 'data/pa_land_features.jsonl';
+  WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)
+) TO 'data/pa_land_features.json' (FORMAT JSON);
 
--- Export sea portions as GeoJSON features (polygons)
+-- Export sea portions as GeoJSON FeatureCollection
 COPY (
-  SELECT json_object(
+  SELECT json_group_array(json_object(
     'type', 'Feature',
     'id', id,
     'properties', json(properties),
     'geometry', json(ST_AsGeoJSON(geometry))
-  ) as feature
+  )) as features
   FROM pa_on_sea
-  WHERE geometry IS NOT NULL
-    AND NOT ST_IsEmpty(geometry)
-) TO 'data/pa_sea_features.jsonl';
+  WHERE geometry IS NOT NULL AND NOT ST_IsEmpty(geometry)
+) TO 'data/pa_sea_features.json' (FORMAT JSON);
 
 SQL_EOF
 
-# Reconstruct GeoJSON files from JSONL
-echo "Reconstructing split GeoJSON files..."
+# Wrap arrays in FeatureCollection
+echo '{"type":"FeatureCollection","features":' > data/protected_areas_land.geojson
+cat data/pa_land_features.json >> data/protected_areas_land.geojson
+echo '}' >> data/protected_areas_land.geojson
 
-# Land portions (black lines)
-echo '{"type":"FeatureCollection","features":[' > data/protected_areas_land.geojson
-if [ -s data/pa_land_features.jsonl ]; then
-  cat data/pa_land_features.jsonl | jq -c '.feature' | sed '$!s/$/,/' >> data/protected_areas_land.geojson
-fi
-echo ']}' >> data/protected_areas_land.geojson
-
-# Sea portions (white lines)
-echo '{"type":"FeatureCollection","features":[' > data/protected_areas_sea.geojson
-if [ -s data/pa_sea_features.jsonl ]; then
-  cat data/pa_sea_features.jsonl | jq -c '.feature' | sed '$!s/$/,/' >> data/protected_areas_sea.geojson
-fi
-echo ']}' >> data/protected_areas_sea.geojson
+echo '{"type":"FeatureCollection","features":' > data/protected_areas_sea.geojson
+cat data/pa_sea_features.json >> data/protected_areas_sea.geojson
+echo '}' >> data/protected_areas_sea.geojson
 
 LAND_COUNT=$(jq '.features | length' data/protected_areas_land.geojson)
 SEA_COUNT=$(jq '.features | length' data/protected_areas_sea.geojson)
@@ -245,9 +184,8 @@ tippecanoe -o data/protected_areas.pmtiles \
 
 # Cleanup intermediate files
 rm -f data/protected_areas_filtered_temp.geojson data/protected_areas_clipped.geojson \
-      data/protected_areas_maritime_features.jsonl data/protected_areas_filter_ids.csv \
-      data/pa_land_features.jsonl data/pa_sea_features.jsonl \
-      data/protected_areas_land.geojson data/protected_areas_sea.geojson \
-      data/protected_areas_filtered.geojson
+      data/protected_areas_filter_ids.csv \
+      data/pa_land_features.json data/pa_sea_features.json \
+      data/protected_areas_land.geojson data/protected_areas_sea.geojson
 
 echo "✓ Protected areas tiles: data/protected_areas.pmtiles"

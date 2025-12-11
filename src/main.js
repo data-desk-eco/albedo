@@ -2,23 +2,30 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import * as pmtiles from 'pmtiles'
 
-// Set random favicon from legend colors
+// Year colors used throughout the app (heatmap, legend, crossings)
+const YEAR_COLORS = {
+  2024: 'rgb(255, 0, 255)',  // Magenta (latest)
+  2023: 'rgb(0, 255, 0)',    // Green (middle)
+  2022: 'rgb(0, 255, 255)'   // Cyan (oldest)
+}
+
+// Set random favicon from year colors
 function setRandomFavicon() {
-  const colors = ['rgb(255, 0, 255)', 'rgb(0, 255, 0)', 'rgb(0, 255, 255)']
+  const colors = Object.values(YEAR_COLORS)
   const randomColor = colors[Math.floor(Math.random() * colors.length)]
-  
+
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='${randomColor}'/></svg>`
   const encodedSvg = encodeURIComponent(svg)
-  
-  const link = document.querySelector("link[rel*='icon']") || document.createElement('link')
-  link.type = 'image/svg+xml'
-  link.rel = 'icon'
-  link.href = `data:image/svg+xml,${encodedSvg}`
-  
-  if (!document.querySelector("link[rel*='icon']")) {
-    document.head.appendChild(link)
+
+  const existing = document.querySelector("link[rel*='icon']")
+  if (existing) {
+    existing.href = `data:image/svg+xml,${encodedSvg}`
   } else {
-    document.querySelector("link[rel*='icon']").href = `data:image/svg+xml,${encodedSvg}`
+    const link = document.createElement('link')
+    link.type = 'image/svg+xml'
+    link.rel = 'icon'
+    link.href = `data:image/svg+xml,${encodedSvg}`
+    document.head.appendChild(link)
   }
 }
 
@@ -101,12 +108,34 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 // Set random favicon on page load
 setRandomFavicon()
 
+// Generate year legend items dynamically from YEAR_COLORS
+function initYearLegend() {
+  const container = document.getElementById('legend-years')
+  Object.entries(YEAR_COLORS)
+    .sort(([a], [b]) => Number(b) - Number(a))  // Newest first
+    .forEach(([year, color]) => {
+      const item = document.createElement('div')
+      item.className = 'legend-item legend-toggle active'
+      item.dataset.year = year
+      item.innerHTML = `
+        <div class="legend-symbol">
+          <div class="legend-square" style="background: ${color};"></div>
+        </div>
+        <span class="legend-text">${year}</span>
+      `
+      container.appendChild(item)
+    })
+}
+initYearLegend()
+
 // Register PMTiles protocol
 const protocol = new pmtiles.Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
 
 // Arctic region focus
 const ARCTIC_CENTER_LAT = 75
+const ARCTIC_MIN_LAT_ZOOMED_OUT = 60  // Minimum latitude when zoomed out (z <= 4)
+const ARCTIC_MIN_LAT_ZOOMED_IN = 50   // Minimum latitude when zoomed in (z > 4)
 
 // Create diagonal hatch pattern with given color (single direction)
 function createHatchPattern(color, size = 6) {
@@ -136,8 +165,8 @@ const basePath = window.location.pathname.endsWith('/')
   ? window.location.pathname
   : window.location.pathname + '/'
 
-// Tile cache version - bump this when data changes to invalidate browser caches
-const TILE_VERSION = 2
+// Tile cache version - injected from .env at build time
+const TILE_VERSION = __TILE_VERSION__
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -352,10 +381,10 @@ const map = new maplibregl.Map({
           'circle-stroke-color': [
             'match',
             ['get', 'year'],
-            2022, 'rgb(0, 255, 255)',   // cyan (oldest)
-            2023, 'rgb(0, 255, 0)',     // green (middle)
-            2024, 'rgb(255, 0, 255)',   // magenta/pink (latest)
-            '#ffffff'                   // default fallback
+            2022, YEAR_COLORS[2022],
+            2023, YEAR_COLORS[2023],
+            2024, YEAR_COLORS[2024],
+            '#ffffff'
           ],
           'circle-stroke-width': 2,
           'circle-stroke-opacity': 1
@@ -438,11 +467,9 @@ document.querySelectorAll('.legend-toggle').forEach(item => {
 map.on('moveend', () => {
   const center = map.getCenter()
   const zoom = map.getZoom()
+  const minLat = zoom > 4 ? ARCTIC_MIN_LAT_ZOOMED_IN : ARCTIC_MIN_LAT_ZOOMED_OUT
 
-  // More permissive threshold when zoomed in
-  const threshold = zoom > 4 ? 50 : 60
-
-  if (center.lat < threshold) {
+  if (center.lat < minLat) {
     map.panTo([center.lng, ARCTIC_CENTER_LAT])
   }
 })
@@ -569,7 +596,6 @@ function toggleLayer(layerId) {
 
 // Places of interest - loaded from JSON
 let places = []
-let currentPlaceIndex = 0
 
 // Initialize UI text after places variable is declared
 updateUI()
@@ -625,7 +651,6 @@ document.getElementById('places-select').addEventListener('change', (e) => {
     document.getElementById('places-info').classList.add('hidden')
     return
   }
-  currentPlaceIndex = parseInt(value)
-  showPlace(currentPlaceIndex)
+  showPlace(parseInt(value))
 })
 

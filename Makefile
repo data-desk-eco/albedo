@@ -3,74 +3,85 @@
 include .env
 export
 
-all: vessel-presence data/protected_areas.geojson data/ne_10m_land/ne_10m_land.shp data/ne_10m_populated_places/ne_10m_populated_places.shp
+#───────────────────────────────────────────────────────────────────────────────
+# Data Pipeline
+#───────────────────────────────────────────────────────────────────────────────
+
+# Full pipeline
+all: fetch convert transform tiles
+
+# Fetch source data from APIs
+fetch: data/.fetch.done
+
+data/.fetch.done:
+	./scripts/fetch_vessel_presence.sh
+	./scripts/fetch_protected_areas.sh
+	./scripts/fetch_land.sh
+	./scripts/fetch_places.sh
+	@touch $@
+
+# Convert GFW JSON to Parquet
+convert: data/.convert.done
+
+data/.convert.done: data/.fetch.done
+	./scripts/convert.sh
+	@touch $@
+
+# Run dbt transformations
+transform: data/data.duckdb
+
+data/data.duckdb: data/.convert.done
+	cd etl && dbt run --profiles-dir .
+
+# Generate all tiles
+tiles: data/vessel_heatmap.tif data/protected_areas.pmtiles data/land.pmtiles data/places.pmtiles data/vessel_crossings.pmtiles
+
+data/vessel_heatmap.tif: data/data.duckdb
+	./scripts/export_raster.sh
+
+data/protected_areas.pmtiles: data/data.duckdb data/protected_areas.geojson
+	./scripts/export_protected_areas.sh
+
+data/land.pmtiles: data/ne_10m_land/ne_10m_land.shp
+	./scripts/export_land.sh
+
+data/places.pmtiles: data/ne_10m_populated_places/ne_10m_populated_places.shp
+	./scripts/export_places.sh
+
+data/vessel_crossings.pmtiles: data/data.duckdb
+	./scripts/export_crossings.sh
+
+#───────────────────────────────────────────────────────────────────────────────
+# Development
+#───────────────────────────────────────────────────────────────────────────────
 
 install:
 	uv sync
-
-vessel-presence: scripts/fetch_vessel_presence.sh
-	@./scripts/fetch_vessel_presence.sh
-
-data/protected_areas.geojson: scripts/fetch_protected_areas.sh
-	@./scripts/fetch_protected_areas.sh
-
-data/ne_10m_land/ne_10m_land.shp: scripts/fetch_land.sh
-	@./scripts/fetch_land.sh
-
-data/ne_10m_populated_places/ne_10m_populated_places.shp: scripts/fetch_places.sh
-	@./scripts/fetch_places.sh
-
-convert:
-	@./scripts/convert.sh
-
-transform: convert
-	cd etl && dbt run --profiles-dir .
-
-tiles: transform
-	@./scripts/export_raster.sh
-	@./scripts/export_protected_areas.sh
-	@./scripts/export_land.sh
-	@./scripts/export_places.sh
-	@./scripts/export_crossings.sh
+	yarn install
 
 serve:
-	@uv run python scripts/tile_server.py
+	uv run python scripts/tile_server.py
 
 dev:
-	@uv run python scripts/tile_server.py & PID=$$!; trap "kill $$PID 2>/dev/null" EXIT INT TERM; yarn dev
+	uv run python scripts/tile_server.py & PID=$$!; trap "kill $$PID 2>/dev/null" EXIT INT TERM; yarn dev
 
-static:
-	@./scripts/build_static.sh
+build:
+	yarn build
 
 clean:
-	rm -rf data
+	rm -rf data dist
 
-# Quick iteration targets (skip long-running data fetching/transforms)
-# Individual tile exports
-raster:
-	@./scripts/export_raster.sh
+#───────────────────────────────────────────────────────────────────────────────
+# Deployment (Cloud Run)
+#───────────────────────────────────────────────────────────────────────────────
 
-protected-areas:
-	@./scripts/export_protected_areas.sh
-
-land:
-	@./scripts/export_land.sh
-
-places:
-	@./scripts/export_places.sh
-
-crossings:
-	@./scripts/export_crossings.sh
-
-# Cloud Run deployment
 PROJECT_NAME := albedo
 GCP_PROJECT := data-desk-web
 REGION := europe-west1
 DOMAIN := tools.datadesk.eco
 
 deploy:
-	@echo "🚀 Deploying $(PROJECT_NAME) to Cloud Run..."
-	@gcloud run deploy $(PROJECT_NAME) \
+	gcloud run deploy $(PROJECT_NAME) \
 		--source . \
 		--region $(REGION) \
 		--project $(GCP_PROJECT) \
@@ -79,53 +90,12 @@ deploy:
 		--max-instances 10 \
 		--min-instances 0 \
 		--memory 1Gi \
-		--cpu 1 \
-		--quiet
-	@echo ""
-	@echo "✅ Deployment complete!"
-	@echo "🌐 Live at: $$(gcloud run services describe $(PROJECT_NAME) --region $(REGION) --project $(GCP_PROJECT) --format 'value(status.url)')"
-	@echo "🔓 App is publicly accessible"
-	@echo ""
-	@echo "To map custom domain $(PROJECT_NAME).$(DOMAIN):"
-	@echo "  Run: make domain"
-
-update:
-	@gcloud run deploy $(PROJECT_NAME) \
-		--source . \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) \
-		--allow-unauthenticated \
-		--quiet
-	@echo "✓ App updated"
-
-url:
-	@echo "Direct Cloud Run URL:"
-	@gcloud run services describe $(PROJECT_NAME) \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) \
-		--format 'value(status.url)'
-	@echo ""
-	@echo "Custom domain: https://$(PROJECT_NAME).$(DOMAIN)"
+		--cpu 1
+	@echo "Live at: https://$(PROJECT_NAME).$(DOMAIN)"
 
 logs:
-	@gcloud run logs read \
-		--service $(PROJECT_NAME) \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) \
-		--limit 50
+	gcloud run logs read --service $(PROJECT_NAME) --region $(REGION) --project $(GCP_PROJECT) --limit 50
 
-domain:
-	@echo "Setting up domain mapping for $(PROJECT_NAME).$(DOMAIN)..."
-	@gcloud run domain-mappings create \
-		--service $(PROJECT_NAME) \
-		--domain $(PROJECT_NAME).$(DOMAIN) \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) || echo "Domain mapping may already exist"
-	@echo "✅ Domain mapping configured"
-	@echo "Add these DNS records:"
-	@gcloud run domain-mappings describe $(PROJECT_NAME).$(DOMAIN) \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) \
-		--format="value(status.resourceRecords)"
+#───────────────────────────────────────────────────────────────────────────────
 
-.PHONY: all clean vessel-presence convert transform tiles serve dev static install deploy update url logs domain raster protected-areas land places crossings
+.PHONY: all fetch convert transform tiles install serve dev build clean deploy logs
