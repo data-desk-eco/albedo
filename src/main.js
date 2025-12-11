@@ -27,7 +27,7 @@ const i18n = {
   en: {
     protectedAreas: 'protected areas',
     vesselCrossings: 'vessel crossings',
-    satellite: 'satellite imagery',
+    satellite: 'satellite',
     dataSource: 'data: Global Fishing Watch',
     vessel: 'Vessel',
     mmsi: 'MMSI',
@@ -44,7 +44,7 @@ const i18n = {
   ru: {
     protectedAreas: 'охраняемые территории',
     vesselCrossings: 'пересечения судов',
-    satellite: 'спутниковые снимки',
+    satellite: 'спутник',
     dataSource: 'данные: Global Fishing Watch',
     vessel: 'Судно',
     mmsi: 'MMSI',
