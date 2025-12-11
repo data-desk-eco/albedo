@@ -29,6 +29,7 @@ COPY data/protected_areas.pmtiles data/protected_areas.pmtiles
 COPY data/vessel_crossings.pmtiles data/vessel_crossings.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
 COPY data/places.pmtiles data/places.pmtiles
+COPY data/places/places.json data/places/places.json
 
 # Layer 4: Frontend (changes most frequently)
 COPY --from=builder /app/dist dist/
