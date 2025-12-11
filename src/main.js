@@ -92,9 +92,6 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 // Set random favicon on page load
 setRandomFavicon()
 
-// Initialize UI text on page load
-updateUI()
-
 // Register PMTiles protocol
 const protocol = new pmtiles.Protocol()
 maplibregl.addProtocol('pmtiles', protocol.tile)
@@ -411,6 +408,10 @@ map.on('load', () => {
   // Load places of interest from JSON
   loadPlaces()
 })
+
+// Initialize UI text after map is created (but before it's fully loaded)
+// This ensures the map variable exists for the updateUI function
+updateUI()
 
 // Keep focus on Arctic region
 map.on('moveend', () => {
