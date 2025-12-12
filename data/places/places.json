@@ -1,112 +1,187 @@
 {
   "places": [
     {
-      "id": "yenisei-delta",
-      "name_en": "Yenisei River Delta",
-      "name_ru": "Дельта Енисея",
-      "description_en": "Vostok oil project hub. Intense shipping activity since 2022 with multiple new ports for pipeline construction.",
-      "description_ru": "Центр нефтяного проекта «Восток». Интенсивная судоходная активность с 2022 года, множество новых портов для строительства трубопровода.",
-      "center": [83.5, 71.8],
-      "zoom": 7
-    },
-    {
       "id": "sever-bay",
-      "name_en": "Sever Bay",
-      "name_ru": "Бухта Север",
-      "description_en": "Main oil terminal for Vostok project. According to Rosneft, will be the largest oil terminal in the Arctic.",
-      "description_ru": "Главный нефтяной терминал проекта «Восток». По заявлению «Роснефти», станет крупнейшим нефтяным терминалом в Арктике.",
-      "center": [79.95, 73.15],
-      "zoom": 11
+      "name_en": "Sever Bay Oil Terminal",
+      "name_ru": "Терминал Бухта Север",
+      "description_en": "Main oil terminal for Vostok Oil project. Will be the largest Arctic oil terminal, handling up to 100 million tons/year by 2030. Matches major activity hotspot with 734x increase since 2022.",
+      "description_ru": "Главный нефтяной терминал проекта «Восток Ойл». Станет крупнейшим арктическим нефтяным терминалом с пропускной способностью до 100 млн тонн/год к 2030 году.",
+      "center": [80.45, 73.15],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-1", "hotspot-2"]
     },
     {
-      "id": "baykalovsk",
-      "name_en": "Baykalovsk Construction Hub",
-      "name_ru": "Строительный центр Байкаловск",
-      "description_en": "Located within a listed wetland. Loading point for pipeline materials and workers heading to shift camps along the pipeline.",
-      "description_ru": "Расположен на территории охраняемого водно-болотного угодья. Погрузочный пункт для материалов трубопровода и рабочих вахтовых посёлков.",
-      "center": [82.85, 71.05],
+      "id": "dikson",
+      "name_en": "Dikson",
+      "name_ru": "Диксон",
+      "description_en": "Northernmost port in Russia and northernmost settlement on the Asian continent. Key reference point for Vostok Oil shipping operations on the Kara Sea.",
+      "description_ru": "Самый северный порт России и самый северный населённый пункт на азиатском континенте. Ключевой ориентир для морских операций проекта «Восток Ойл» в Карском море.",
+      "center": [80.5, 73.51],
       "zoom": 11
     },
     {
       "id": "vorontsovo",
       "name_en": "Vorontsovo Pipe Construction Hub",
       "name_ru": "Строительный центр Воронцово",
-      "description_en": "Rapidly built port since 2023. Pipeline construction hub with visible damage to tundra from construction vehicles.",
-      "description_ru": "Порт, быстро построенный с 2023 года. Центр строительства трубопровода с видимыми повреждениями тундры от строительной техники.",
-      "center": [82.65, 71.45],
+      "description_en": "Rapidly built port since 2023. Pipeline construction hub where pipe (including yellow gas pipe) can be seen on satellite. Construction vehicles have caused visible tundra damage.",
+      "description_ru": "Порт, быстро построенный с 2023 года. Центр строительства трубопровода, где на спутниковых снимках видны трубы (включая жёлтые газовые). Строительная техника нанесла видимый ущерб тундре.",
+      "center": [83.55, 71.7],
+      "zoom": 11
+    },
+    {
+      "id": "baykalovsk",
+      "name_en": "Baykalovsk Construction Hub",
+      "name_ru": "Строительный центр Байкаловск",
+      "description_en": "Located within a Ramsar-listed wetland near the Brekhovsky Islands. Loading point for pipeline materials and workers heading to shift camps. Significant expansion since 2022.",
+      "description_ru": "Расположен на территории водно-болотного угодья из списка Рамсарской конвенции, вблизи Бреховских островов. Погрузочный пункт для материалов и рабочих вахтовых посёлков. Значительное расширение с 2022 года.",
+      "center": [83.62, 70.69],
       "zoom": 11
     },
     {
       "id": "pipeline-crossing",
       "name_en": "Yenisei Pipeline Crossing",
       "name_ru": "Переход трубопровода через Енисей",
-      "description_en": "Pipeline runs under the riverbed, 60km upstream from protected wetland. A spill here would be catastrophic for indigenous communities and migratory birds.",
-      "description_ru": "Трубопровод проходит под руслом реки, в 60 км выше по течению от охраняемого водно-болотного угодья. Разлив здесь был бы катастрофой для коренных народов и перелётных птиц.",
-      "center": [83.25, 70.95],
+      "description_en": "5.8km pipeline section running 50m below the riverbed, completed in 2024. Located 60km upstream from protected Brekhovsky Islands wetland. A spill here would devastate indigenous communities.",
+      "description_ru": "Участок трубопровода длиной 5,8 км на глубине 50 м под руслом реки, завершён в 2024 году. Расположен в 60 км выше по течению от охраняемых Бреховских островов. Разлив здесь будет катастрофой для коренных народов.",
+      "center": [83.4, 70.4],
       "zoom": 12
     },
     {
-      "id": "syradaskaye",
-      "name_en": "Syradaskaye Coal Mine",
-      "name_ru": "Сырадасайский угольный разрез",
-      "description_en": "Coal mine in the Yenisei Delta region with associated shipping activity.",
-      "description_ru": "Угольный разрез в районе дельты Енисея с соответствующей судоходной активностью.",
-      "center": [87.25, 73.15],
+      "id": "syradasaysky",
+      "name_en": "Syradasaysky Coal Terminal",
+      "name_ru": "Угольный терминал Сырадасайский",
+      "description_en": "Coal terminal 87km from Dikson for the Syradasaysky coal mine (5.68 billion tons of coking coal reserves). Terminal can handle 100,000 DWT ships.",
+      "description_ru": "Угольный терминал в 87 км от Диксона для Сырадасайского угольного разреза (запасы 5,68 млрд тонн коксующегося угля). Терминал может принимать суда дедвейтом 100 000 тонн.",
+      "center": [81.5, 72.8],
       "zoom": 10
+    },
+    {
+      "id": "dudinka",
+      "name_en": "Dudinka Port",
+      "name_ru": "Порт Дудинка",
+      "description_en": "Largest port in Siberia, serving Norilsk metals complex. River port accessible to both sea and river ships. Floods annually during spring thaw. Near activity hotspot with 535x increase.",
+      "description_ru": "Крупнейший порт Сибири, обслуживающий Норильский металлургический комбинат. Речной порт, доступный для морских и речных судов. Ежегодно затапливается во время весеннего паводка.",
+      "center": [86.18, 69.4],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-8"]
+    },
+    {
+      "id": "sabetta",
+      "name_en": "Sabetta LNG Terminal",
+      "name_ru": "СПГ-терминал Сабетта",
+      "description_en": "Major LNG export terminal on Yamal Peninsula producing 21.2 million tonnes/year. Opened by Putin in 2017. Frequent service runs by Eco Shipping and TK Nord vessels.",
+      "description_ru": "Крупный СПГ-терминал на полуострове Ямал мощностью 21,2 млн тонн/год. Открыт Путиным в 2017 году. Частые рейсы судов Eco Shipping и ТК Норд.",
+      "center": [72.07, 71.27],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-12", "hotspot-30"]
     },
     {
       "id": "pevek",
       "name_en": "Pevek New Port",
       "name_ru": "Новый порт Певек",
-      "description_en": "Port under construction across the bay from Pevek. TK Nord ships have been calling here since 2022.",
-      "description_ru": "Строящийся порт напротив Певека через залив. Суда ТК Норд заходят сюда с 2022 года.",
-      "center": [170.35, 69.7],
-      "zoom": 11
+      "description_en": "Port under construction across the bay from Pevek since 2022. TK Nord ships regularly calling here. Matches activity hotspots showing 468-766x increase. Northernmost port in Russia.",
+      "description_ru": "Строящийся порт напротив Певека с 2022 года. Суда ТК Норд регулярно заходят сюда. Соответствует очагам активности с ростом в 468-766 раз. Самый северный порт России.",
+      "center": [170.31, 69.7],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-5", "hotspot-6", "hotspot-14"]
     },
     {
-      "id": "leningradskiy",
-      "name_en": "Leningradskiy",
+      "id": "leningradsky",
+      "name_en": "Leningradsky",
       "name_ru": "Ленинградский",
-      "description_en": "Abandoned Soviet gold mining town with zero population. Ships have called here recently for unknown reasons.",
-      "description_ru": "Заброшенный советский золотодобывающий посёлок с нулевым населением. Суда недавно заходили сюда по неизвестным причинам.",
-      "center": [178.4, 69.38],
-      "zoom": 11
-    },
-    {
-      "id": "port-elga",
-      "name_en": "Port Elga Coal Mine",
-      "name_ru": "Порт Эльга угольная шахта",
-      "description_en": "Large coal mine on the East Coast of Russia. Eco Shipping vessels have called here. Port has expanded significantly.",
-      "description_ru": "Крупный угольный разрез на восточном побережье России. Сюда заходят суда Eco Shipping. Порт значительно расширился.",
-      "center": [137.35, 55.3],
+      "description_en": "Abandoned Soviet gold mining town, officially zero population since 2010. Ships have called here recently for unknown reasons. 80km west of Mys Shmidta.",
+      "description_ru": "Заброшенный советский золотодобывающий посёлок, официально нулевое население с 2010 года. Суда недавно заходили сюда по неизвестным причинам. 80 км западнее Мыса Шмидта.",
+      "center": [178.4, 69.36],
       "zoom": 10
     },
     {
       "id": "bolshevik-island",
       "name_en": "Bolshevik Island",
       "name_ru": "Остров Большевик",
-      "description_en": "Remote location on the south coast visited by Andrey Osipov in 2023. Buildings visible but not listed on any mapping platforms.",
-      "description_ru": "Удалённое место на южном побережье, которое посетило судно «Андрей Осипов» в 2023 году. Здания видны, но не отмечены на картах.",
-      "center": [102.5, 78.55],
+      "description_en": "Remote location on south coast of Severnaya Zemlya visited by Andrey Osipov in 2023. Buildings visible on satellite but not listed on any mapping platforms. Purpose unknown.",
+      "description_ru": "Отдалённое место на южном побережье Северной Земли, посещённое судном «Андрей Осипов» в 2023 году. Здания видны на спутнике, но не отмечены ни на одной карте. Назначение неизвестно.",
+      "center": [102.48, 78.63],
       "zoom": 9
     },
     {
       "id": "taimyr-north",
-      "name_en": "North Taimyr Peninsula",
-      "name_ru": "Север полуострова Таймыр",
-      "description_en": "Unknown location where Sinegorsk called in October 2024. Not on TK Nord's destination list, no visible settlements.",
-      "description_ru": "Неизвестное место, куда заходил «Синегорск» в октябре 2024 года. Нет в списке направлений ТК Норд, населённых пунктов не видно.",
-      "center": [100.0, 77.5],
-      "zoom": 8
+      "name_en": "North Taimyr Unknown Site",
+      "name_ru": "Неизвестный объект на севере Таймыра",
+      "description_en": "Unequipped shores where Sinegorsk called in October 2024. Not on TK Nord destination list, no visible settlements. Near activity hotspot showing new activity in 2024.",
+      "description_ru": "Необорудованные берега, куда заходил «Синегорск» в октябре 2024 года. Нет в списке направлений ТК Норд, населённых пунктов не видно. Рядом с очагом новой активности в 2024 году.",
+      "center": [109.32, 73.76],
+      "zoom": 9,
+      "hotspot_ids": ["hotspot-28"]
     },
     {
-      "id": "sabetta",
-      "name_en": "Sabetta LNG Terminal",
-      "name_ru": "СПГ-терминал Сабетта",
-      "description_en": "Major LNG export terminal on Yamal Peninsula. Frequent service runs by Eco Shipping and TK Nord vessels.",
-      "description_ru": "Крупный СПГ-терминал на полуострове Ямал. Частые рейсы судов Eco Shipping и ТК Норд.",
-      "center": [72.55, 71.25],
-      "zoom": 11
+      "id": "murmansk",
+      "name_en": "Murmansk",
+      "name_ru": "Мурманск",
+      "description_en": "World's largest port north of the polar circle. Primary departure point for Northern Sea Route voyages. Home to Russia's icebreaker fleet. Multiple activity hotspots nearby.",
+      "description_ru": "Крупнейший в мире порт к северу от полярного круга. Основная точка отправления рейсов по Северному морскому пути. База российского ледокольного флота.",
+      "center": [33.05, 68.97],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-4", "hotspot-9", "hotspot-18", "hotspot-20", "hotspot-29"]
+    },
+    {
+      "id": "arkhangelsk",
+      "name_en": "Arkhangelsk",
+      "name_ru": "Архангельск",
+      "description_en": "Historic Russian Arctic port on the Northern Dvina River. Base for Transstroy shipping company. Alternative departure point for NSR voyages.",
+      "description_ru": "Исторический российский арктический порт на реке Северная Двина. База судоходной компании «Трансстрой». Альтернативная точка отправления рейсов по СМП.",
+      "center": [40.54, 64.54],
+      "zoom": 10,
+      "hotspot_ids": ["hotspot-27"]
+    },
+    {
+      "id": "ob-gulf-yamal",
+      "name_en": "Ob Gulf / Yamal Activity",
+      "name_ru": "Обская губа / активность Ямала",
+      "description_en": "High activity corridor connecting Sabetta LNG with southern ports. Multiple hotspots showing 256-566x increase in vessel activity since 2022.",
+      "description_ru": "Коридор высокой активности, соединяющий СПГ-терминал Сабетта с южными портами. Множество очагов активности с ростом в 256-566 раз с 2022 года.",
+      "center": [73.5, 69.1],
+      "zoom": 8,
+      "hotspot_ids": ["hotspot-15", "hotspot-21"]
+    },
+    {
+      "id": "kara-sea-central",
+      "name_en": "Central Kara Sea Activity",
+      "name_ru": "Активность в центре Карского моря",
+      "description_en": "Area of increased vessel activity between Yamal and Taimyr peninsulas. Hotspots show 37-99x increase, likely related to Vostok Oil logistics.",
+      "description_ru": "Район повышенной судоходной активности между полуостровами Ямал и Таймыр. Очаги показывают рост в 37-99 раз, вероятно связанный с логистикой «Восток Ойл».",
+      "center": [81.03, 72.4],
+      "zoom": 8,
+      "hotspot_ids": ["hotspot-25", "hotspot-26", "hotspot-10", "hotspot-11"]
+    },
+    {
+      "id": "laptev-lena",
+      "name_en": "Laptev Sea / Lena Delta Activity",
+      "name_ru": "Активность в море Лаптевых / дельте Лены",
+      "description_en": "Activity hotspot near Lena River delta showing 625x increase. Possibly related to mineral extraction or infrastructure projects.",
+      "description_ru": "Очаг активности у дельты реки Лены с ростом в 625 раз. Возможно связан с добычей полезных ископаемых или инфраструктурными проектами.",
+      "center": [136.73, 71.74],
+      "zoom": 9,
+      "hotspot_ids": ["hotspot-3"]
+    },
+    {
+      "id": "pechora-novaya-zemlya",
+      "name_en": "Pechora Sea / Novaya Zemlya Strait",
+      "name_ru": "Печорское море / пролив Новой Земли",
+      "description_en": "Activity hotspots near Vaygach Island and Kara Gate. Key transit zone between Barents and Kara Seas showing 450-810x increase.",
+      "description_ru": "Очаги активности у острова Вайгач и Карских Ворот. Ключевая транзитная зона между Баренцевым и Карским морями с ростом в 450-810 раз.",
+      "center": [58.5, 69.5],
+      "zoom": 8,
+      "hotspot_ids": ["hotspot-7", "hotspot-16", "hotspot-22", "hotspot-23", "hotspot-24"]
+    },
+    {
+      "id": "east-siberian-chukotka",
+      "name_en": "East Siberian Sea Activity",
+      "name_ru": "Активность в Восточно-Сибирском море",
+      "description_en": "New activity zone showing vessel movements not recorded in 2022-2023. Possibly related to new mining or infrastructure projects in Chukotka.",
+      "description_ru": "Новая зона активности с судоходством, не зафиксированным в 2022-2023 годах. Возможно связана с новыми горнодобывающими или инфраструктурными проектами на Чукотке.",
+      "center": [162.51, 69.78],
+      "zoom": 9,
+      "hotspot_ids": ["hotspot-19"]
     }
   ]
 }
