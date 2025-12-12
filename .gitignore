@@ -1,4 +1,6 @@
 # Data - raw and intermediate files
+data/.*.done
+data/*.jsonl
 data/gfw/
 data/temp/
 data/backups/
@@ -55,6 +57,7 @@ __pycache__/
 
 # Node.js
 node_modules/
+package-lock.json
 
 # Static deployment bundle
 dist/
