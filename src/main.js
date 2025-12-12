@@ -198,6 +198,10 @@ const map = new maplibregl.Map({
         type: 'vector',
         url: 'pmtiles://' + basePath + 'data/places.pmtiles',
         attribution: 'Natural Earth'
+      },
+      'activity-hotspots': {
+        type: 'geojson',
+        data: basePath + 'data/places/activity_hotspots.geojson'
       }
     },
     layers: [
@@ -328,6 +332,16 @@ const map = new maplibregl.Map({
           'raster-resampling': 'nearest',  // Keep pixels crisp, no blur
           'raster-brightness-max': 1,      // Boost brightness
           'raster-contrast': 0.3           // Increase contrast to make it pop
+        }
+      },
+      {
+        id: 'activity-hotspots-line',
+        type: 'line',
+        source: 'activity-hotspots',
+        paint: {
+          'line-color': '#ffff00',
+          'line-width': 2,
+          'line-opacity': 0.9
         }
       },
       {
