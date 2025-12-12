@@ -1,0 +1,1235 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-1",
+        "name_en": "Activity Hotspot #1",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #1",
+        "description_en": "734x increase vs 2022-2023. 12 vessel-months of activity in 2024 across 33 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 734 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 12 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 33 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 8522,
+        "growth_ratio": 734.17,
+        "cell_count": 33,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.5,
+              73.09
+            ],
+            [
+              80.62,
+              73.09
+            ],
+            [
+              80.62,
+              73.23
+            ],
+            [
+              80.5,
+              73.23
+            ],
+            [
+              80.5,
+              73.09
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-2",
+        "name_en": "Activity Hotspot #2",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #2",
+        "description_en": "496x increase vs 2022-2023. 11 vessel-months of activity in 2024 across 31 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 496 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 11 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 31 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 8198,
+        "growth_ratio": 496.05,
+        "cell_count": 31,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.23,
+              73.09
+            ],
+            [
+              80.49,
+              73.09
+            ],
+            [
+              80.49,
+              73.22
+            ],
+            [
+              80.23,
+              73.22
+            ],
+            [
+              80.23,
+              73.09
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-3",
+        "name_en": "Activity Hotspot #3",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #3",
+        "description_en": "625x increase vs 2022-2023. 6 vessel-months of activity in 2024 across 14 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 625 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 6 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 14 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 4591,
+        "growth_ratio": 625.04,
+        "cell_count": 14,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              136.53,
+              71.52
+            ],
+            [
+              136.91,
+              71.52
+            ],
+            [
+              136.91,
+              71.8
+            ],
+            [
+              136.53,
+              71.8
+            ],
+            [
+              136.53,
+              71.52
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-4",
+        "name_en": "Activity Hotspot #4",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #4",
+        "description_en": "61x increase vs 2022-2023. 6 vessel-months of activity in 2024 across 19 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 61 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 6 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 19 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 4192,
+        "growth_ratio": 60.7,
+        "cell_count": 19,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              30.57,
+              70.12
+            ],
+            [
+              30.95,
+              70.12
+            ],
+            [
+              30.95,
+              70.26
+            ],
+            [
+              30.57,
+              70.26
+            ],
+            [
+              30.57,
+              70.12
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-5",
+        "name_en": "Activity Hotspot #5",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #5",
+        "description_en": "766x increase vs 2022-2023. 5 vessel-months of activity in 2024 across 11 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 766 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 5 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 11 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 3254,
+        "growth_ratio": 766.47,
+        "cell_count": 11,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              169.44,
+              69.03
+            ],
+            [
+              169.49,
+              69.03
+            ],
+            [
+              169.49,
+              69.05
+            ],
+            [
+              169.44,
+              69.05
+            ],
+            [
+              169.44,
+              69.03
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-6",
+        "name_en": "Activity Hotspot #6",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #6",
+        "description_en": "468x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 8 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 468 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 8 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 1498,
+        "growth_ratio": 467.51,
+        "cell_count": 8,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              170.22,
+              69.71
+            ],
+            [
+              170.48,
+              69.71
+            ],
+            [
+              170.48,
+              69.79
+            ],
+            [
+              170.22,
+              69.79
+            ],
+            [
+              170.22,
+              69.71
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-7",
+        "name_en": "Activity Hotspot #7",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #7",
+        "description_en": "450x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 450 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 1259,
+        "growth_ratio": 449.61,
+        "cell_count": 6,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              59.53,
+              68.95
+            ],
+            [
+              59.64,
+              68.95
+            ],
+            [
+              59.64,
+              68.97
+            ],
+            [
+              59.53,
+              68.97
+            ],
+            [
+              59.53,
+              68.95
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-8",
+        "name_en": "Activity Hotspot #8",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #8",
+        "description_en": "535x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 535 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 1215,
+        "growth_ratio": 535.24,
+        "cell_count": 6,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              85.08,
+              69.71
+            ],
+            [
+              85.39,
+              69.71
+            ],
+            [
+              85.39,
+              69.76
+            ],
+            [
+              85.08,
+              69.76
+            ],
+            [
+              85.08,
+              69.71
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-9",
+        "name_en": "Activity Hotspot #9",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #9",
+        "description_en": "405x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 405 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 1117,
+        "growth_ratio": 405.0,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              30.64,
+              69.82
+            ],
+            [
+              30.7,
+              69.82
+            ],
+            [
+              30.7,
+              69.82
+            ],
+            [
+              30.64,
+              69.82
+            ],
+            [
+              30.64,
+              69.82
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-10",
+        "name_en": "Activity Hotspot #10",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #10",
+        "description_en": "62x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 62 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 1108,
+        "growth_ratio": 62.19,
+        "cell_count": 6,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              83.53,
+              70.68
+            ],
+            [
+              83.59,
+              70.68
+            ],
+            [
+              83.59,
+              70.76
+            ],
+            [
+              83.53,
+              70.76
+            ],
+            [
+              83.53,
+              70.68
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-11",
+        "name_en": "Activity Hotspot #11",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #11",
+        "description_en": "99x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 99 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 975,
+        "growth_ratio": 98.71,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              83.25,
+              71.58
+            ],
+            [
+              83.42,
+              71.58
+            ],
+            [
+              83.42,
+              71.75
+            ],
+            [
+              83.25,
+              71.75
+            ],
+            [
+              83.25,
+              71.58
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-12",
+        "name_en": "Activity Hotspot #12",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #12",
+        "description_en": "566x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 6 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 566 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 948,
+        "growth_ratio": 565.83,
+        "cell_count": 6,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.61,
+              69.1
+            ],
+            [
+              73.81,
+              69.1
+            ],
+            [
+              73.81,
+              69.15
+            ],
+            [
+              73.61,
+              69.15
+            ],
+            [
+              73.61,
+              69.1
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-13",
+        "name_en": "Activity Hotspot #13",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #13",
+        "description_en": "256x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 6 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 256 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 871,
+        "growth_ratio": 256.39,
+        "cell_count": 6,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.32,
+              67.56
+            ],
+            [
+              78.38,
+              67.56
+            ],
+            [
+              78.38,
+              67.57
+            ],
+            [
+              78.32,
+              67.57
+            ],
+            [
+              78.32,
+              67.56
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-14",
+        "name_en": "Activity Hotspot #14",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #14",
+        "description_en": "new activity (none in 2022-2023). 1 vessel-months of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 854,
+        "growth_ratio": 999.0,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              170.56,
+              69.58
+            ],
+            [
+              170.58,
+              69.58
+            ],
+            [
+              170.58,
+              69.58
+            ],
+            [
+              170.56,
+              69.58
+            ],
+            [
+              170.56,
+              69.58
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-15",
+        "name_en": "Activity Hotspot #15",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #15",
+        "description_en": "368x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 368 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 792,
+        "growth_ratio": 367.82,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.39,
+              68.32
+            ],
+            [
+              73.46,
+              68.32
+            ],
+            [
+              73.46,
+              68.32
+            ],
+            [
+              73.39,
+              68.32
+            ],
+            [
+              73.39,
+              68.32
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-16",
+        "name_en": "Activity Hotspot #16",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #16",
+        "description_en": "796x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 796 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 775,
+        "growth_ratio": 796.38,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              58.03,
+              68.85
+            ],
+            [
+              58.17,
+              68.85
+            ],
+            [
+              58.17,
+              68.86
+            ],
+            [
+              58.03,
+              68.86
+            ],
+            [
+              58.03,
+              68.85
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-17",
+        "name_en": "Activity Hotspot #17",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #17",
+        "description_en": "411x increase vs 2022-2023. 710 vessel-hours of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 411 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 710 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 710,
+        "growth_ratio": 411.36,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              129.25,
+              71.58
+            ],
+            [
+              129.31,
+              71.58
+            ],
+            [
+              129.31,
+              71.63
+            ],
+            [
+              129.25,
+              71.63
+            ],
+            [
+              129.25,
+              71.58
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-18",
+        "name_en": "Activity Hotspot #18",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #18",
+        "description_en": "486x increase vs 2022-2023. 681 vessel-hours of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 486 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 681 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 681,
+        "growth_ratio": 485.58,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              32.12,
+              69.67
+            ],
+            [
+              32.15,
+              69.67
+            ],
+            [
+              32.15,
+              69.68
+            ],
+            [
+              32.12,
+              69.68
+            ],
+            [
+              32.12,
+              69.67
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-19",
+        "name_en": "Activity Hotspot #19",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #19",
+        "description_en": "new activity (none in 2022-2023). 678 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 678 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 678,
+        "growth_ratio": 999.0,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              162.5,
+              69.76
+            ],
+            [
+              162.53,
+              69.76
+            ],
+            [
+              162.53,
+              69.79
+            ],
+            [
+              162.5,
+              69.79
+            ],
+            [
+              162.5,
+              69.76
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-20",
+        "name_en": "Activity Hotspot #20",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #20",
+        "description_en": "41x increase vs 2022-2023. 672 vessel-hours of activity in 2024 across 5 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 41 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 672 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 5 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 672,
+        "growth_ratio": 41.28,
+        "cell_count": 5,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              30.04,
+              70.02
+            ],
+            [
+              30.45,
+              70.02
+            ],
+            [
+              30.45,
+              70.12
+            ],
+            [
+              30.04,
+              70.12
+            ],
+            [
+              30.04,
+              70.02
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-21",
+        "name_en": "Activity Hotspot #21",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #21",
+        "description_en": "530x increase vs 2022-2023. 645 vessel-hours of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 530 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 645 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 645,
+        "growth_ratio": 529.69,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              67.8,
+              69.2
+            ],
+            [
+              67.84,
+              69.2
+            ],
+            [
+              67.84,
+              69.38
+            ],
+            [
+              67.8,
+              69.38
+            ],
+            [
+              67.8,
+              69.2
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-22",
+        "name_en": "Activity Hotspot #22",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #22",
+        "description_en": "new activity (none in 2022-2023). 584 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 584 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 584,
+        "growth_ratio": 999.0,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              60.58,
+              69.07
+            ],
+            [
+              60.76,
+              69.07
+            ],
+            [
+              60.76,
+              69.25
+            ],
+            [
+              60.58,
+              69.25
+            ],
+            [
+              60.58,
+              69.07
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-23",
+        "name_en": "Activity Hotspot #23",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #23",
+        "description_en": "801x increase vs 2022-2023. 538 vessel-hours of activity in 2024 across 5 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 801 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 538 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 5 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 538,
+        "growth_ratio": 801.44,
+        "cell_count": 5,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              58.71,
+              70.21
+            ],
+            [
+              58.77,
+              70.21
+            ],
+            [
+              58.77,
+              70.22
+            ],
+            [
+              58.71,
+              70.22
+            ],
+            [
+              58.71,
+              70.21
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-24",
+        "name_en": "Activity Hotspot #24",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #24",
+        "description_en": "810x increase vs 2022-2023. 524 vessel-hours of activity in 2024 across 4 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 810 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 524 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 524,
+        "growth_ratio": 809.75,
+        "cell_count": 4,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              48.63,
+              70.15
+            ],
+            [
+              48.79,
+              70.15
+            ],
+            [
+              48.79,
+              70.19
+            ],
+            [
+              48.63,
+              70.19
+            ],
+            [
+              48.63,
+              70.15
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-25",
+        "name_en": "Activity Hotspot #25",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #25",
+        "description_en": "37x increase vs 2022-2023. 484 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 37 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 484 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 484,
+        "growth_ratio": 37.29,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              81.0,
+              72.39
+            ],
+            [
+              81.07,
+              72.39
+            ],
+            [
+              81.07,
+              72.41
+            ],
+            [
+              81.0,
+              72.41
+            ],
+            [
+              81.0,
+              72.39
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-26",
+        "name_en": "Activity Hotspot #26",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #26",
+        "description_en": "450x increase vs 2022-2023. 471 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 450 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 471 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 471,
+        "growth_ratio": 450.33,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              80.12,
+              72.87
+            ],
+            [
+              80.3,
+              72.87
+            ],
+            [
+              80.3,
+              72.97
+            ],
+            [
+              80.12,
+              72.97
+            ],
+            [
+              80.12,
+              72.87
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-27",
+        "name_en": "Activity Hotspot #27",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #27",
+        "description_en": "121x increase vs 2022-2023. 450 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 121 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 450 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 450,
+        "growth_ratio": 121.23,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              39.92,
+              65.06
+            ],
+            [
+              39.98,
+              65.06
+            ],
+            [
+              39.98,
+              65.08
+            ],
+            [
+              39.92,
+              65.08
+            ],
+            [
+              39.92,
+              65.06
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-28",
+        "name_en": "Activity Hotspot #28",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #28",
+        "description_en": "new activity (none in 2022-2023). 424 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 424 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 424,
+        "growth_ratio": 999.0,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              109.29,
+              73.73
+            ],
+            [
+              109.34,
+              73.73
+            ],
+            [
+              109.34,
+              73.77
+            ],
+            [
+              109.29,
+              73.77
+            ],
+            [
+              109.29,
+              73.73
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-29",
+        "name_en": "Activity Hotspot #29",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #29",
+        "description_en": "14x increase vs 2022-2023. 400 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 14 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 400 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 400,
+        "growth_ratio": 14.01,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              30.77,
+              70.68
+            ],
+            [
+              30.79,
+              70.68
+            ],
+            [
+              30.79,
+              70.69
+            ],
+            [
+              30.77,
+              70.69
+            ],
+            [
+              30.77,
+              70.68
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hotspot-30",
+        "name_en": "Activity Hotspot #30",
+        "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #30",
+        "description_en": "344x increase vs 2022-2023. 391 vessel-hours of activity in 2024 across 3 grid cells.",
+        "description_ru": "\u0440\u043e\u0441\u0442 \u0432 344 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 391 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+        "hours_target": 391,
+        "growth_ratio": 343.53,
+        "cell_count": 3,
+        "target_year": 2024
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              73.25,
+              71.1
+            ],
+            [
+              73.32,
+              71.1
+            ],
+            [
+              73.32,
+              71.32
+            ],
+            [
+              73.25,
+              71.32
+            ],
+            [
+              73.25,
+              71.1
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}
