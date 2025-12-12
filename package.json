@@ -16,6 +16,7 @@
     "pmtiles": "^4.3.0"
   },
   "devDependencies": {
-    "vite": "^7.2.7"
+    "vite": "^7.2.7",
+    "vite-plugin-compression": "^0.5.1"
   }
 }
