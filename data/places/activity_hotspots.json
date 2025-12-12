@@ -1,0 +1,874 @@
+{
+  "hotspots": [
+    {
+      "id": "hotspot-1",
+      "name_en": "Activity Hotspot #1",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #1",
+      "description_en": "734x increase vs 2022-2023. 12 vessel-months of activity in 2024 across 33 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 734 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 12 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 33 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        80.54,
+        73.13
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 33,
+        "hours_target": 8522,
+        "baseline_avg": 28.5,
+        "growth_ratio": 734.17,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 73.09,
+          "max_lat": 73.23,
+          "min_lon": 80.5,
+          "max_lon": 80.62
+        }
+      }
+    },
+    {
+      "id": "hotspot-2",
+      "name_en": "Activity Hotspot #2",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #2",
+      "description_en": "496x increase vs 2022-2023. 11 vessel-months of activity in 2024 across 31 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 496 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 11 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 31 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        80.42,
+        73.13
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 31,
+        "hours_target": 8198,
+        "baseline_avg": 57.0,
+        "growth_ratio": 496.05,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 73.09,
+          "max_lat": 73.22,
+          "min_lon": 80.23,
+          "max_lon": 80.49
+        }
+      }
+    },
+    {
+      "id": "hotspot-3",
+      "name_en": "Activity Hotspot #3",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #3",
+      "description_en": "625x increase vs 2022-2023. 6 vessel-months of activity in 2024 across 14 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 625 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 6 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 14 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        136.73,
+        71.74
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 14,
+        "hours_target": 4591,
+        "baseline_avg": 19.0,
+        "growth_ratio": 625.04,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 71.52,
+          "max_lat": 71.8,
+          "min_lon": 136.53,
+          "max_lon": 136.91
+        }
+      }
+    },
+    {
+      "id": "hotspot-4",
+      "name_en": "Activity Hotspot #4",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #4",
+      "description_en": "61x increase vs 2022-2023. 6 vessel-months of activity in 2024 across 19 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 61 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 6 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 19 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        30.67,
+        70.18
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 19,
+        "hours_target": 4192,
+        "baseline_avg": 111.5,
+        "growth_ratio": 60.7,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.12,
+          "max_lat": 70.26,
+          "min_lon": 30.57,
+          "max_lon": 30.95
+        }
+      }
+    },
+    {
+      "id": "hotspot-5",
+      "name_en": "Activity Hotspot #5",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #5",
+      "description_en": "766x increase vs 2022-2023. 5 vessel-months of activity in 2024 across 11 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 766 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 5 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 11 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        169.46,
+        69.04
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 11,
+        "hours_target": 3254,
+        "baseline_avg": 9.0,
+        "growth_ratio": 766.47,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.03,
+          "max_lat": 69.05,
+          "min_lon": 169.44,
+          "max_lon": 169.49
+        }
+      }
+    },
+    {
+      "id": "hotspot-6",
+      "name_en": "Activity Hotspot #6",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #6",
+      "description_en": "468x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 8 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 468 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 8 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        170.31,
+        69.74
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 8,
+        "hours_target": 1498,
+        "baseline_avg": 19.0,
+        "growth_ratio": 467.51,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.71,
+          "max_lat": 69.79,
+          "min_lon": 170.22,
+          "max_lon": 170.48
+        }
+      }
+    },
+    {
+      "id": "hotspot-7",
+      "name_en": "Activity Hotspot #7",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #7",
+      "description_en": "450x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 450 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        59.58,
+        68.96
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 6,
+        "hours_target": 1259,
+        "baseline_avg": 5.5,
+        "growth_ratio": 449.61,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 68.95,
+          "max_lat": 68.97,
+          "min_lon": 59.53,
+          "max_lon": 59.64
+        }
+      }
+    },
+    {
+      "id": "hotspot-8",
+      "name_en": "Activity Hotspot #8",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #8",
+      "description_en": "535x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 535 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        85.19,
+        69.75
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 6,
+        "hours_target": 1215,
+        "baseline_avg": 17.0,
+        "growth_ratio": 535.24,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.71,
+          "max_lat": 69.76,
+          "min_lon": 85.08,
+          "max_lon": 85.39
+        }
+      }
+    },
+    {
+      "id": "hotspot-9",
+      "name_en": "Activity Hotspot #9",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #9",
+      "description_en": "405x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 405 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        30.66,
+        69.82
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 1117,
+        "baseline_avg": 3.0,
+        "growth_ratio": 405.0,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.82,
+          "max_lat": 69.82,
+          "min_lon": 30.64,
+          "max_lon": 30.7
+        }
+      }
+    },
+    {
+      "id": "hotspot-10",
+      "name_en": "Activity Hotspot #10",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #10",
+      "description_en": "62x increase vs 2022-2023. 2 vessel-months of activity in 2024 across 6 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 62 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 2 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        83.54,
+        70.72
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 6,
+        "hours_target": 1108,
+        "baseline_avg": 27.5,
+        "growth_ratio": 62.19,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.68,
+          "max_lat": 70.76,
+          "min_lon": 83.53,
+          "max_lon": 83.59
+        }
+      }
+    },
+    {
+      "id": "hotspot-11",
+      "name_en": "Activity Hotspot #11",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #11",
+      "description_en": "99x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 99 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        83.31,
+        71.71
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 975,
+        "baseline_avg": 23.0,
+        "growth_ratio": 98.71,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 71.58,
+          "max_lat": 71.75,
+          "min_lon": 83.25,
+          "max_lon": 83.42
+        }
+      }
+    },
+    {
+      "id": "hotspot-12",
+      "name_en": "Activity Hotspot #12",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #12",
+      "description_en": "566x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 6 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 566 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        73.71,
+        69.13
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 6,
+        "hours_target": 948,
+        "baseline_avg": 3.5,
+        "growth_ratio": 565.83,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.1,
+          "max_lat": 69.15,
+          "min_lon": 73.61,
+          "max_lon": 73.81
+        }
+      }
+    },
+    {
+      "id": "hotspot-13",
+      "name_en": "Activity Hotspot #13",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #13",
+      "description_en": "256x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 6 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 256 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 6 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        78.34,
+        67.56
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 6,
+        "hours_target": 871,
+        "baseline_avg": 12.0,
+        "growth_ratio": 256.39,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 67.56,
+          "max_lat": 67.57,
+          "min_lon": 78.32,
+          "max_lon": 78.38
+        }
+      }
+    },
+    {
+      "id": "hotspot-14",
+      "name_en": "Activity Hotspot #14",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #14",
+      "description_en": "new activity (none in 2022-2023). 1 vessel-months of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        170.57,
+        69.58
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 854,
+        "baseline_avg": 0.0,
+        "growth_ratio": 999.0,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.58,
+          "max_lat": 69.58,
+          "min_lon": 170.56,
+          "max_lon": 170.58
+        }
+      }
+    },
+    {
+      "id": "hotspot-15",
+      "name_en": "Activity Hotspot #15",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #15",
+      "description_en": "368x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 368 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        73.44,
+        68.32
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 792,
+        "baseline_avg": 14.5,
+        "growth_ratio": 367.82,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 68.32,
+          "max_lat": 68.32,
+          "min_lon": 73.39,
+          "max_lon": 73.46
+        }
+      }
+    },
+    {
+      "id": "hotspot-16",
+      "name_en": "Activity Hotspot #16",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #16",
+      "description_en": "796x increase vs 2022-2023. 1 vessel-months of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 796 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 1 \u0441\u0443\u0434\u043d\u043e-\u043c\u0435\u0441\u044f\u0446\u0435\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        58.11,
+        68.85
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 775,
+        "baseline_avg": 2.0,
+        "growth_ratio": 796.38,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 68.85,
+          "max_lat": 68.86,
+          "min_lon": 58.03,
+          "max_lon": 58.17
+        }
+      }
+    },
+    {
+      "id": "hotspot-17",
+      "name_en": "Activity Hotspot #17",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #17",
+      "description_en": "411x increase vs 2022-2023. 710 vessel-hours of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 411 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 710 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        129.28,
+        71.62
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 710,
+        "baseline_avg": 5.0,
+        "growth_ratio": 411.36,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 71.58,
+          "max_lat": 71.63,
+          "min_lon": 129.25,
+          "max_lon": 129.31
+        }
+      }
+    },
+    {
+      "id": "hotspot-18",
+      "name_en": "Activity Hotspot #18",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #18",
+      "description_en": "486x increase vs 2022-2023. 681 vessel-hours of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 486 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 681 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        32.13,
+        69.67
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 681,
+        "baseline_avg": 2.5,
+        "growth_ratio": 485.58,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.67,
+          "max_lat": 69.68,
+          "min_lon": 32.12,
+          "max_lon": 32.15
+        }
+      }
+    },
+    {
+      "id": "hotspot-19",
+      "name_en": "Activity Hotspot #19",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #19",
+      "description_en": "new activity (none in 2022-2023). 678 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 678 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        162.51,
+        69.78
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 678,
+        "baseline_avg": 0.0,
+        "growth_ratio": 999.0,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.76,
+          "max_lat": 69.79,
+          "min_lon": 162.5,
+          "max_lon": 162.53
+        }
+      }
+    },
+    {
+      "id": "hotspot-20",
+      "name_en": "Activity Hotspot #20",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #20",
+      "description_en": "41x increase vs 2022-2023. 672 vessel-hours of activity in 2024 across 5 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 41 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 672 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 5 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        30.26,
+        70.09
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 5,
+        "hours_target": 672,
+        "baseline_avg": 18.5,
+        "growth_ratio": 41.28,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.02,
+          "max_lat": 70.12,
+          "min_lon": 30.04,
+          "max_lon": 30.45
+        }
+      }
+    },
+    {
+      "id": "hotspot-21",
+      "name_en": "Activity Hotspot #21",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #21",
+      "description_en": "530x increase vs 2022-2023. 645 vessel-hours of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 530 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 645 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        67.83,
+        69.27
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 645,
+        "baseline_avg": 7.0,
+        "growth_ratio": 529.69,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.2,
+          "max_lat": 69.38,
+          "min_lon": 67.8,
+          "max_lon": 67.84
+        }
+      }
+    },
+    {
+      "id": "hotspot-22",
+      "name_en": "Activity Hotspot #22",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #22",
+      "description_en": "new activity (none in 2022-2023). 584 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 584 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        60.73,
+        69.1
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 584,
+        "baseline_avg": 0.0,
+        "growth_ratio": 999.0,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 69.07,
+          "max_lat": 69.25,
+          "min_lon": 60.58,
+          "max_lon": 60.76
+        }
+      }
+    },
+    {
+      "id": "hotspot-23",
+      "name_en": "Activity Hotspot #23",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #23",
+      "description_en": "801x increase vs 2022-2023. 538 vessel-hours of activity in 2024 across 5 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 801 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 538 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 5 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        58.73,
+        70.22
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 5,
+        "hours_target": 538,
+        "baseline_avg": 9.0,
+        "growth_ratio": 801.44,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.21,
+          "max_lat": 70.22,
+          "min_lon": 58.71,
+          "max_lon": 58.77
+        }
+      }
+    },
+    {
+      "id": "hotspot-24",
+      "name_en": "Activity Hotspot #24",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #24",
+      "description_en": "810x increase vs 2022-2023. 524 vessel-hours of activity in 2024 across 4 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 810 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 524 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 4 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        48.73,
+        70.17
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 4,
+        "hours_target": 524,
+        "baseline_avg": 0.5,
+        "growth_ratio": 809.75,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.15,
+          "max_lat": 70.19,
+          "min_lon": 48.63,
+          "max_lon": 48.79
+        }
+      }
+    },
+    {
+      "id": "hotspot-25",
+      "name_en": "Activity Hotspot #25",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #25",
+      "description_en": "37x increase vs 2022-2023. 484 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 37 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 484 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        81.03,
+        72.4
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 484,
+        "baseline_avg": 16.0,
+        "growth_ratio": 37.29,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 72.39,
+          "max_lat": 72.41,
+          "min_lon": 81.0,
+          "max_lon": 81.07
+        }
+      }
+    },
+    {
+      "id": "hotspot-26",
+      "name_en": "Activity Hotspot #26",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #26",
+      "description_en": "450x increase vs 2022-2023. 471 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 450 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 471 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        80.22,
+        72.93
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 471,
+        "baseline_avg": 1.5,
+        "growth_ratio": 450.33,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 72.87,
+          "max_lat": 72.97,
+          "min_lon": 80.12,
+          "max_lon": 80.3
+        }
+      }
+    },
+    {
+      "id": "hotspot-27",
+      "name_en": "Activity Hotspot #27",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #27",
+      "description_en": "121x increase vs 2022-2023. 450 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 121 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 450 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        39.95,
+        65.07
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 450,
+        "baseline_avg": 5.0,
+        "growth_ratio": 121.23,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 65.06,
+          "max_lat": 65.08,
+          "min_lon": 39.92,
+          "max_lon": 39.98
+        }
+      }
+    },
+    {
+      "id": "hotspot-28",
+      "name_en": "Activity Hotspot #28",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #28",
+      "description_en": "new activity (none in 2022-2023). 424 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u043d\u043e\u0432\u0430\u044f \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u044c (\u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u043e\u0432\u0430\u043b\u0430 \u0432 2022-2023). 424 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        109.32,
+        73.76
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 424,
+        "baseline_avg": 0.0,
+        "growth_ratio": 999.0,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 73.73,
+          "max_lat": 73.77,
+          "min_lon": 109.29,
+          "max_lon": 109.34
+        }
+      }
+    },
+    {
+      "id": "hotspot-29",
+      "name_en": "Activity Hotspot #29",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #29",
+      "description_en": "14x increase vs 2022-2023. 400 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 14 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 400 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        30.78,
+        70.68
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 400,
+        "baseline_avg": 28.5,
+        "growth_ratio": 14.01,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 70.68,
+          "max_lat": 70.69,
+          "min_lon": 30.77,
+          "max_lon": 30.79
+        }
+      }
+    },
+    {
+      "id": "hotspot-30",
+      "name_en": "Activity Hotspot #30",
+      "name_ru": "\u041e\u0447\u0430\u0433 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 #30",
+      "description_en": "344x increase vs 2022-2023. 391 vessel-hours of activity in 2024 across 3 grid cells.",
+      "description_ru": "\u0440\u043e\u0441\u0442 \u0432 344 \u0440\u0430\u0437 \u043f\u043e \u0441\u0440\u0430\u0432\u043d\u0435\u043d\u0438\u044e \u0441 2022-2023. 391 \u0441\u0443\u0434\u043d\u043e-\u0447\u0430\u0441\u043e\u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0441\u0442\u0438 \u0432 2024 \u0433\u043e\u0434\u0443 \u0432 3 \u044f\u0447\u0435\u0439\u043a\u0430\u0445.",
+      "center": [
+        73.28,
+        71.25
+      ],
+      "zoom": 10,
+      "metadata": {
+        "cell_count": 3,
+        "hours_target": 391,
+        "baseline_avg": 15.0,
+        "growth_ratio": 343.53,
+        "target_year": 2024,
+        "baseline_years": [
+          2023,
+          2022
+        ],
+        "bounds": {
+          "min_lat": 71.1,
+          "max_lat": 71.32,
+          "min_lon": 73.25,
+          "max_lon": 73.32
+        }
+      }
+    }
+  ]
+}
