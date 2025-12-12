@@ -9,26 +9,6 @@ const YEAR_COLORS = {
   2022: 'rgb(0, 255, 255)'   // Cyan (oldest)
 }
 
-// Set random favicon from year colors
-function setRandomFavicon() {
-  const colors = Object.values(YEAR_COLORS)
-  const randomColor = colors[Math.floor(Math.random() * colors.length)]
-
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='${randomColor}'/></svg>`
-  const encodedSvg = encodeURIComponent(svg)
-
-  const existing = document.querySelector("link[rel*='icon']")
-  if (existing) {
-    existing.href = `data:image/svg+xml,${encodedSvg}`
-  } else {
-    const link = document.createElement('link')
-    link.type = 'image/svg+xml'
-    link.rel = 'icon'
-    link.href = `data:image/svg+xml,${encodedSvg}`
-    document.head.appendChild(link)
-  }
-}
-
 // Internationalization
 const i18n = {
   en: {
@@ -116,9 +96,6 @@ document.getElementById('lang-toggle').addEventListener('click', () => {
 
 // Update UI on resize for responsive legend labels
 window.addEventListener('resize', updateUI)
-
-// Set random favicon on page load
-setRandomFavicon()
 
 // Generate year legend items dynamically from YEAR_COLORS
 function initYearLegend() {
