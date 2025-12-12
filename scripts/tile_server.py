@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image
 from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from rio_tiler.io import Reader
@@ -122,6 +123,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)  # Compress responses > 1KB
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
