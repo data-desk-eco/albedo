@@ -57,7 +57,7 @@ const i18n = {
   }
 }
 
-let lang = 'en'
+let lang = 'ru'
 const t = (key) => i18n[lang][key]
 
 function updateUI() {
@@ -89,8 +89,8 @@ function updateUI() {
 }
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
-  lang = lang === 'en' ? 'ru' : 'en'
-  document.getElementById('lang-toggle').textContent = lang === 'en' ? 'РУ' : 'EN'
+  lang = lang === 'ru' ? 'en' : 'ru'
+  document.getElementById('lang-toggle').textContent = lang === 'ru' ? 'EN' : 'РУ'
   updateUI()
 })
 
@@ -400,7 +400,7 @@ const map = new maplibregl.Map({
         'source-layer': 'places',
         minzoom: 2,
         layout: {
-          'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name_ru']],
+          'text-field': ['coalesce', ['get', 'name_ru'], ['get', 'name_en']],
           'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
           'text-size': [
             'interpolate',
