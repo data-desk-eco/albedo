@@ -2,11 +2,23 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import * as pmtiles from 'pmtiles'
 
+// Arctida brand colors
+const ARCTIDA_COLORS = {
+  blueMain: '#1E6AFF',
+  blueHover: '#074DCA',
+  blueDark: '#0D1D3A',
+  darkMain: '#001628',
+  white: '#FFFFFF',
+  turquoiseMain: '#70DFEE',
+  turquoiseLight: '#00D7ED'
+}
+
 // Year colors used throughout the app (heatmap, legend, crossings)
+// Using Arctida brand palette - distinct colors for visibility
 const YEAR_COLORS = {
-  2024: 'rgb(255, 0, 255)',  // Magenta (latest)
-  2023: 'rgb(0, 255, 0)',    // Green (middle)
-  2022: 'rgb(0, 255, 255)'   // Cyan (oldest)
+  2024: '#FFFFFF',           // White (latest) - ice color, most visible
+  2023: '#70DFEE',           // Turquoise Main
+  2022: '#85BBFF'            // Light Blue from Arctida palette
 }
 
 // Internationalization
@@ -209,7 +221,7 @@ const map = new maplibregl.Map({
         id: 'background',
         type: 'background',
         paint: {
-          'background-color': '#000000'
+          'background-color': ARCTIDA_COLORS.blueMain  // Arctida blue sea
         }
       },
       {
@@ -339,7 +351,7 @@ const map = new maplibregl.Map({
         type: 'line',
         source: 'activity-hotspots',
         paint: {
-          'line-color': '#ffff00',
+          'line-color': ARCTIDA_COLORS.white,  // White for visibility on blue
           'line-width': 2,
           'line-opacity': 0.9
         }
@@ -415,9 +427,9 @@ const map = new maplibregl.Map({
           'text-ignore-placement': false
         },
         paint: {
-          'text-color': '#666666',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.5,
+          'text-color': ARCTIDA_COLORS.darkMain,  // Dark navy for labels
+          'text-halo-color': ARCTIDA_COLORS.white,
+          'text-halo-width': 2,
           'text-halo-blur': 0.5
         }
       }
