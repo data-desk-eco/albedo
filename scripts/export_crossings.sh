@@ -31,7 +31,7 @@ COPY (
     vc.centroid_lat as lat,
     vc.position_count
   FROM vessel_crossings vc
-) TO 'data/vessel_crossings.csv' (HEADER, DELIMITER ',');
+) TO '/tmp/vessel_crossings.csv' (HEADER, DELIMITER ',');
 SQL_EOF
 
 # Convert crossings CSV to GeoJSON with point geometries
@@ -41,7 +41,7 @@ import csv
 import json
 
 features = []
-with open('data/vessel_crossings.csv', 'r') as f:
+with open('/tmp/vessel_crossings.csv', 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
         feature = {
@@ -73,14 +73,14 @@ geojson = {
     "features": features
 }
 
-with open('data/vessel_crossings.geojson', 'w') as f:
+with open('/tmp/vessel_crossings.geojson', 'w') as f:
     json.dump(geojson, f)
 
 print(f"✓ Exported {len(features)} crossings")
 PYTHON_EOF
 
 # Generate crossings vector tiles
-if [ -f data/vessel_crossings.geojson ] && [ $(jq '.features | length' data/vessel_crossings.geojson) -gt 0 ]; then
+if [ -f /tmp/vessel_crossings.geojson ] && [ $(jq '.features | length' /tmp/vessel_crossings.geojson) -gt 0 ]; then
   echo "Generating vessel crossings vector tiles..."
   tippecanoe -o data/vessel_crossings.pmtiles \
     --force \
@@ -90,7 +90,7 @@ if [ -f data/vessel_crossings.geojson ] && [ $(jq '.features | length' data/vess
     --no-feature-limit \
     --no-tile-size-limit \
     --layer=crossings \
-    data/vessel_crossings.geojson
+    /tmp/vessel_crossings.geojson
 
   echo "✓ Vessel crossings tiles: data/vessel_crossings.pmtiles"
 else
@@ -98,4 +98,4 @@ else
 fi
 
 # Cleanup
-rm -f data/vessel_crossings.csv data/vessel_crossings.geojson
+rm -f /tmp/vessel_crossings.csv /tmp/vessel_crossings.geojson

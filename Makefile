@@ -51,6 +51,13 @@ data/places.pmtiles: data/ne_10m_populated_places/ne_10m_populated_places.shp
 data/vessel_crossings.pmtiles: data/data.duckdb
 	./scripts/export_crossings.sh
 
+# Export vessel crossings as CSV for review
+export-crossings: data/vessel_crossings.csv
+
+data/vessel_crossings.csv: data/data.duckdb
+	duckdb data/data.duckdb -c "COPY (SELECT feature_id, area_name, vessel_id, mmsi, ship_name, flag, vessel_type, gear_type, total_hours, first_seen, last_seen, year, centroid_lon, centroid_lat, position_count FROM vessel_crossings ORDER BY total_hours DESC) TO 'data/vessel_crossings.csv' (HEADER, DELIMITER ',');"
+	@echo "Exported $$(wc -l < data/vessel_crossings.csv | tr -d ' ') rows to data/vessel_crossings.csv"
+
 #───────────────────────────────────────────────────────────────────────────────
 # Development
 #───────────────────────────────────────────────────────────────────────────────
@@ -98,4 +105,4 @@ logs:
 
 #───────────────────────────────────────────────────────────────────────────────
 
-.PHONY: all fetch convert transform tiles install serve dev build clean deploy logs
+.PHONY: all fetch convert transform tiles export-crossings install serve dev build clean deploy logs
