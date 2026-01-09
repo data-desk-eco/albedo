@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/tiles': 'http://localhost:8000',
         '/data': 'http://localhost:8000',
-        '/places': 'http://localhost:8000'
+        '/api': 'http://localhost:8000'
       }
     }
   }

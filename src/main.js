@@ -3,21 +3,26 @@ import maplibregl from 'maplibre-gl'
 import * as pmtiles from 'pmtiles'
 
 // Year colors used throughout the app (heatmap, legend, crossings)
+// Band order: 0=oldest (cyan), 1=middle (green), 2=newest (magenta)
 const YEAR_COLORS = {
-  2024: 'rgb(255, 0, 255)',  // Magenta (latest)
-  2023: 'rgb(0, 255, 0)',    // Green (middle)
-  2022: 'rgb(0, 255, 255)'   // Cyan (oldest)
+  2025: 'rgb(255, 0, 255)',  // Magenta (latest)
+  2024: 'rgb(0, 255, 0)',    // Green (middle)
+  2023: 'rgb(0, 255, 255)'   // Cyan (oldest)
 }
+
+// Current vessel category
+let currentCategory = 'all'
+let categories = []
 
 // Internationalization
 const i18n = {
   en: {
     protectedAreas: 'protected areas',
-    protectedAreasShort: 'prot.',
+    protectedAreasShort: 'protected',
     vesselCrossings: 'vessel crossings',
-    vesselCrossingsShort: 'vess.',
+    vesselCrossingsShort: 'crossings',
     satellite: 'satellite imagery',
-    satelliteShort: 'sat.',
+    satelliteShort: 'satellite',
     dataSource: 'data: Global Fishing Watch',
     dataSourceShort: 'data: GFW',
     vessel: 'Vessel',
@@ -31,15 +36,23 @@ const i18n = {
     lastSeen: 'Last seen',
     unknown: 'Unknown',
     protectedArea: 'Protected Area',
-    selectPlace: 'select a place of interest'
+    selectPlace: 'select a place of interest',
+    selectCategory: 'select vessel category',
+    allVessels: 'all vessels',
+    multiYear: 'multiple years',
+    multiYearShort: 'multi',
+    sectionVessel: 'vessel presence',
+    sectionLayers: 'additional layers',
+    aboutTitle: 'About this map',
+    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.'
   },
   ru: {
     protectedAreas: 'охраняемые территории',
-    protectedAreasShort: 'охр.',
+    protectedAreasShort: 'охраняемые',
     vesselCrossings: 'пересечения судов',
-    vesselCrossingsShort: 'пер.',
+    vesselCrossingsShort: 'пересечения',
     satellite: 'спутниковые снимки',
-    satelliteShort: 'спут.',
+    satelliteShort: 'спутник',
     dataSource: 'данные: Global Fishing Watch',
     dataSourceShort: 'данные: GFW',
     vessel: 'Судно',
@@ -53,7 +66,15 @@ const i18n = {
     lastSeen: 'Последнее обнаружение',
     unknown: 'Неизвестно',
     protectedArea: 'Охраняемая территория',
-    selectPlace: 'выберите место'
+    selectPlace: 'выберите место',
+    selectCategory: 'выберите категорию судов',
+    allVessels: 'все суда',
+    multiYear: 'несколько лет',
+    multiYearShort: 'неск.',
+    sectionVessel: 'присутствие судов',
+    sectionLayers: 'дополнительные слои',
+    aboutTitle: 'О карте',
+    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.'
   }
 }
 
@@ -66,6 +87,11 @@ function updateUI() {
   document.getElementById('legend-crossings').textContent = t(isNarrow ? 'vesselCrossingsShort' : 'vesselCrossings')
   document.getElementById('legend-satellite').textContent = t(isNarrow ? 'satelliteShort' : 'satellite')
   document.getElementById('legend-source').textContent = t(isNarrow ? 'dataSourceShort' : 'dataSource')
+  document.getElementById('legend-multi-year').textContent = t(isNarrow ? 'multiYearShort' : 'multiYear')
+  document.getElementById('legend-section-vessel').textContent = t('sectionVessel')
+  document.getElementById('legend-section-layers').textContent = t('sectionLayers')
+  document.getElementById('about-title').textContent = t('aboutTitle')
+  document.getElementById('about-text').textContent = t('aboutText')
 
   // Update place labels language if map is loaded
   if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
@@ -86,12 +112,22 @@ function updateUI() {
       showPlace(parseInt(selectedValue))
     }
   }
+
+  // Update category dropdown if categories are loaded
+  if (typeof categories !== 'undefined' && categories.length > 0) {
+    populateCategoryDropdown()
+  }
 }
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
   lang = lang === 'ru' ? 'en' : 'ru'
   document.getElementById('lang-toggle').textContent = lang === 'ru' ? 'EN' : 'РУ'
   updateUI()
+})
+
+// About modal - close on click anywhere
+document.getElementById('about-modal').addEventListener('click', () => {
+  document.getElementById('about-modal').classList.add('hidden')
 })
 
 // Update UI on resize for responsive legend labels
@@ -384,9 +420,9 @@ const map = new maplibregl.Map({
           'circle-stroke-color': [
             'match',
             ['get', 'year'],
-            2022, YEAR_COLORS[2022],
             2023, YEAR_COLORS[2023],
             2024, YEAR_COLORS[2024],
+            2025, YEAR_COLORS[2025],
             '#ffffff'
           ],
           'circle-stroke-width': 2,
@@ -452,6 +488,8 @@ map.on('styleimagemissing', (e) => {
 })
 
 map.on('load', () => {
+  // Load vessel categories
+  loadCategories()
   // Load places of interest from JSON
   loadPlaces()
 })
@@ -501,10 +539,10 @@ map.on('mouseenter', 'crossings', (e) => {
   const hours = props.total_hours
   const days = (hours / 24).toFixed(1)
 
-  // Position tooltip below places container
-  const placesEl = document.getElementById('places')
-  const placesRect = placesEl.getBoundingClientRect()
-  tooltip.style.top = (placesRect.bottom + 8) + 'px'
+  // Position tooltip below controls container
+  const controlsEl = document.getElementById('controls')
+  const controlsRect = controlsEl.getBoundingClientRect()
+  tooltip.style.top = (controlsRect.bottom + 8) + 'px'
 
   tooltip.innerHTML = `
     <table>
@@ -526,7 +564,7 @@ map.on('mouseleave', 'crossings', () => {
 })
 
 // Layer visibility toggles
-const activeYears = new Set([2022, 2023, 2024])
+const activeYears = new Set([2023, 2024, 2025])
 let satelliteMode = false
 
 // Protected area layer IDs
@@ -561,8 +599,14 @@ function updateHeatmapSource() {
   }
 
   map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
-  const yearsParam = years.length < 3 ? `&years=${years.join(',')}` : ''
-  const newTileUrl = basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}${yearsParam}`
+
+  // Build tile URL with category and year filters
+  // Years are now band indices (0, 1, 2) - convert from year to index
+  const yearList = Object.keys(YEAR_COLORS).map(Number).sort()
+  const bandIndices = years.map(y => yearList.indexOf(y)).filter(i => i >= 0)
+  const yearsParam = bandIndices.length < 3 ? `&years=${bandIndices.join(',')}` : ''
+  const categoryParam = currentCategory !== 'all' ? `&category=${currentCategory}` : ''
+  const newTileUrl = basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}${yearsParam}${categoryParam}`
 
   // Update the tile source URL and force refresh
   const source = map.getSource('vessel-heatmap')
@@ -584,6 +628,16 @@ function toggleYear(year) {
     activeYears.add(year)
   }
   updateHeatmapSource()
+  updateMultiYearLegend()
+}
+
+function updateMultiYearLegend() {
+  const multiYearItem = document.querySelector('.legend-multi-year')
+  if (activeYears.size >= 2) {
+    multiYearItem.classList.remove('disabled')
+  } else {
+    multiYearItem.classList.add('disabled')
+  }
 }
 
 function toggleLayer(layerId) {
@@ -609,18 +663,55 @@ let places = []
 // Initialize UI text after places variable is declared
 updateUI()
 
+// Category selection and management
+async function loadCategories() {
+  try {
+    const response = await fetch(basePath + 'api/categories')
+    const data = await response.json()
+    categories = data.categories || []
+    if (categories.length > 0) {
+      populateCategoryDropdown()
+    }
+  } catch (err) {
+    console.warn('Could not load categories:', err)
+  }
+}
+
+function populateCategoryDropdown() {
+  const select = document.getElementById('category-select')
+  select.innerHTML = ''
+
+  categories.forEach(cat => {
+    const option = document.createElement('option')
+    option.value = cat.id
+    option.textContent = lang === 'ru' ? cat.name_ru : cat.name_en
+    select.appendChild(option)
+  })
+
+  select.value = currentCategory
+}
+
+function selectCategory(categoryId) {
+  currentCategory = categoryId
+  updateHeatmapSource()
+}
+
+document.getElementById('category-select').addEventListener('change', (e) => {
+  selectCategory(e.target.value)
+})
+
 async function loadPlaces() {
   try {
     const response = await fetch(basePath + 'data/places/places.json')
     const data = await response.json()
     places = data.places
     if (places.length > 0) {
-      document.getElementById('places').classList.remove('hidden')
+      document.getElementById('places-select').classList.remove('hidden')
       populatePlacesDropdown()
     }
   } catch (err) {
     console.warn('Could not load places:', err)
-    document.getElementById('places').classList.add('hidden')
+    document.getElementById('places-select').classList.add('hidden')
   }
 }
 
