@@ -12,16 +12,33 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="about-modal">
+  <div id="about-content">
+    <h2 id="about-title"></h2>
+    <p id="about-text"></p>
+  </div>
+</div>
 <div id="tooltip"></div>
-<div id="places" class="hidden">
-  <select id="places-select">
+<div id="controls">
+  <select id="category-select">
+    <option value="all">all vessels</option>
+  </select>
+  <select id="places-select" class="hidden">
     <option value="">select place of interest</option>
   </select>
   <div id="places-info" class="hidden"></div>
 </div>
 <button id="lang-toggle">EN</button>
 <div id="legend">
+  <div id="legend-section-vessel" class="legend-section-title"></div>
   <div id="legend-years"></div>
+  <div class="legend-item legend-multi-year">
+    <div class="legend-symbol">
+      <div class="legend-square" style="background: rgb(180, 180, 180);"></div>
+    </div>
+    <span id="legend-multi-year" class="legend-text"></span>
+  </div>
+  <div id="legend-section-layers" class="legend-section-title"></div>
   <div class="legend-item legend-toggle active" data-layer="protected-areas">
     <div class="legend-symbol">
       <div class="legend-hatch"></div>
