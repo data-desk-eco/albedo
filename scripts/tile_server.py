@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 
+import duckdb
 import numpy as np
 from PIL import Image
 from fastapi import FastAPI, Query, Response
@@ -26,16 +27,22 @@ PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data"
 CATEGORIES_DIR = DATA_ROOT / "vessel_categories"
 
-# Year colors (RGB) - colors for years by band index
-# Band 0 = oldest year (cyan), Band 1 = middle (green), Band 2 = newest (magenta)
+# Year colors (RGB) by band index: oldest → newest
+# SYNC: Must match YEAR_COLORS in src/main.js
 YEAR_COLORS = np.array([
-    [0, 255, 255],    # Band 0 - cyan
-    [0, 255, 0],      # Band 1 - green
-    [255, 0, 255],    # Band 2 - magenta
+    [0, 255, 255],    # Band 0 (2023) - cyan
+    [0, 255, 0],      # Band 1 (2024) - green
+    [255, 0, 255],    # Band 2 (2025) - magenta
 ], dtype=np.float32)
 
 # COG readers for each category
 cog_readers: dict[str, Reader] = {}
+
+# DuckDB connection for vessel queries
+db_conn: duckdb.DuckDBPyConnection | None = None
+
+# Grid resolution for vessel position data (must match raster resolution)
+GRID_RESOLUTION = 0.01
 
 
 def load_categories():
@@ -56,8 +63,8 @@ def get_cog_path(category_id: str) -> Path:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage COG reader lifecycle."""
-    global cog_readers
+    """Manage COG reader and DuckDB connection lifecycle."""
+    global cog_readers, db_conn
 
     # Load main raster
     main_cog = DATA_ROOT / "vessel_heatmap.tif"
@@ -75,11 +82,21 @@ async def lifespan(app: FastAPI):
             cog_readers[cat["id"]] = Reader(str(cog_path))
             logger.info(f"Loaded category COG: {cog_path}")
 
+    # Open DuckDB connection for vessel queries
+    db_path = DATA_ROOT / "data.duckdb"
+    if db_path.exists():
+        db_conn = duckdb.connect(str(db_path), read_only=True)
+        logger.info(f"Connected to DuckDB: {db_path}")
+
     yield
 
     for reader in cog_readers.values():
         reader.close()
     logger.info("COG readers closed")
+
+    if db_conn:
+        db_conn.close()
+        logger.info("DuckDB connection closed")
 
 
 SERVE_DIST = os.environ.get("SERVE_DIST", "").lower() in ("1", "true")
@@ -189,6 +206,82 @@ async def get_categories():
     return JSONResponse(content={"categories": available})
 
 
+@app.get("/api/vessels")
+async def get_vessels(
+    lat: float = Query(..., description="Latitude"),
+    lon: float = Query(..., description="Longitude"),
+    year: int | None = Query(default=None, description="Filter by year"),
+):
+    """Query vessels at a given grid cell location.
+
+    Returns vessels that have been detected at the 0.01° grid cell
+    containing the given coordinates.
+    """
+    if not db_conn:
+        return JSONResponse(
+            content={"error": "Database not available"},
+            status_code=503,
+        )
+
+    # Snap to grid cell using round() to match database storage
+    grid_lat = round(lat, 2)
+    grid_lon = round(lon, 2)
+
+    # Search within one grid cell in each direction to handle rounding edge cases
+    tolerance = GRID_RESOLUTION
+
+    # Build query - search within tolerance of the rounded point
+    query = """
+        SELECT
+            mmsi,
+            ship_name,
+            flag,
+            vessel_type,
+            year,
+            SUM(hours) as total_hours
+        FROM vessel_positions
+        WHERE lat BETWEEN ? AND ?
+          AND lon BETWEEN ? AND ?
+    """
+    params = [
+        grid_lat - tolerance,
+        grid_lat + tolerance,
+        grid_lon - tolerance,
+        grid_lon + tolerance,
+    ]
+
+    if year is not None:
+        query += " AND year = ?"
+        params.append(year)
+
+    query += """
+        GROUP BY mmsi, ship_name, flag, vessel_type, year
+        ORDER BY total_hours DESC
+        LIMIT 10
+    """
+
+    try:
+        result = db_conn.execute(query, params).fetchall()
+        vessels = [
+            {
+                "mmsi": row[0],
+                "ship_name": row[1],
+                "flag": row[2],
+                "vessel_type": row[3],
+                "year": row[4],
+                "total_hours": round(row[5], 1),
+            }
+            for row in result
+        ]
+        return JSONResponse(content={"vessels": vessels, "grid": {"lat": grid_lat, "lon": grid_lon}})
+    except Exception as e:
+        logger.error(f"Vessel query error: {e}")
+        return JSONResponse(
+            content={"error": "Query failed"},
+            status_code=500,
+        )
+
+
 @app.get("/tiles/{z}/{x}/{y}.png")
 async def tile(
     z: int,
@@ -205,7 +298,7 @@ async def tile(
         return Response(status_code=404, content="No tile data available")
 
     try:
-        img = reader.tile(x, y, z, tilesize=256, resampling_method="nearest")
+        img = reader.tile(x, y, z, tilesize=256, resampling_method="bilinear")
 
         # Colorize and encode to PNG
         rgba = colorize_tile(img.array, years)
