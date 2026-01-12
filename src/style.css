@@ -303,19 +303,18 @@ body { margin: 0; padding: 0; }
 /* Compact vessel row layout with aligned columns */
 #tooltip .vessel-row {
   display: grid;
-  grid-template-columns: 90px 140px 80px 40px 50px 50px;
+  grid-template-columns: 100px 160px 90px 45px 55px 55px;
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid rgba(255,255,255,0.15);
-  font-size: 13px;
+  font-size: var(--ui-font-size);
   align-items: center;
 }
 
 #tooltip .vessel-row.vessel-header {
   font-weight: 600;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  color: rgba(255,255,255,0.7);
   border-bottom: 1px solid rgba(255,255,255,0.3);
 }
 
@@ -323,9 +322,13 @@ body { margin: 0; padding: 0; }
   border-bottom: none;
 }
 
-#tooltip .vessel-mmsi {
-  font-family: monospace;
-  font-size: 12px;
+#tooltip .vessel-mmsi,
+#tooltip .vessel-name,
+#tooltip .vessel-type,
+#tooltip .vessel-flag,
+#tooltip .vessel-hours,
+#tooltip .vessel-year {
+  color: #fff;
 }
 
 #tooltip .vessel-name {
@@ -333,13 +336,6 @@ body { margin: 0; padding: 0; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-#tooltip .vessel-type,
-#tooltip .vessel-flag,
-#tooltip .vessel-hours,
-#tooltip .vessel-year {
-  color: rgba(255,255,255,0.7);
 }
 
 #tooltip .vessel-hours,

@@ -25,18 +25,18 @@ const i18n = {
     satelliteShort: 'satellite',
     dataSource: 'data: Global Fishing Watch',
     dataSourceShort: 'data: GFW',
-    vessel: 'Vessel',
-    mmsi: 'MMSI',
-    type: 'Type',
-    flag: 'Flag',
-    duration: 'Duration',
+    vessel: 'vessel',
+    mmsi: 'mmsi',
+    type: 'type',
+    flag: 'flag',
+    duration: 'duration',
     days: 'days',
     hours: 'hours',
-    year: 'Year',
-    firstSeen: 'First seen',
-    lastSeen: 'Last seen',
-    unknown: 'Unknown',
-    protectedArea: 'Protected Area',
+    year: 'year',
+    firstSeen: 'first seen',
+    lastSeen: 'last seen',
+    unknown: 'unknown',
+    protectedArea: 'protected area',
     selectPlace: 'select a place of interest',
     selectCategory: 'select vessel category',
     allVessels: 'all vessels',
@@ -44,18 +44,18 @@ const i18n = {
     multiYearShort: 'multi',
     sectionVessel: 'vessel presence',
     sectionLayers: 'additional layers',
-    aboutTitle: 'About this map',
+    aboutTitle: 'about this map',
     aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
     // Vessel types
-    vesselType_BUNKER: 'Bunker',
-    vesselType_CARGO: 'Cargo',
-    vesselType_CARRIER: 'Carrier',
-    vesselType_DISCREPANCY: 'Discrepancy',
-    vesselType_FISHING: 'Fishing',
-    vesselType_GEAR: 'Gear',
-    vesselType_OTHER: 'Other',
-    vesselType_PASSENGER: 'Passenger',
-    vesselType_SEISMIC_VESSEL: 'Seismic',
+    vesselType_BUNKER: 'bunker',
+    vesselType_CARGO: 'cargo',
+    vesselType_CARRIER: 'carrier',
+    vesselType_DISCREPANCY: 'discrepancy',
+    vesselType_FISHING: 'fishing',
+    vesselType_GEAR: 'gear',
+    vesselType_OTHER: 'other',
+    vesselType_PASSENGER: 'passenger',
+    vesselType_SEISMIC_VESSEL: 'seismic',
     hoursShort: 'h',
     more: 'more',
   },
@@ -68,18 +68,18 @@ const i18n = {
     satelliteShort: 'спутник',
     dataSource: 'данные: Global Fishing Watch',
     dataSourceShort: 'данные: GFW',
-    vessel: 'Судно',
-    mmsi: 'MMSI',
-    type: 'Тип',
-    flag: 'Флаг',
-    duration: 'Длительность',
+    vessel: 'судно',
+    mmsi: 'mmsi',
+    type: 'тип',
+    flag: 'флаг',
+    duration: 'длительность',
     days: 'дней',
     hours: 'часов',
-    year: 'Год',
-    firstSeen: 'Первое обнаружение',
-    lastSeen: 'Последнее обнаружение',
-    unknown: 'Неизвестно',
-    protectedArea: 'Охраняемая территория',
+    year: 'год',
+    firstSeen: 'первое обнаружение',
+    lastSeen: 'последнее обнаружение',
+    unknown: 'неизвестно',
+    protectedArea: 'охраняемая территория',
     selectPlace: 'выберите место',
     selectCategory: 'выберите категорию судов',
     allVessels: 'все суда',
@@ -87,18 +87,18 @@ const i18n = {
     multiYearShort: 'неск.',
     sectionVessel: 'присутствие судов',
     sectionLayers: 'дополнительные слои',
-    aboutTitle: 'О карте',
+    aboutTitle: 'о карте',
     aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
     // Vessel types
-    vesselType_BUNKER: 'Бункеровщик',
-    vesselType_CARGO: 'Грузовое',
-    vesselType_CARRIER: 'Перевозчик',
-    vesselType_DISCREPANCY: 'Несоответствие',
-    vesselType_FISHING: 'Рыболовное',
-    vesselType_GEAR: 'Оборудование',
-    vesselType_OTHER: 'Другое',
-    vesselType_PASSENGER: 'Пассажирское',
-    vesselType_SEISMIC_VESSEL: 'Сейсморазведка',
+    vesselType_BUNKER: 'бункеровщик',
+    vesselType_CARGO: 'грузовое',
+    vesselType_CARRIER: 'перевозчик',
+    vesselType_DISCREPANCY: 'несоответствие',
+    vesselType_FISHING: 'рыболовное',
+    vesselType_GEAR: 'оборудование',
+    vesselType_OTHER: 'другое',
+    vesselType_PASSENGER: 'пассажирское',
+    vesselType_SEISMIC_VESSEL: 'сейсморазведка',
     hoursShort: 'ч',
     more: 'ещё',
   }
@@ -154,7 +154,7 @@ function updateUI() {
 
 document.getElementById('lang-toggle').addEventListener('click', () => {
   lang = lang === 'ru' ? 'en' : 'ru'
-  document.getElementById('lang-toggle').textContent = lang === 'ru' ? 'EN' : 'РУ'
+  document.getElementById('lang-toggle').textContent = lang === 'ru' ? 'en' : 'ру'
   updateUI()
 })
 
@@ -565,7 +565,10 @@ const formatDate = (isoString) => {
   return `${day} ${month} ${year}`
 }
 
+let hoveringCrossing = false
+
 map.on('mouseenter', 'crossings', (e) => {
+  hoveringCrossing = true
   map.getCanvas().style.cursor = 'pointer'
 
   const props = e.features[0].properties
@@ -591,6 +594,7 @@ map.on('mouseenter', 'crossings', (e) => {
 })
 
 map.on('mouseleave', 'crossings', () => {
+  hoveringCrossing = false
   map.getCanvas().style.cursor = ''
   tooltip.classList.remove('visible')
 })
@@ -668,7 +672,7 @@ function showRasterTooltip(vessels) {
   }).join('')
 
   if (moreCount > 0) {
-    html += `<div style="padding-top: 6px; opacity: 0.6; font-size: 12px;">+${moreCount} ${t('more')}</div>`
+    html += `<div style="padding-top: 6px; color: #fff;">+${moreCount} ${t('more')}</div>`
   }
 
   tooltip.innerHTML = html
@@ -687,6 +691,7 @@ const handleRasterHover = debounce(async (e) => {
 
 // Raster hover events
 map.on('mousemove', (e) => {
+  if (hoveringCrossing) return  // Don't override crossings tooltip
   const zoom = map.getZoom()
   if (zoom >= RASTER_TOOLTIP_MIN_ZOOM) {
     handleRasterHover(e)
