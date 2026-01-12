@@ -2,12 +2,12 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import * as pmtiles from 'pmtiles'
 
-// Year colors used throughout the app (heatmap, legend, crossings)
-// Band order: 0=oldest (cyan), 1=middle (green), 2=newest (magenta)
+// Year colors: oldest (2023) → newest (2025)
+// SYNC: Must match YEAR_COLORS in scripts/tile_server.py
 const YEAR_COLORS = {
-  2025: 'rgb(255, 0, 255)',  // Magenta (latest)
-  2024: 'rgb(0, 255, 0)',    // Green (middle)
-  2023: 'rgb(0, 255, 255)'   // Cyan (oldest)
+  2023: 'rgb(0, 255, 255)',   // Cyan (band 0)
+  2024: 'rgb(0, 255, 0)',     // Green (band 1)
+  2025: 'rgb(255, 0, 255)',   // Magenta (band 2)
 }
 
 // Current vessel category
@@ -44,7 +44,19 @@ const i18n = {
     sectionVessel: 'vessel presence',
     sectionLayers: 'additional layers',
     aboutTitle: 'About this map',
-    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.'
+    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+    // Vessel types
+    vesselType_BUNKER: 'Bunker',
+    vesselType_CARGO: 'Cargo',
+    vesselType_CARRIER: 'Carrier',
+    vesselType_DISCREPANCY: 'Discrepancy',
+    vesselType_FISHING: 'Fishing',
+    vesselType_GEAR: 'Gear',
+    vesselType_OTHER: 'Other',
+    vesselType_PASSENGER: 'Passenger',
+    vesselType_SEISMIC_VESSEL: 'Seismic',
+    hoursShort: 'h',
+    more: 'more',
   },
   ru: {
     protectedAreas: 'охраняемые территории',
@@ -74,8 +86,27 @@ const i18n = {
     sectionVessel: 'присутствие судов',
     sectionLayers: 'дополнительные слои',
     aboutTitle: 'О карте',
-    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.'
+    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+    // Vessel types
+    vesselType_BUNKER: 'Бункеровщик',
+    vesselType_CARGO: 'Грузовое',
+    vesselType_CARRIER: 'Перевозчик',
+    vesselType_DISCREPANCY: 'Несоответствие',
+    vesselType_FISHING: 'Рыболовное',
+    vesselType_GEAR: 'Оборудование',
+    vesselType_OTHER: 'Другое',
+    vesselType_PASSENGER: 'Пассажирское',
+    vesselType_SEISMIC_VESSEL: 'Сейсморазведка',
+    hoursShort: 'ч',
+    more: 'ещё',
   }
+}
+
+// Translate vessel type
+const tVesselType = (type) => {
+  if (!type) return t('unknown')
+  const key = `vesselType_${type}`
+  return i18n[lang][key] || type
 }
 
 let lang = 'ru'
@@ -238,7 +269,7 @@ const map = new maplibregl.Map({
       'activity-hotspots': {
         type: 'geojson',
         data: basePath + 'data/places/activity_hotspots.geojson'
-      }
+      },
     },
     layers: [
       {
@@ -527,7 +558,7 @@ const tooltip = document.getElementById('tooltip')
 const formatDate = (isoString) => {
   const date = new Date(isoString)
   const day = date.getDate()
-  const month = date.toLocaleString('en', { month: 'short' })
+  const month = date.toLocaleString(lang === 'ru' ? 'ru' : 'en', { month: 'short' })
   const year = date.getFullYear()
   return `${day} ${month} ${year}`
 }
@@ -536,8 +567,7 @@ map.on('mouseenter', 'crossings', (e) => {
   map.getCanvas().style.cursor = 'pointer'
 
   const props = e.features[0].properties
-  const hours = props.total_hours
-  const days = (hours / 24).toFixed(1)
+  const hours = Math.round(props.total_hours)
 
   // Position tooltip below controls container
   const controlsEl = document.getElementById('controls')
@@ -548,9 +578,9 @@ map.on('mouseenter', 'crossings', (e) => {
     <table>
       <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
       <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
-      <tr><td>${t('type')}</td><td>${props.vessel_type || t('unknown')}</td></tr>
+      <tr><td>${t('type')}</td><td>${tVesselType(props.vessel_type)}</td></tr>
       <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
-      <tr><td>${t('duration')}</td><td>${days} ${t('days')}</td></tr>
+      <tr><td>${t('duration')}</td><td>${hours} ${t('hours')}</td></tr>
       <tr><td>${t('firstSeen')}</td><td>${formatDate(props.first_seen)}</td></tr>
       <tr><td>${t('lastSeen')}</td><td>${formatDate(props.last_seen)}</td></tr>
     </table>
@@ -560,6 +590,96 @@ map.on('mouseenter', 'crossings', (e) => {
 
 map.on('mouseleave', 'crossings', () => {
   map.getCanvas().style.cursor = ''
+  tooltip.classList.remove('visible')
+})
+
+
+// Raster hover for vessel tooltips at high zoom (server-side query)
+const RASTER_TOOLTIP_MIN_ZOOM = 7
+
+// Debounce utility
+function debounce(fn, delay) {
+  let timeoutId
+  return (...args) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// Fetch vessels at a location from the API
+async function fetchVesselsAtLocation(lat, lon) {
+  try {
+    // Filter by active years if only one is selected
+    const yearsParam = activeYears.size === 1
+      ? `&year=${Array.from(activeYears)[0]}`
+      : ''
+    const response = await fetch(`${basePath}api/vessels?lat=${lat}&lon=${lon}${yearsParam}`)
+    if (!response.ok) return null
+    const data = await response.json()
+    return data.vessels || []
+  } catch (err) {
+    console.warn('Vessel query failed:', err)
+    return null
+  }
+}
+
+// Show raster tooltip with vessel data
+function showRasterTooltip(vessels) {
+  if (!vessels || vessels.length === 0) {
+    tooltip.classList.remove('visible')
+    return
+  }
+
+  // Position tooltip below controls container
+  const controlsEl = document.getElementById('controls')
+  const controlsRect = controlsEl.getBoundingClientRect()
+  tooltip.style.top = (controlsRect.bottom + 8) + 'px'
+
+  // Show up to 5 vessels in compact row format
+  const displayVessels = vessels.slice(0, 5)
+  const moreCount = vessels.length > 5 ? vessels.length - 5 : 0
+
+  let html = displayVessels.map(v => {
+    const hours = Math.round(v.total_hours)
+    return `
+      <div class="vessel-row">
+        <span class="vessel-name">${v.ship_name || t('unknown')}</span>
+        <span class="vessel-type">${tVesselType(v.vessel_type)}</span>
+        <span class="vessel-flag">${v.flag || '?'}</span>
+        <span class="vessel-hours">${hours}${t('hoursShort')}</span>
+        <span class="vessel-year">${v.year}</span>
+      </div>
+    `
+  }).join('')
+
+  if (moreCount > 0) {
+    html += `<div style="padding-top: 6px; opacity: 0.6; font-size: 12px;">+${moreCount} ${t('more')}</div>`
+  }
+
+  tooltip.innerHTML = html
+  tooltip.classList.add('visible')
+}
+
+// Debounced handler for raster mousemove
+const handleRasterHover = debounce(async (e) => {
+  const zoom = map.getZoom()
+  if (zoom < RASTER_TOOLTIP_MIN_ZOOM) return
+
+  const { lat, lng } = e.lngLat
+  const vessels = await fetchVesselsAtLocation(lat, lng)
+  showRasterTooltip(vessels)
+}, 150)
+
+// Raster hover events
+map.on('mousemove', (e) => {
+  const zoom = map.getZoom()
+  if (zoom >= RASTER_TOOLTIP_MIN_ZOOM) {
+    handleRasterHover(e)
+  }
+})
+
+map.on('mouseout', () => {
+  // Hide tooltip when mouse leaves the map
   tooltip.classList.remove('visible')
 })
 
