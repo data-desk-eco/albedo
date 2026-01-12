@@ -30,8 +30,8 @@ COPY data/vessel_crossings.pmtiles data/vessel_crossings.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
 COPY data/places.pmtiles data/places.pmtiles
 COPY data/places/ data/places/
-# Download vessel lookup database from GitHub release
-ADD https://github.com/data-desk-eco/albedo/releases/download/data-v1/vessel_lookup.duckdb data/vessel_lookup.duckdb
+# Download vessel lookup from GitHub release (Parquet: smaller & faster than DuckDB)
+ADD https://github.com/data-desk-eco/albedo/releases/download/data-v1/vessel_lookup.parquet data/vessel_lookup.parquet
 COPY data/vessel_categories/ data/vessel_categories/
 COPY data/category_*.tif data/
 

@@ -1,28 +1,20 @@
 #!/usr/bin/env python3
 """
 Generate raster tiles for vessel categories.
-Must match the main vessel_heatmap.tif bounds and resolution exactly.
+Uses shared raster configuration to match main vessel_heatmap.tif exactly.
 """
 import json
 import subprocess
-import sys
 from pathlib import Path
 
-import numpy as np
-import rasterio
-from rasterio.transform import from_bounds
+import duckdb
+
+from raster_utils import ARCTIC_CONFIG, write_raster, print_raster_stats
 
 PROJECT_ROOT = Path(__file__).parent.parent
 DATA_ROOT = PROJECT_ROOT / "data"
 CATEGORIES_DIR = DATA_ROOT / "vessel_categories"
 DB_PATH = DATA_ROOT / "data.duckdb"
-
-# Must match main raster exactly
-# Main raster: 36000 x 3400, origin (-180, 90), pixel size 0.01
-BOUNDS = (-180, 56, 180, 90)  # (west, south, east, north)
-WIDTH = 36000
-HEIGHT = 3400
-RESOLUTION = 0.01
 
 
 def load_categories():
@@ -48,15 +40,13 @@ def get_category_imos(category: dict) -> list[str] | None:
 
 def create_category_raster(category_id: str, imos: list[str]) -> Path:
     """Create a multi-band raster matching main raster dimensions."""
-    import duckdb
-
+    config = ARCTIC_CONFIG
     output_path = DATA_ROOT / f"category_{category_id}_heatmap.tif"
     imo_list = ", ".join(f"'{imo}'" for imo in imos)
 
     print(f"  Querying vessel positions...")
     conn = duckdb.connect(str(DB_PATH), read_only=True)
 
-    # Query positions for matching vessels
     df = conn.execute(f"""
         SELECT
             vp.lon,
@@ -66,7 +56,7 @@ def create_category_raster(category_id: str, imos: list[str]) -> Path:
         FROM vessel_positions vp
         JOIN vessel_activity va ON vp.vessel_id = va.vessel_id
         WHERE va.imo IN ({imo_list})
-          AND vp.lat >= {BOUNDS[1]} AND vp.lat <= {BOUNDS[3]}
+          AND vp.lat >= {config.min_lat} AND vp.lat <= {config.max_lat}
     """).fetchdf()
     conn.close()
 
@@ -76,42 +66,25 @@ def create_category_raster(category_id: str, imos: list[str]) -> Path:
 
     print(f"  Found {len(df)} positions")
 
-    # Get years from data
     years = sorted(df["year"].unique())
     print(f"  Years: {years}")
 
-    # Create per-year arrays
-    bands = {year: np.zeros((HEIGHT, WIDTH), dtype=np.float32) for year in years}
+    bands = {year: config.create_array() for year in years}
 
-    # Aggregate hours into grid cells
     print(f"  Rasterizing...")
     for _, row in df.iterrows():
-        col = int((row["lon"] - BOUNDS[0]) / RESOLUTION)
-        row_idx = int((BOUNDS[3] - row["lat"]) / RESOLUTION)  # Y flipped (north at top)
+        col, row_idx = config.lonlat_to_pixel(row["lon"], row["lat"])
 
-        if 0 <= col < WIDTH and 0 <= row_idx < HEIGHT:
+        if config.is_valid_pixel(col, row_idx):
             year = row["year"]
             if year in bands:
                 bands[year][row_idx, col] += row["hours"]
 
-    # Write multi-band raster
-    transform = from_bounds(*BOUNDS, WIDTH, HEIGHT)
-    profile = {
-        "driver": "GTiff",
-        "dtype": "float32",
-        "width": WIDTH,
-        "height": HEIGHT,
-        "count": len(years),
-        "crs": "EPSG:4326",
-        "transform": transform,
-        "compress": "deflate",
-    }
+    band_arrays = {i + 1: bands[year] for i, year in enumerate(sorted(years))}
+    write_raster(output_path, band_arrays, config)
 
-    with rasterio.open(output_path, "w", **profile) as dst:
-        for i, year in enumerate(sorted(years)):
-            dst.write(bands[year], i + 1)
-            nonzero = np.count_nonzero(bands[year])
-            print(f"    Band {i+1}: {year} - {nonzero} cells with data, max {bands[year].max():.0f} hours")
+    for i, year in enumerate(sorted(years)):
+        print_raster_stats(bands[year], label=f"Band {i+1} ({year})")
 
     return output_path
 
@@ -131,7 +104,6 @@ def convert_to_cog(input_path: Path) -> Path:
         str(output_path)
     ], check=True)
 
-    # Replace original with COG
     input_path.unlink()
     output_path.rename(input_path)
 
@@ -143,7 +115,7 @@ def main():
 
     for cat in categories:
         if cat["id"] == "all":
-            continue  # Skip "all" - use main raster
+            continue
 
         print(f"\nProcessing category: {cat['id']}")
         imos = get_category_imos(cat)
@@ -154,11 +126,9 @@ def main():
 
         print(f"  {len(imos)} IMOs in filter")
 
-        # Create raster
         raster_path = create_category_raster(cat["id"], imos)
 
         if raster_path:
-            # Convert to COG
             print("  Converting to COG...")
             convert_to_cog(raster_path)
             print(f"  Created: {raster_path.name}")

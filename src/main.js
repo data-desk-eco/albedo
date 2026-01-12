@@ -32,6 +32,7 @@ const i18n = {
     duration: 'Duration',
     days: 'days',
     hours: 'hours',
+    year: 'Year',
     firstSeen: 'First seen',
     lastSeen: 'Last seen',
     unknown: 'Unknown',
@@ -74,6 +75,7 @@ const i18n = {
     duration: 'Длительность',
     days: 'дней',
     hours: 'часов',
+    year: 'Год',
     firstSeen: 'Первое обнаружение',
     lastSeen: 'Последнее обнаружение',
     unknown: 'Неизвестно',
@@ -595,7 +597,7 @@ map.on('mouseleave', 'crossings', () => {
 
 
 // Raster hover for vessel tooltips at high zoom (server-side query)
-const RASTER_TOOLTIP_MIN_ZOOM = 7
+const RASTER_TOOLTIP_MIN_ZOOM = 8
 
 // Debounce utility
 function debounce(fn, delay) {
@@ -639,10 +641,23 @@ function showRasterTooltip(vessels) {
   const displayVessels = vessels.slice(0, 5)
   const moreCount = vessels.length > 5 ? vessels.length - 5 : 0
 
-  let html = displayVessels.map(v => {
+  // Column headers
+  let html = `
+    <div class="vessel-row vessel-header">
+      <span class="vessel-mmsi">${t('mmsi')}</span>
+      <span class="vessel-name">${t('vessel')}</span>
+      <span class="vessel-type">${t('type')}</span>
+      <span class="vessel-flag">${t('flag')}</span>
+      <span class="vessel-hours">${t('hours')}</span>
+      <span class="vessel-year">${t('year')}</span>
+    </div>
+  `
+
+  html += displayVessels.map(v => {
     const hours = Math.round(v.total_hours)
     return `
       <div class="vessel-row">
+        <span class="vessel-mmsi">${v.mmsi}</span>
         <span class="vessel-name">${v.ship_name || t('unknown')}</span>
         <span class="vessel-type">${tVesselType(v.vessel_type)}</span>
         <span class="vessel-flag">${v.flag || '?'}</span>
