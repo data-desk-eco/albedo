@@ -16,7 +16,7 @@ WORKDIR /app
 # Layer 1: System dependencies + Python packages in single layer (cached together)
 RUN apk add --no-cache python3 py3-pip gcc g++ python3-dev musl-dev && \
     pip install --no-cache-dir --break-system-packages \
-        fastapi uvicorn rio-tiler pillow && \
+        fastapi uvicorn rio-tiler pillow duckdb && \
     apk del gcc g++ python3-dev musl-dev && \
     rm -rf /root/.cache
 
@@ -30,6 +30,9 @@ COPY data/vessel_crossings.pmtiles data/vessel_crossings.pmtiles
 COPY data/land.pmtiles data/land.pmtiles
 COPY data/places.pmtiles data/places.pmtiles
 COPY data/places/places.json data/places/places.json
+COPY data/data.duckdb data/data.duckdb
+COPY data/vessel_categories/ data/vessel_categories/
+COPY data/category_*.tif data/
 
 # Layer 4: Frontend (changes most frequently)
 COPY --from=builder /app/dist dist/
