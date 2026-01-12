@@ -1,7 +1,9 @@
 # Data - raw and intermediate files
 data/.*.done
 data/*.jsonl
+data/*.parquet
 data/gfw/
+data/gfw_*/
 data/temp/
 data/backups/
 data/tiles/
@@ -17,9 +19,9 @@ data/*-journal
 data/ne_10m_land.geojson
 data/ne_10m_populated_places/
 data/protected_areas.geojson
-data/tiles.pmtiles
-data/vessel_activity_*.tif
-data/vessel_multiband.tif
+data/*.pmtiles
+data/*.tif
+data/vessel_categories/
 
 # Data - databases are too large
 data/*.duckdb

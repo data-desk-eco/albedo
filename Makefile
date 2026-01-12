@@ -82,20 +82,20 @@ clean:
 	rm -rf data dist
 
 #───────────────────────────────────────────────────────────────────────────────
-# Vessel Lookup Database (for production tooltips)
+# Vessel Lookup (for production tooltips)
 #───────────────────────────────────────────────────────────────────────────────
 
-# Create the lookup database from full data.duckdb
-lookup: data/vessel_lookup.duckdb
+# Create the lookup parquet from full data.duckdb
+lookup: data/vessel_lookup.parquet
 
-data/vessel_lookup.duckdb: data/data.duckdb
+data/vessel_lookup.parquet: data/data.duckdb
 	uv run python scripts/create_vessel_lookup.py
 
-# Upload lookup database to GitHub release (run after 'make lookup')
-upload-lookup: data/vessel_lookup.duckdb
-	@echo "Uploading vessel_lookup.duckdb to GitHub release data-v1..."
-	gh release upload data-v1 data/vessel_lookup.duckdb --clobber
-	@echo "Done! Container rebuild will use the new database."
+# Upload lookup to GitHub release (run after 'make lookup')
+upload-lookup: data/vessel_lookup.parquet
+	@echo "Uploading vessel_lookup.parquet to GitHub release data-v1..."
+	gh release upload data-v1 data/vessel_lookup.parquet --clobber
+	@echo "Done! Container rebuild will use the new lookup file."
 
 #───────────────────────────────────────────────────────────────────────────────
 # Deployment (Cloud Run)

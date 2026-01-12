@@ -27,15 +27,19 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 - `vessel_activity` — 79K vessels, aggregated stats
 - `vessel_positions` — 25M positions, 2023-2025, 0.01° grid
 
-## Vessel Lookup Database (production tooltips)
+## Vessel Lookup (production tooltips)
 
-The full database (2.6GB) is too large for the container. A smaller lookup database (`vessel_lookup.duckdb`, ~130MB) is used in production for the `/api/vessels` tooltip endpoint.
+The full database (2.6GB) is too large for the container. A sorted Parquet file (`vessel_lookup.parquet`, ~70MB) is used in production for the `/api/vessels` tooltip endpoint.
 
-The lookup DB is stored as a GitHub release asset and downloaded during container build.
+- Includes all cells with ≥1h activity (every visible pixel has tooltip data)
+- Top 5 vessels per grid cell, sorted by (lat, lon) for fast row-group pruning
+- ~8x smaller than equivalent DuckDB file
+
+The lookup file is stored as a GitHub release asset and downloaded during container build.
 
 **To update after changing vessel data:**
 ```bash
-make lookup         # Create vessel_lookup.duckdb from data.duckdb
+make lookup         # Create vessel_lookup.parquet from data.duckdb
 make upload-lookup  # Upload to GitHub release (replaces existing)
 ```
 

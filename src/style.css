@@ -303,7 +303,7 @@ body { margin: 0; padding: 0; }
 /* Compact vessel row layout with aligned columns */
 #tooltip .vessel-row {
   display: grid;
-  grid-template-columns: 160px 100px 50px 60px 50px;
+  grid-template-columns: 90px 140px 80px 40px 50px 50px;
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid rgba(255,255,255,0.15);
@@ -311,8 +311,21 @@ body { margin: 0; padding: 0; }
   align-items: center;
 }
 
+#tooltip .vessel-row.vessel-header {
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
 #tooltip .vessel-row:last-child {
   border-bottom: none;
+}
+
+#tooltip .vessel-mmsi {
+  font-family: monospace;
+  font-size: 12px;
 }
 
 #tooltip .vessel-name {

@@ -40,6 +40,7 @@ cog_readers: dict[str, Reader] = {}
 
 # DuckDB connection for vessel queries
 db_conn: duckdb.DuckDBPyConnection | None = None
+vessel_lookup_path: Path | None = None
 
 # Grid resolution for vessel position data (must match raster resolution)
 GRID_RESOLUTION = 0.01
@@ -64,7 +65,7 @@ def get_cog_path(category_id: str) -> Path:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage COG reader and DuckDB connection lifecycle."""
-    global cog_readers, db_conn
+    global cog_readers, db_conn, vessel_lookup_path
 
     # Load main raster
     main_cog = DATA_ROOT / "vessel_heatmap.tif"
@@ -82,13 +83,22 @@ async def lifespan(app: FastAPI):
             cog_readers[cat["id"]] = Reader(str(cog_path))
             logger.info(f"Loaded category COG: {cog_path}")
 
-    # Open DuckDB connection for vessel queries (use small lookup DB if available)
-    db_path = DATA_ROOT / "vessel_lookup.duckdb"
-    if not db_path.exists():
-        db_path = DATA_ROOT / "data.duckdb"  # Fallback to full DB for dev
-    if db_path.exists():
-        db_conn = duckdb.connect(str(db_path), read_only=True)
-        logger.info(f"Connected to DuckDB: {db_path}")
+    # Open DuckDB connection for vessel queries
+    # Prefer parquet lookup (smaller, faster), fall back to duckdb files
+    parquet_path = DATA_ROOT / "vessel_lookup.parquet"
+    duckdb_lookup = DATA_ROOT / "vessel_lookup.duckdb"
+    full_db = DATA_ROOT / "data.duckdb"
+
+    if parquet_path.exists():
+        vessel_lookup_path = parquet_path
+        db_conn = duckdb.connect()  # In-memory connection for parquet queries
+        logger.info(f"Using Parquet lookup: {parquet_path}")
+    elif duckdb_lookup.exists():
+        db_conn = duckdb.connect(str(duckdb_lookup), read_only=True)
+        logger.info(f"Using DuckDB lookup: {duckdb_lookup}")
+    elif full_db.exists():
+        db_conn = duckdb.connect(str(full_db), read_only=True)
+        logger.info(f"Using full DuckDB: {full_db}")
 
     yield
 
@@ -232,29 +242,6 @@ async def get_vessels(
     # Search within one grid cell in each direction to handle rounding edge cases
     tolerance = GRID_RESOLUTION
 
-    # Determine table name (vessel_lookup for prod, vessel_positions for dev)
-    # Check which table exists
-    tables = db_conn.execute("SHOW TABLES").fetchall()
-    table_names = [t[0] for t in tables]
-    use_lookup = "vessel_lookup" in table_names
-
-    if use_lookup:
-        # Pre-aggregated lookup table (production)
-        query = """
-            SELECT mmsi, ship_name, flag, vessel_type, year, total_hours
-            FROM vessel_lookup
-            WHERE lat BETWEEN ? AND ?
-              AND lon BETWEEN ? AND ?
-        """
-    else:
-        # Full table with aggregation (development)
-        query = """
-            SELECT mmsi, ship_name, flag, vessel_type, year, SUM(hours) as total_hours
-            FROM vessel_positions
-            WHERE lat BETWEEN ? AND ?
-              AND lon BETWEEN ? AND ?
-        """
-
     params = [
         grid_lat - tolerance,
         grid_lat + tolerance,
@@ -262,18 +249,50 @@ async def get_vessels(
         grid_lon + tolerance,
     ]
 
-    if year is not None:
-        query += " AND year = ?"
-        params.append(year)
-
-    if use_lookup:
+    # Use Parquet lookup if available, otherwise fall back to DuckDB tables
+    if vessel_lookup_path:
+        # Query sorted Parquet file directly (fast due to row group pruning)
+        query = f"""
+            SELECT mmsi, ship_name, flag, vessel_type, year, total_hours
+            FROM read_parquet('{vessel_lookup_path}')
+            WHERE lat BETWEEN ? AND ?
+              AND lon BETWEEN ? AND ?
+        """
+        if year is not None:
+            query += " AND year = ?"
+            params.append(year)
         query += " ORDER BY total_hours DESC LIMIT 10"
     else:
-        query += """
-            GROUP BY mmsi, ship_name, flag, vessel_type, year
-            ORDER BY total_hours DESC
-            LIMIT 10
-        """
+        # Fall back to DuckDB tables
+        tables = db_conn.execute("SHOW TABLES").fetchall()
+        table_names = [t[0] for t in tables]
+
+        if "vessel_lookup" in table_names:
+            query = """
+                SELECT mmsi, ship_name, flag, vessel_type, year, total_hours
+                FROM vessel_lookup
+                WHERE lat BETWEEN ? AND ?
+                  AND lon BETWEEN ? AND ?
+            """
+            if year is not None:
+                query += " AND year = ?"
+                params.append(year)
+            query += " ORDER BY total_hours DESC LIMIT 10"
+        else:
+            query = """
+                SELECT mmsi, ship_name, flag, vessel_type, year, SUM(hours) as total_hours
+                FROM vessel_positions
+                WHERE lat BETWEEN ? AND ?
+                  AND lon BETWEEN ? AND ?
+            """
+            if year is not None:
+                query += " AND year = ?"
+                params.append(year)
+            query += """
+                GROUP BY mmsi, ship_name, flag, vessel_type, year
+                ORDER BY total_hours DESC
+                LIMIT 10
+            """
 
     try:
         result = db_conn.execute(query, params).fetchall()

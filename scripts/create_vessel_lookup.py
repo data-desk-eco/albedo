@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Create a small vessel lookup database for production tooltips.
+"""Create a vessel lookup file for production tooltips.
 
-This creates a pre-aggregated lookup table with:
-- Only cells with >=10h total vessel activity
+This creates a pre-aggregated, sorted Parquet file with:
+- All cells with >=1h total vessel activity
 - Top 5 vessels per cell by hours
-- ~2.6M rows (vs 25M in full DB)
+- Sorted by (lat, lon) for efficient row group pruning
 
-Output: data/vessel_lookup.duckdb (~130MB)
+Output: data/vessel_lookup.parquet (~150MB for full dataset)
 """
-import os
 import sys
 from pathlib import Path
 
@@ -16,11 +15,10 @@ import duckdb
 
 DATA_ROOT = Path(__file__).parent.parent / "data"
 SOURCE_DB = DATA_ROOT / "data.duckdb"
-OUTPUT_DB = DATA_ROOT / "vessel_lookup.duckdb"
-TEMP_PARQUET = DATA_ROOT / "vessel_lookup.parquet"
+OUTPUT_PARQUET = DATA_ROOT / "vessel_lookup.parquet"
 
 # Configuration
-MIN_CELL_HOURS = 10  # Minimum total hours per cell to include
+MIN_CELL_HOURS = 1   # Minimum total hours per cell to include (1 = all visible pixels)
 TOP_N_VESSELS = 5    # Number of top vessels per cell to keep
 
 
@@ -35,7 +33,7 @@ def main():
 
     src = duckdb.connect(str(SOURCE_DB), read_only=True)
 
-    # Export to parquet (intermediate step for efficiency)
+    # Export sorted parquet (sorted by lat,lon enables row group pruning for fast queries)
     print("Exporting aggregated data...")
     src.execute(f"""
         COPY (
@@ -56,32 +54,20 @@ def main():
             SELECT lat, lon, mmsi, ship_name, flag, vessel_type, year, total_hours
             FROM ranked
             WHERE rn <= {TOP_N_VESSELS}
-        ) TO '{TEMP_PARQUET}' (FORMAT PARQUET, COMPRESSION ZSTD)
+            ORDER BY lat, lon
+        ) TO '{OUTPUT_PARQUET}' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 100000)
     """)
     src.close()
 
-    parquet_size = TEMP_PARQUET.stat().st_size / 1024 / 1024
-    print(f"  Parquet size: {parquet_size:.1f} MB")
+    # Report stats
+    conn = duckdb.connect()
+    row_count = conn.execute(f"SELECT COUNT(*) FROM read_parquet('{OUTPUT_PARQUET}')").fetchone()[0]
+    conn.close()
 
-    # Create new database from parquet
-    print("Creating DuckDB database...")
-    if OUTPUT_DB.exists():
-        OUTPUT_DB.unlink()
-
-    dst = duckdb.connect(str(OUTPUT_DB))
-    dst.execute(f'CREATE TABLE vessel_lookup AS SELECT * FROM read_parquet("{TEMP_PARQUET}")')
-    dst.execute('CREATE INDEX idx_lookup_coords ON vessel_lookup(lat, lon)')
-
-    row_count = dst.execute('SELECT COUNT(*) FROM vessel_lookup').fetchone()[0]
-    dst.close()
-
-    # Clean up
-    TEMP_PARQUET.unlink()
-
-    db_size = OUTPUT_DB.stat().st_size / 1024 / 1024
-    print(f"Created {OUTPUT_DB}")
+    file_size = OUTPUT_PARQUET.stat().st_size / 1024 / 1024
+    print(f"Created {OUTPUT_PARQUET}")
     print(f"  Rows: {row_count:,}")
-    print(f"  Size: {db_size:.1f} MB")
+    print(f"  Size: {file_size:.1f} MB")
 
 
 if __name__ == "__main__":
