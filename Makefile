@@ -34,7 +34,7 @@ data/data.duckdb: data/.convert.done
 	cd etl && dbt run --profiles-dir .
 
 # Generate all tiles
-tiles: data/vessel_heatmap.tif data/protected_areas.pmtiles data/land.pmtiles data/places.pmtiles data/vessel_crossings.pmtiles
+tiles: data/vessel_heatmap.tif data/protected_areas.pmtiles data/land.pmtiles data/places.pmtiles data/vessel_crossings.pmtiles data/vessel_hotspots.pmtiles
 
 data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
@@ -50,6 +50,9 @@ data/places.pmtiles: data/ne_10m_populated_places/ne_10m_populated_places.shp
 
 data/vessel_crossings.pmtiles: data/data.duckdb
 	./scripts/export_crossings.sh
+
+data/vessel_hotspots.pmtiles: data/data.duckdb
+	./scripts/export_vessel_points.sh
 
 # Export vessel crossings as CSV for review
 export-crossings: data/vessel_crossings.csv
@@ -77,6 +80,22 @@ build:
 
 clean:
 	rm -rf data dist
+
+#───────────────────────────────────────────────────────────────────────────────
+# Vessel Lookup Database (for production tooltips)
+#───────────────────────────────────────────────────────────────────────────────
+
+# Create the lookup database from full data.duckdb
+lookup: data/vessel_lookup.duckdb
+
+data/vessel_lookup.duckdb: data/data.duckdb
+	uv run python scripts/create_vessel_lookup.py
+
+# Upload lookup database to GitHub release (run after 'make lookup')
+upload-lookup: data/vessel_lookup.duckdb
+	@echo "Uploading vessel_lookup.duckdb to GitHub release data-v1..."
+	gh release upload data-v1 data/vessel_lookup.duckdb --clobber
+	@echo "Done! Container rebuild will use the new database."
 
 #───────────────────────────────────────────────────────────────────────────────
 # Deployment (Cloud Run)
