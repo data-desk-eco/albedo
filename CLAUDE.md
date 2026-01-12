@@ -25,7 +25,21 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 ## Database (data/data.duckdb)
 
 - `vessel_activity` — 79K vessels, aggregated stats
-- `vessel_positions` — 16.9M positions, 2024, 0.01° grid
+- `vessel_positions` — 25M positions, 2023-2025, 0.01° grid
+
+## Vessel Lookup Database (production tooltips)
+
+The full database (2.6GB) is too large for the container. A smaller lookup database (`vessel_lookup.duckdb`, ~130MB) is used in production for the `/api/vessels` tooltip endpoint.
+
+The lookup DB is stored as a GitHub release asset and downloaded during container build.
+
+**To update after changing vessel data:**
+```bash
+make lookup         # Create vessel_lookup.duckdb from data.duckdb
+make upload-lookup  # Upload to GitHub release (replaces existing)
+```
+
+Then trigger a container rebuild (push to main or manual deploy).
 
 ## Frontend
 
