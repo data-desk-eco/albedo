@@ -703,6 +703,13 @@ map.on('mouseout', () => {
   tooltip.classList.remove('visible')
 })
 
+map.on('zoom', () => {
+  // Hide raster tooltip when zooming out below threshold
+  if (!hoveringCrossing && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) {
+    tooltip.classList.remove('visible')
+  }
+})
+
 // Layer visibility toggles
 const activeYears = new Set([2023, 2024, 2025])
 let satelliteMode = false
