@@ -30,7 +30,7 @@ steps:
       - '--min-instances'
       - '0'
       - '--memory'
-      - '4Gi'
+      - '1Gi'
       - '--cpu'
       - '1'
 
