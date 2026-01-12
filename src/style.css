@@ -6,10 +6,34 @@
   --ui-font-size: 16px;
   --ui-font-family: 'Inter', sans-serif;
   --ui-panel-width: 220px;
+  --ui-color: #fff;
+  --ui-color-muted: rgba(255, 255, 255, 0.7);
+  --ui-bg: rgba(0, 0, 0, 0.5);
+  --ui-border: 1px solid rgba(255, 255, 255, 0.3);
+  --ui-bg-hover: rgba(255, 255, 255, 0.1);
 }
 
-body { margin: 0; padding: 0; }
+body {
+  margin: 0;
+  padding: 0;
+}
 
+/* Shared panel styles */
+.ui-panel,
+#tooltip,
+#legend,
+#places-info,
+#category-select,
+#places-select,
+#lang-toggle,
+#about-content {
+  font-family: var(--ui-font-family);
+  color: var(--ui-color);
+  background: var(--ui-bg);
+  border: var(--ui-border);
+}
+
+/* Map */
 #map {
   position: absolute;
   top: 0;
@@ -18,6 +42,7 @@ body { margin: 0; padding: 0; }
   background: hsl(0, 0%, 2%);
 }
 
+/* Logo */
 #logo-container {
   position: absolute;
   bottom: 0;
@@ -33,40 +58,9 @@ body { margin: 0; padding: 0; }
   margin-left: 8px;
 }
 
-@media (max-width: 600px) {
-  #logo-container {
-    flex-direction: column;
-    align-items: flex-end;
-  }
-  #logo-container > * {
-    margin-left: 0;
-    margin-top: 0;
-  }
-  #logo-container > a:first-child {
-    margin-right: 22px;
-  }
-  #logo-separator {
-    position: absolute;
-    right: 4px;
-    bottom: 34px;
-  }
-  #logo-container > a:last-child {
-    margin-top: 2px;
-  }
-  :root {
-    --ui-panel-width: auto;
-  }
-  .legend-symbol {
-    margin-right: 8px;
-  }
-  #places-select,
-  #places-info {
-    max-width: 200px;
-  }
-}
-
-.logo path, .logo polygon {
-  fill: #ffffff;
+.logo path,
+.logo polygon {
+  fill: var(--ui-color);
 }
 
 #arctida-logo {
@@ -78,28 +72,21 @@ body { margin: 0; padding: 0; }
 }
 
 #logo-separator {
-  color: #ffffff;
+  color: var(--ui-color);
   font-size: 16px;
   line-height: 26px;
 }
 
-#tooltip,
+/* Legend */
 #legend {
   position: absolute;
-  font-family: var(--ui-font-family);
-  font-size: var(--ui-font-size);
-  padding: 10px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-#legend {
   bottom: 10px;
   left: 10px;
+  padding: 10px;
   line-height: 1.4;
   width: var(--ui-panel-width);
   box-sizing: border-box;
+  font-size: var(--ui-font-size);
 }
 
 #legend-years .legend-item:last-child {
@@ -108,7 +95,7 @@ body { margin: 0; padding: 0; }
 
 .legend-section-title {
   font-size: var(--ui-font-size);
-  color: #ffffff;
+  color: var(--ui-color);
   margin-bottom: 12px;
 }
 
@@ -168,19 +155,13 @@ body { margin: 0; padding: 0; }
   height: 14px;
   border-radius: 50%;
   background: transparent;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--ui-color);
 }
 
 .legend-hatch {
   width: 18px;
   height: 18px;
-  background: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 2px,
-    #fff 2px,
-    #fff 3px
-  );
+  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #fff 2px, #fff 3px);
   border: 2px solid #fff;
   box-sizing: border-box;
 }
@@ -194,34 +175,32 @@ body { margin: 0; padding: 0; }
 }
 
 .legend-text {
-  color: #ffffff;
+  color: var(--ui-color);
   text-transform: lowercase;
 }
 
 .legend-source {
-  color: #ffffff;
+  color: var(--ui-color);
   font-style: italic;
   font-size: 12px;
   margin-top: 12px;
 }
 
+/* Language toggle */
 #lang-toggle {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  font-family: var(--ui-font-family);
   font-size: 12px;
   padding: 4px 8px;
   cursor: pointer;
 }
 
 #lang-toggle:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--ui-bg-hover);
 }
 
+/* Controls */
 #controls {
   position: absolute;
   top: 10px;
@@ -231,15 +210,11 @@ body { margin: 0; padding: 0; }
   gap: 8px;
   font-family: var(--ui-font-family);
   font-size: var(--ui-font-size);
-  color: #fff;
+  color: var(--ui-color);
 }
 
 #category-select,
 #places-select {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  font-family: var(--ui-font-family);
   font-size: 14px;
   padding: 8px 12px;
   cursor: pointer;
@@ -250,22 +225,16 @@ body { margin: 0; padding: 0; }
 
 #category-select:hover,
 #places-select:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--ui-bg-hover);
 }
 
 #category-select option,
 #places-select option {
   background: #1a1a1a;
-  color: #fff;
-}
-
-#places-select.hidden {
-  display: none;
+  color: var(--ui-color);
 }
 
 #places-info {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 8px 12px;
   width: var(--ui-panel-width);
   box-sizing: border-box;
@@ -273,12 +242,15 @@ body { margin: 0; padding: 0; }
   line-height: 1.4;
 }
 
-#places-info.hidden {
+.hidden {
   display: none;
 }
 
+/* Tooltip */
 #tooltip {
+  position: absolute;
   left: 10px;
+  padding: 10px;
   line-height: 1.5;
   text-transform: lowercase;
   pointer-events: none;
@@ -286,6 +258,7 @@ body { margin: 0; padding: 0; }
   box-sizing: border-box;
   min-width: 400px;
   max-width: 600px;
+  font-size: var(--ui-font-size);
 }
 
 #tooltip.visible {
@@ -300,13 +273,13 @@ body { margin: 0; padding: 0; }
   text-align: right;
 }
 
-/* Compact vessel row layout with aligned columns */
+/* Vessel row grid */
 #tooltip .vessel-row {
   display: grid;
   grid-template-columns: 100px 160px 90px 45px 55px 55px;
   gap: 8px;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   font-size: var(--ui-font-size);
   align-items: center;
 }
@@ -314,21 +287,12 @@ body { margin: 0; padding: 0; }
 #tooltip .vessel-row.vessel-header {
   font-weight: 600;
   font-size: 14px;
-  color: rgba(255,255,255,0.7);
-  border-bottom: 1px solid rgba(255,255,255,0.3);
+  color: var(--ui-color-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 #tooltip .vessel-row:last-child {
   border-bottom: none;
-}
-
-#tooltip .vessel-mmsi,
-#tooltip .vessel-name,
-#tooltip .vessel-type,
-#tooltip .vessel-flag,
-#tooltip .vessel-hours,
-#tooltip .vessel-year {
-  color: #fff;
 }
 
 #tooltip .vessel-name {
@@ -343,6 +307,7 @@ body { margin: 0; padding: 0; }
   text-align: right;
 }
 
+/* About modal */
 #about-modal {
   position: fixed;
   top: 0;
@@ -363,12 +328,9 @@ body { margin: 0; padding: 0; }
 
 #about-content {
   background: rgba(0, 0, 0, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.3);
   padding: 32px 40px;
   max-width: 500px;
   margin: 20px;
-  font-family: var(--ui-font-family);
-  color: #fff;
 }
 
 #about-content h2 {
@@ -381,4 +343,44 @@ body { margin: 0; padding: 0; }
   margin: 0;
   font-size: 16px;
   line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  :root {
+    --ui-panel-width: auto;
+  }
+
+  #logo-container {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  #logo-container > * {
+    margin-left: 0;
+    margin-top: 0;
+  }
+
+  #logo-container > a:first-child {
+    margin-right: 22px;
+  }
+
+  #logo-separator {
+    position: absolute;
+    right: 4px;
+    bottom: 34px;
+  }
+
+  #logo-container > a:last-child {
+    margin-top: 2px;
+  }
+
+  .legend-symbol {
+    margin-right: 8px;
+  }
+
+  #places-select,
+  #places-info {
+    max-width: 200px;
+  }
 }
