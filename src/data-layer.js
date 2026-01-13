@@ -131,7 +131,8 @@ export async function initDB(baseUrl = '/data/export/') {
   vesselLookupUrl = window.location.origin + pathname + 'data/export/vessel_lookup.parquet'
 
   // Register vessel_lookup.parquet as remote file - DuckDB will use HTTP range requests
-  await db.registerFileURL('vessel_lookup.parquet', vesselLookupUrl, duckdb.DuckDBDataProtocol.HTTP, false)
+  // directIO=true enables proper range request handling
+  await db.registerFileURL('vessel_lookup.parquet', vesselLookupUrl, duckdb.DuckDBDataProtocol.HTTP, true)
   registeredFiles.add('vessel_lookup.parquet')
 
   // Pre-register small parquet files needed for map layers (~1MB total)
