@@ -110,11 +110,12 @@ export async function initDB(baseUrl = '/data/export/') {
   const dataUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
 
   // Use local bundles for offline support (files in public/duckdb/)
-  // Construct absolute URLs for the worker
-  const origin = window.location.origin
-  const basePath = import.meta.env.BASE_URL || '/'
-  const workerUrl = origin + basePath + 'duckdb/duckdb-browser-eh.worker.js'
-  const wasmUrl = origin + basePath + 'duckdb/duckdb-eh.wasm'
+  // Construct absolute URLs for the worker using the same basePath as config.js
+  const pathname = window.location.pathname.endsWith('/')
+    ? window.location.pathname
+    : window.location.pathname + '/'
+  const workerUrl = window.location.origin + pathname + 'duckdb/duckdb-browser-eh.worker.js'
+  const wasmUrl = window.location.origin + pathname + 'duckdb/duckdb-eh.wasm'
 
   // Create worker directly from the local script
   const worker = new Worker(workerUrl)
