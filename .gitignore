@@ -3,6 +3,8 @@ data/.*.done
 data/*.jsonl
 data/*.parquet
 !data/export/*.parquet
+!data/export/manifest.json
+!data/export/i18n/
 data/gfw/
 data/gfw_*/
 data/temp/
