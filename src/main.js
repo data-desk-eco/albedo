@@ -84,6 +84,12 @@ function updateUI() {
   const isNarrow = window.innerWidth <= 600
   const lang = getLang()
 
+  // About modal
+  if (manifest?.about) {
+    document.getElementById('about-title').textContent = localize(manifest.about.title)
+    document.getElementById('about-description').textContent = localize(manifest.about.description)
+  }
+
   // Legend labels
   document.getElementById('legend-protected').textContent = t(isNarrow ? 'protectedAreasShort' : 'protectedAreas')
   document.getElementById('legend-crossings').textContent = t(isNarrow ? 'vesselCrossingsShort' : 'vesselCrossings')
