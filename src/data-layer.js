@@ -127,8 +127,16 @@ export async function initDB(baseUrl = '/data/export/') {
 
   conn = await db.connect()
 
-  // Store URL for vessel_lookup.parquet - queried remotely via HTTP range requests (~75MB)
-  vesselLookupUrl = dataUrl + 'vessel_lookup.parquet'
+  // Construct absolute URL for vessel_lookup.parquet
+  const origin = window.location.origin
+  const pathname = window.location.pathname.endsWith('/')
+    ? window.location.pathname
+    : window.location.pathname + '/'
+  vesselLookupUrl = origin + pathname + 'data/export/vessel_lookup.parquet'
+
+  // Register vessel_lookup.parquet as remote file - DuckDB will use HTTP range requests
+  await db.registerFileURL('vessel_lookup.parquet', vesselLookupUrl, duckdb.DuckDBDataProtocol.HTTP, false)
+  registeredFiles.add('vessel_lookup.parquet')
 
   // Pre-register small parquet files needed for map layers (~1MB total)
   const files = ['protected_areas.parquet', 'vessel_crossings.parquet', 'places.parquet']
@@ -281,7 +289,7 @@ export async function queryVesselsAt(lat, lon, year = null) {
   const eps = 0.015
   const result = await conn.query(`
     SELECT mmsi, ship_name, flag, vessel_type, year, total_hours, lat, lon
-    FROM read_parquet('${vesselLookupUrl}')
+    FROM read_parquet('vessel_lookup.parquet')
     WHERE lat BETWEEN ${gridLat - eps} AND ${gridLat + eps}
       AND lon BETWEEN ${gridLon - eps} AND ${gridLon + eps}
       ${yearFilter}
@@ -303,7 +311,7 @@ export async function queryVesselsAt(lat, lon, year = null) {
 export async function loadTooltipTargetsInBounds(minLat, maxLat, minLon, maxLon) {
   const result = await conn.query(`
     SELECT DISTINCT lat, lon
-    FROM read_parquet('${vesselLookupUrl}')
+    FROM read_parquet('vessel_lookup.parquet')
     WHERE lat BETWEEN ${minLat} AND ${maxLat}
       AND lon BETWEEN ${minLon} AND ${maxLon}
   `)
