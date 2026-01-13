@@ -59,15 +59,12 @@ install:
 dev:
 	npm run dev
 
-# Build for production
+# Build for production (Vite handles data copying via plugin)
+SRC_FILES := $(shell find src -type f 2>/dev/null)
 build: dist
 
-dist: src/* data/vessel_heatmap.tif data/export/.done
+dist: $(SRC_FILES) index.html vite.config.js data/vessel_heatmap.tif data/export/.done
 	npm run build
-	mkdir -p dist/data/export dist/data/places
-	cp data/vessel_heatmap.tif dist/data/
-	cp data/export/*.parquet dist/data/export/
-	cp -r data/places/* dist/data/places/
 
 # Preview production build locally
 preview: build
@@ -77,33 +74,12 @@ clean:
 	rm -rf dist data/data.duckdb data/export data/vessel_heatmap.tif
 
 #───────────────────────────────────────────────────────────────────────────────
-# Deployment (Google Cloud Storage - Static)
+# Deployment (GitHub Pages via Actions - see .github/workflows/deploy.yml)
+# Deploys to: https://research.datadesk.eco/albedo/
 #───────────────────────────────────────────────────────────────────────────────
 
-GCS_BUCKET := albedo-static
-GCP_PROJECT := data-desk-web
-
-# Deploy to Google Cloud Storage (static hosting)
-deploy: dist
-	gcloud storage cp -r dist/* gs://$(GCS_BUCKET)/
-	@echo "Deployed to: https://storage.googleapis.com/$(GCS_BUCKET)/index.html"
-
-# Setup GCS bucket (run once)
-setup-gcs:
-	gcloud storage buckets create gs://$(GCS_BUCKET) \
-		--location=europe-west1 \
-		--project=$(GCP_PROJECT) \
-		--uniform-bucket-level-access
-	gcloud storage buckets add-iam-policy-binding gs://$(GCS_BUCKET) \
-		--member=allUsers \
-		--role=roles/storage.objectViewer
-	@echo '[ { "origin": ["*"], "method": ["GET", "HEAD"], "responseHeader": ["Content-Type", "Content-Range", "Accept-Ranges", "Content-Length"], "maxAgeSeconds": 3600 } ]' > /tmp/cors.json
-	gcloud storage buckets update gs://$(GCS_BUCKET) --cors-file=/tmp/cors.json
-	@rm /tmp/cors.json
-	@echo "GCS bucket configured for static hosting with CORS"
-
 #───────────────────────────────────────────────────────────────────────────────
-# Legacy targets (kept for reference during migration)
+# Utilities
 #───────────────────────────────────────────────────────────────────────────────
 
 # Export vessel crossings as CSV for review
