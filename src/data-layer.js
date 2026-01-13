@@ -127,12 +127,8 @@ export async function initDB(baseUrl = '/data/export/') {
 
   conn = await db.connect()
 
-  // Construct absolute URL for vessel_lookup.parquet
-  const origin = window.location.origin
-  const pathname = window.location.pathname.endsWith('/')
-    ? window.location.pathname
-    : window.location.pathname + '/'
-  vesselLookupUrl = origin + pathname + 'data/export/vessel_lookup.parquet'
+  // Construct absolute URL for vessel_lookup.parquet (reuse pathname from above)
+  vesselLookupUrl = window.location.origin + pathname + 'data/export/vessel_lookup.parquet'
 
   // Register vessel_lookup.parquet as remote file - DuckDB will use HTTP range requests
   await db.registerFileURL('vessel_lookup.parquet', vesselLookupUrl, duckdb.DuckDBDataProtocol.HTTP, false)
