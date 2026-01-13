@@ -1,15 +1,18 @@
 import './style.css'
 import maplibregl from 'maplibre-gl'
-import * as pmtiles from 'pmtiles'
 import { t, tVesselType, getLang, setLang, toggleLang } from './i18n.js'
+import { initCOG, renderTile, clearCache as clearCOGCache } from './cog-tiles.js'
+import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt, loadTooltipTargetsInBounds } from './data-layer.js'
 import {
+  DEBUG_MODE,
   YEAR_COLORS,
   ARCTIC_CENTER_LAT,
   ARCTIC_MIN_LAT_ZOOMED_OUT,
   ARCTIC_MIN_LAT_ZOOMED_IN,
   RASTER_TOOLTIP_MIN_ZOOM,
-  TILE_VERSION,
   basePath,
+  COG_URL,
+  DATA_URL,
   PROTECTED_AREA_LAYERS,
   createMapStyle
 } from './config.js'
@@ -17,10 +20,15 @@ import {
 // State
 let currentCategory = 'all'
 let categories = []
-let places = []
+let placesData = []
 const activeYears = new Set([2023, 2024, 2025])
 let satelliteMode = false
 let hoveringCrossing = false
+let dataInitialized = false
+
+// COG tile cache
+const cogTileCache = new Map()
+let activeYearBands = [0, 1, 2]  // All years by default
 
 // DOM elements
 const tooltip = document.getElementById('tooltip')
@@ -73,8 +81,6 @@ function updateUI() {
   document.getElementById('legend-multi-year').textContent = t(isNarrow ? 'multiYearShort' : 'multiYear')
   document.getElementById('legend-section-vessel').textContent = t('sectionVessel')
   document.getElementById('legend-section-layers').textContent = t('sectionLayers')
-  document.getElementById('about-title').textContent = t('aboutTitle')
-  document.getElementById('about-text').textContent = t('aboutText')
 
   // Update place labels language if map is loaded
   if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
@@ -85,7 +91,7 @@ function updateUI() {
   }
 
   // Update dropdowns
-  if (places.length > 0) {
+  if (placesData.length > 0) {
     const select = document.getElementById('places-select')
     const selectedValue = select.value
     populatePlacesDropdown()
@@ -147,12 +153,42 @@ const hatchPatterns = {
   'hatch-black-lg': () => createHatchPattern('#000000', 16)
 }
 
-// Register PMTiles protocol
-const protocol = new pmtiles.Protocol()
-maplibregl.addProtocol('pmtiles', protocol.tile)
+// COG initialization - start immediately, don't wait for map load
+const cogReady = initCOG(COG_URL).catch(err => {
+  console.error('COG init failed:', err)
+})
+
+// Register COG tile protocol (Promise-based API for MapLibre GL JS v5+)
+maplibregl.addProtocol('cog', async (params) => {
+  const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
+  if (!match) {
+    throw new Error('Invalid COG tile URL')
+  }
+
+  // Wait for COG initialization
+  await cogReady
+
+  const [, z, x, y] = match.map(Number)
+  // Include satellite mode in cache key (land rendering differs)
+  const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}/${satelliteMode}`
+
+  if (cogTileCache.has(cacheKey)) {
+    return { data: cogTileCache.get(cacheKey) }
+  }
+
+  try {
+    // In satellite mode, make land transparent (showLand = false)
+    const buffer = await renderTile(z, x, y, activeYearBands, !satelliteMode)
+    cogTileCache.set(cacheKey, buffer)
+    return { data: buffer }
+  } catch (err) {
+    console.warn('COG tile error:', err)
+    throw err
+  }
+})
 
 // Initialize map
-const map = new maplibregl.Map({
+const map = window.map = new maplibregl.Map({
   container: 'map',
   attributionControl: false,
   style: createMapStyle(),
@@ -164,7 +200,9 @@ const map = new maplibregl.Map({
   minZoom: 2.5,
   minPitch: 0,
   maxPitch: 30,
-  renderWorldCopies: false
+  renderWorldCopies: false,
+  // Use local system fonts for offline support (no glyph server needed)
+  localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 })
 
 // Map event handlers
@@ -174,17 +212,61 @@ map.on('styleimagemissing', (e) => {
   }
 })
 
-map.on('load', () => {
+map.on('load', async () => {
+  // Initialize client-side data systems
+  try {
+    // COG is already initializing in parallel, wait for it
+    await cogReady
+    await initDB(DATA_URL)
+
+    const [protectedAreas, crossings, places] = await Promise.all([
+      loadProtectedAreas(),
+      loadVesselCrossings(),
+      loadPlaces()
+    ])
+
+    // Store crossings for filtering and update sources
+    allCrossings = crossings
+
+    map.getSource('protected-areas').setData(protectedAreas)
+    map.getSource('vessel-crossings').setData(crossings)
+    map.getSource('places').setData(places)
+
+    dataInitialized = true
+
+    // Trigger repaint to show the heatmap
+    map.triggerRepaint()
+  } catch (err) {
+    console.error('Failed to initialize data:', err)
+  }
+
+  // Load categories and places for dropdowns
   loadCategories()
-  loadPlaces()
+  loadPlacesDropdown()
 })
 
-map.on('moveend', () => {
+map.on('moveend', async () => {
   const center = map.getCenter()
   const zoom = map.getZoom()
   const minLat = zoom > 4 ? ARCTIC_MIN_LAT_ZOOMED_IN : ARCTIC_MIN_LAT_ZOOMED_OUT
   if (center.lat < minLat) {
     map.panTo([center.lng, ARCTIC_CENTER_LAT])
+  }
+
+  // Update debug tooltip targets layer when zoomed in enough (DEBUG_MODE only)
+  if (DEBUG_MODE && dataInitialized && zoom >= 5) {
+    const bounds = map.getBounds()
+    try {
+      const targets = await loadTooltipTargetsInBounds(
+        bounds.getSouth(),
+        bounds.getNorth(),
+        bounds.getWest(),
+        bounds.getEast()
+      )
+      map.getSource('debug-tooltip-targets').setData(targets)
+    } catch (err) {
+      console.warn('Failed to load debug targets:', err)
+    }
   }
 })
 
@@ -215,20 +297,7 @@ map.on('mouseleave', 'crossings', () => {
   hideTooltip()
 })
 
-// Raster vessel tooltip
-async function fetchVesselsAtLocation(lat, lon) {
-  try {
-    const yearsParam = activeYears.size === 1 ? `&year=${Array.from(activeYears)[0]}` : ''
-    const response = await fetch(`${basePath}api/vessels?lat=${lat}&lon=${lon}${yearsParam}`)
-    if (!response.ok) return null
-    const data = await response.json()
-    return data.vessels || []
-  } catch (err) {
-    console.warn('Vessel query failed:', err)
-    return null
-  }
-}
-
+// Raster vessel tooltip (client-side DuckDB query)
 function showRasterTooltip(vessels) {
   if (!vessels || vessels.length === 0) {
     hideTooltip()
@@ -268,11 +337,18 @@ function showRasterTooltip(vessels) {
 }
 
 const handleRasterHover = debounce(async (e) => {
-  if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+  if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+
   const { lat, lng } = e.lngLat
-  const vessels = await fetchVesselsAtLocation(lat, lng)
-  showRasterTooltip(vessels)
-}, 150)
+  const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+
+  try {
+    const vessels = await queryVesselsAt(lat, lng, year)
+    showRasterTooltip(vessels)
+  } catch (err) {
+    // Silently fail tooltip queries
+  }
+}, 50)
 
 map.on('mousemove', (e) => {
   if (hoveringCrossing) return
@@ -291,35 +367,32 @@ map.on('zoom', () => {
 
 // Layer controls
 function updateProtectedAreaColors() {
-  const landColor = satelliteMode ? 'white' : 'black'
-  map.setPaintProperty('protected-areas-on-land-sm', 'fill-pattern', `hatch-${landColor}-sm`)
-  map.setPaintProperty('protected-areas-on-land-md', 'fill-pattern', `hatch-${landColor}-md`)
-  map.setPaintProperty('protected-areas-on-land-lg', 'fill-pattern', `hatch-${landColor}-lg`)
-  map.setPaintProperty('protected-areas-on-land-border', 'line-color', satelliteMode ? '#ffffff' : '#000000')
+  const hatchColor = satelliteMode ? 'white' : 'white'  // Keep white for now
+  map.setPaintProperty('protected-areas-fill', 'fill-pattern', `hatch-${hatchColor}-md`)
+  map.setPaintProperty('protected-areas-border', 'line-color', satelliteMode ? '#ffffff' : '#ffffff')
 }
 
 function updateHeatmapSource() {
   const years = Array.from(activeYears).sort()
 
-  if (years.length === 0) {
-    map.setLayoutProperty('vessel-heatmap', 'visibility', 'none')
-    return
-  }
-
+  // Always keep heatmap visible (it contains land mask)
+  // When no years selected, we render just land
   map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
 
+  // Map years to band indices (2023→0, 2024→1, 2025→2)
+  // Empty array means no vessel data, just land
   const yearList = Object.keys(YEAR_COLORS).map(Number).sort()
-  const bandIndices = years.map(y => yearList.indexOf(y)).filter(i => i >= 0)
-  const yearsParam = bandIndices.length < 3 ? `&years=${bandIndices.join(',')}` : ''
-  const categoryParam = currentCategory !== 'all' ? `&category=${currentCategory}` : ''
-  const newTileUrl = basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}${yearsParam}${categoryParam}`
+  activeYearBands = years.map(y => yearList.indexOf(y)).filter(i => i >= 0)
 
+  // Clear our application tile cache
+  cogTileCache.clear()
+  clearCOGCache()
+
+  // Force MapLibre to reload tiles by updating the source tiles URL
+  // Adding a timestamp query param invalidates MapLibre's internal cache
   const source = map.getSource('vessel-heatmap')
   if (source) {
-    source.setTiles([newTileUrl])
-    const sourceCache = map.style?.sourceCaches?.['vessel-heatmap']
-    if (sourceCache) sourceCache.clearTiles()
-    map.triggerRepaint()
+    source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
   }
 }
 
@@ -346,19 +419,58 @@ function toggleLayer(layerId) {
     satelliteMode = !satelliteMode
     map.setLayoutProperty('sentinel-2', 'visibility', satelliteMode ? 'visible' : 'none')
     updateProtectedAreaColors()
+    // Invalidate tile cache (land rendering changes with satellite mode)
+    cogTileCache.clear()
+    clearCOGCache()
+    const source = map.getSource('vessel-heatmap')
+    if (source) {
+      source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+    }
   }
 }
 
-// Categories
+// Vessel type translations
+const VESSEL_TYPE_NAMES = {
+  'all': { en: 'All vessels', ru: 'Все суда' },
+  'CARGO': { en: 'Cargo', ru: 'Грузовое' },
+  'FISHING': { en: 'Fishing', ru: 'Рыболовное' },
+  'PASSENGER': { en: 'Passenger', ru: 'Пассажирское' },
+  'CARRIER': { en: 'Carrier', ru: 'Танкер' },
+  'BUNKER': { en: 'Bunker', ru: 'Бункеровщик' },
+  'SEISMIC_VESSEL': { en: 'Seismic', ru: 'Сейсморазведка' },
+  'OTHER': { en: 'Other', ru: 'Другое' },
+  'GEAR': { en: 'Gear', ru: 'Снаряжение' }
+}
+
+// Store all crossings for filtering
+let allCrossings = null
+
+// Categories - populated from vessel types in data
 async function loadCategories() {
-  try {
-    const response = await fetch(basePath + 'api/categories')
-    const data = await response.json()
-    categories = data.categories || []
-    if (categories.length > 0) populateCategoryDropdown()
-  } catch (err) {
-    console.warn('Could not load categories:', err)
+  // Start with "all" option
+  categories = [{ id: 'all', name_en: 'All vessels', name_ru: 'Все суда' }]
+
+  // Add vessel types from the data (using stored crossings)
+  if (allCrossings?.features) {
+    const types = new Set()
+    allCrossings.features.forEach(f => {
+      if (f.properties?.vessel_type) {
+        types.add(f.properties.vessel_type)
+      }
+    })
+
+    // Sort and add to categories
+    Array.from(types).sort().forEach(type => {
+      const names = VESSEL_TYPE_NAMES[type] || { en: type, ru: type }
+      categories.push({
+        id: type,
+        name_en: names.en,
+        name_ru: names.ru
+      })
+    })
   }
+
+  populateCategoryDropdown()
 }
 
 function populateCategoryDropdown() {
@@ -376,16 +488,30 @@ function populateCategoryDropdown() {
 
 function selectCategory(categoryId) {
   currentCategory = categoryId
-  updateHeatmapSource()
+
+  // Filter crossings by vessel type
+  if (allCrossings && map.getSource('vessel-crossings')) {
+    if (categoryId === 'all') {
+      map.getSource('vessel-crossings').setData(allCrossings)
+    } else {
+      const filtered = {
+        type: 'FeatureCollection',
+        features: allCrossings.features.filter(f =>
+          f.properties?.vessel_type === categoryId
+        )
+      }
+      map.getSource('vessel-crossings').setData(filtered)
+    }
+  }
 }
 
 // Places
-async function loadPlaces() {
+async function loadPlacesDropdown() {
   try {
     const response = await fetch(basePath + 'data/places/places.json')
     const data = await response.json()
-    places = data.places
-    if (places.length > 0) {
+    placesData = data.places
+    if (placesData.length > 0) {
       document.getElementById('places-select').classList.remove('hidden')
       populatePlacesDropdown()
     }
@@ -399,7 +525,7 @@ function populatePlacesDropdown() {
   const select = document.getElementById('places-select')
   const lang = getLang()
   select.innerHTML = `<option value="">${t('selectPlace')}</option>`
-  places.forEach((place, index) => {
+  placesData.forEach((place, index) => {
     const option = document.createElement('option')
     option.value = index
     option.textContent = lang === 'ru' ? place.name_ru : place.name_en
@@ -408,7 +534,7 @@ function populatePlacesDropdown() {
 }
 
 function showPlace(index) {
-  const place = places[index]
+  const place = placesData[index]
   const infoEl = document.getElementById('places-info')
 
   if (!place) {
@@ -446,6 +572,10 @@ document.getElementById('places-select').addEventListener('change', (e) => {
   showPlace(parseInt(value))
 })
 
+// Initialize year legend before attaching event listeners
+initYearLegend()
+
+// Now attach event listeners (year toggles now exist)
 document.querySelectorAll('.legend-toggle').forEach(item => {
   item.addEventListener('click', () => {
     const year = item.dataset.year
@@ -462,7 +592,4 @@ document.querySelectorAll('.legend-toggle').forEach(item => {
 })
 
 window.addEventListener('resize', updateUI)
-
-// Initialize
-initYearLegend()
 updateUI()

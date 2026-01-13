@@ -28,8 +28,6 @@ const translations = {
     multiYearShort: 'multi',
     sectionVessel: 'vessel presence',
     sectionLayers: 'additional layers',
-    aboutTitle: 'about this map',
-    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
     // Vessel types
     vesselType_BUNKER: 'bunker',
     vesselType_CARGO: 'cargo',
@@ -71,8 +69,6 @@ const translations = {
     multiYearShort: 'неск.',
     sectionVessel: 'присутствие судов',
     sectionLayers: 'дополнительные слои',
-    aboutTitle: 'о карте',
-    aboutText: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
     // Vessel types
     vesselType_BUNKER: 'бункеровщик',
     vesselType_CARGO: 'грузовое',

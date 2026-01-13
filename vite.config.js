@@ -9,14 +9,25 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      assetsDir: 'assets'
+      assetsDir: 'assets',
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'duckdb': ['@duckdb/duckdb-wasm'],
+            'geotiff': ['geotiff'],
+            'maplibre': ['maplibre-gl']
+          }
+        }
+      }
     },
     server: {
-      proxy: {
-        '/tiles': 'http://localhost:8000',
-        '/data': 'http://localhost:8000',
-        '/api': 'http://localhost:8000'
+      // For development, serve data files directly from the data directory
+      fs: {
+        allow: ['..']
       }
+    },
+    optimizeDeps: {
+      exclude: ['@duckdb/duckdb-wasm']  // Don't pre-bundle DuckDB WASM
     }
   }
 })

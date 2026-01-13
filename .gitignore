@@ -2,6 +2,7 @@
 data/.*.done
 data/*.jsonl
 data/*.parquet
+!data/export/*.parquet
 data/gfw/
 data/gfw_*/
 data/temp/
@@ -21,14 +22,11 @@ data/ne_10m_populated_places/
 data/protected_areas.geojson
 data/*.pmtiles
 data/*.tif
+!data/vessel_heatmap.tif
 data/vessel_categories/
 
 # Data - databases are too large
 data/*.duckdb
-
-# Commit the final tile outputs (needed for deployment)
-# data/*.pmtiles
-# data/*.tif
 
 # dbt
 etl/target/
@@ -63,3 +61,4 @@ package-lock.json
 
 # Static deployment bundle
 dist/
+public/data

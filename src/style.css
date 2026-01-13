@@ -276,7 +276,7 @@ body {
 /* Vessel row grid */
 #tooltip .vessel-row {
   display: grid;
-  grid-template-columns: 100px 160px 90px 45px 55px 55px;
+  grid-template-columns: 100px 150px 115px 45px 55px 55px;
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
@@ -295,11 +295,15 @@ body {
   border-bottom: none;
 }
 
-#tooltip .vessel-name {
-  font-weight: 500;
+#tooltip .vessel-name,
+#tooltip .vessel-type {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+#tooltip .vessel-name {
+  font-weight: 500;
 }
 
 #tooltip .vessel-hours,
@@ -340,9 +344,18 @@ body {
 }
 
 #about-content p {
-  margin: 0;
+  margin: 0 0 12px 0;
   font-size: 16px;
   line-height: 1.6;
+}
+
+#about-content p:last-child {
+  margin-bottom: 0;
+}
+
+#about-content .about-en {
+  color: var(--ui-color-muted);
+  font-size: 0.75em;
 }
 
 /* Responsive */

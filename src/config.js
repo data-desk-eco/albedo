@@ -1,5 +1,8 @@
+// Debug mode: set to true to visualize tooltip target grid cells
+export const DEBUG_MODE = false
+
 // Year colors: oldest (2023) → newest (2025)
-// SYNC: Must match YEAR_COLORS in scripts/tile_server.py
+// SYNC: Must match YEAR_COLORS in cog-tiles.js
 export const YEAR_COLORS = {
   2023: 'rgb(0, 255, 255)',   // Cyan (band 0)
   2024: 'rgb(0, 255, 0)',     // Green (band 1)
@@ -17,34 +20,28 @@ export const RASTER_TOOLTIP_MIN_ZOOM = 8
 // Tile cache version - injected from .env at build time
 export const TILE_VERSION = __TILE_VERSION__
 
-// Get base path for tile URLs (works with /albedo or any path prefix)
+// Get base path for asset URLs (works with /albedo or any path prefix)
 export const basePath = window.location.pathname.endsWith('/')
   ? window.location.pathname
   : window.location.pathname + '/'
 
-// Protected area layer IDs
+// Data URLs - can be overridden via env vars for CDN deployment
+export const COG_URL = import.meta.env.VITE_COG_URL || basePath + 'data/vessel_heatmap.tif'
+export const DATA_URL = import.meta.env.VITE_DATA_URL || basePath + 'data/export/'
+
+// Protected area layer IDs (used for toggling visibility)
 export const PROTECTED_AREA_LAYERS = [
-  'protected-areas-on-land-sm',
-  'protected-areas-on-land-md',
-  'protected-areas-on-land-lg',
-  'protected-areas-on-land-border',
-  'protected-areas-on-sea-sm',
-  'protected-areas-on-sea-md',
-  'protected-areas-on-sea-lg',
-  'protected-areas-on-sea-border'
+  'protected-areas-fill',
+  'protected-areas-border'
 ]
 
 // Create map style configuration
+// Note: Vector sources are now added dynamically after DuckDB loads
 export function createMapStyle() {
   return {
     version: 8,
     projection: { type: 'globe' },
     sources: {
-      'land': {
-        type: 'vector',
-        url: 'pmtiles://' + basePath + 'data/land.pmtiles',
-        attribution: '© Natural Earth'
-      },
       'sentinel-2': {
         type: 'raster',
         tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'],
@@ -54,29 +51,31 @@ export function createMapStyle() {
       },
       'vessel-heatmap': {
         type: 'raster',
-        tiles: [basePath + `tiles/{z}/{x}/{y}.png?v=${TILE_VERSION}`],
+        tiles: ['cog://{z}/{x}/{y}'],
         tileSize: 256,
         attribution: 'GFW 4Wings'
       },
+      // These GeoJSON sources will be populated dynamically after data loads
       'protected-areas': {
-        type: 'vector',
-        url: 'pmtiles://' + basePath + 'data/protected_areas.pmtiles',
-        attribution: 'Russian Ministry'
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
       },
       'vessel-crossings': {
-        type: 'vector',
-        url: 'pmtiles://' + basePath + 'data/vessel_crossings.pmtiles',
-        attribution: 'GFW 4Wings'
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
       },
       'places': {
-        type: 'vector',
-        url: 'pmtiles://' + basePath + 'data/places.pmtiles',
-        attribution: 'Natural Earth'
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
       },
       'activity-hotspots': {
         type: 'geojson',
         data: basePath + 'data/places/activity_hotspots.geojson'
       },
+      'debug-tooltip-targets': {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      }
     },
     layers: [
       {
@@ -85,23 +84,24 @@ export function createMapStyle() {
         paint: { 'background-color': '#000000' }
       },
       {
-        id: 'land',
-        type: 'fill',
-        source: 'land',
-        'source-layer': 'land',
-        paint: { 'fill-color': '#ffffff', 'fill-opacity': 1 }
-      },
-      {
         id: 'sentinel-2',
         type: 'raster',
         source: 'sentinel-2',
         layout: { 'visibility': 'none' },
         paint: { 'raster-opacity': 1 }
       },
-      // Protected areas on land (3 zoom levels)
-      ...createProtectedAreaLayers('land', 'black'),
-      // Protected areas on sea (3 zoom levels)
-      ...createProtectedAreaLayers('sea', 'white'),
+      // Debug: tooltip target grid cells (red squares matching raster pixels)
+      {
+        id: 'debug-tooltip-targets',
+        type: 'fill',
+        source: 'debug-tooltip-targets',
+        minzoom: 5,
+        paint: {
+          'fill-color': '#ff0000',
+          'fill-opacity': 0.5,
+          'fill-outline-color': '#ff0000'
+        }
+      },
       {
         id: 'vessel-heatmap',
         type: 'raster',
@@ -111,6 +111,26 @@ export function createMapStyle() {
           'raster-resampling': 'nearest',
           'raster-brightness-max': 1,
           'raster-contrast': 0.3
+        }
+      },
+      // Protected areas (single layer, styled with hatch pattern)
+      {
+        id: 'protected-areas-fill',
+        type: 'fill',
+        source: 'protected-areas',
+        paint: {
+          'fill-pattern': 'hatch-white-md',
+          'fill-opacity': 1
+        }
+      },
+      {
+        id: 'protected-areas-border',
+        type: 'line',
+        source: 'protected-areas',
+        paint: {
+          'line-color': '#ffffff',
+          'line-width': 2,
+          'line-opacity': 1
         }
       },
       {
@@ -127,7 +147,6 @@ export function createMapStyle() {
         id: 'crossings',
         type: 'circle',
         source: 'vessel-crossings',
-        'source-layer': 'crossings',
         minzoom: 0,
         maxzoom: 24,
         layout: {
@@ -153,7 +172,6 @@ export function createMapStyle() {
         id: 'place-labels',
         type: 'symbol',
         source: 'places',
-        'source-layer': 'places',
         minzoom: 2,
         layout: {
           'text-field': ['coalesce', ['get', 'name_ru'], ['get', 'name_en']],
@@ -177,44 +195,6 @@ export function createMapStyle() {
       }
     ]
   }
-}
-
-// Helper: create protected area layers for a given location (land/sea)
-function createProtectedAreaLayers(location, color) {
-  const sourceLayer = `protected_areas_${location}`
-  const idPrefix = `protected-areas-on-${location}`
-  const zoomBreaks = [
-    { suffix: 'sm', maxzoom: 4, size: 'sm' },
-    { suffix: 'md', minzoom: 4, maxzoom: 7, size: 'md' },
-    { suffix: 'lg', minzoom: 7, size: 'lg' }
-  ]
-
-  const fillLayers = zoomBreaks.map(({ suffix, minzoom, maxzoom, size }) => ({
-    id: `${idPrefix}-${suffix}`,
-    type: 'fill',
-    source: 'protected-areas',
-    'source-layer': sourceLayer,
-    ...(minzoom && { minzoom }),
-    ...(maxzoom && { maxzoom }),
-    paint: {
-      'fill-pattern': `hatch-${color}-${size}`,
-      'fill-opacity': 1
-    }
-  }))
-
-  const borderLayer = {
-    id: `${idPrefix}-border`,
-    type: 'line',
-    source: 'protected-areas',
-    'source-layer': sourceLayer,
-    paint: {
-      'line-color': color === 'black' ? '#000000' : '#ffffff',
-      'line-width': 2,
-      'line-opacity': 1
-    }
-  }
-
-  return [...fillLayers, borderLayer]
 }
 
 // Helper: create crossings circle radius expression

@@ -13,7 +13,7 @@ class RasterConfig:
     """Configuration for Arctic vessel activity rasters."""
     min_lon: float = -180.0
     max_lon: float = 180.0
-    min_lat: float = 56.0
+    min_lat: float = 57.0
     max_lat: float = 90.0
     resolution: float = 0.01
 
