@@ -158,6 +158,18 @@ const cogReady = initCOG(COG_URL).catch(err => {
   console.error('COG init failed:', err)
 })
 
+// DuckDB initialization - lazy load in background, doesn't block map
+let dbReady = null
+function ensureDB() {
+  if (!dbReady) {
+    dbReady = initDB(DATA_URL).catch(err => {
+      console.error('DuckDB init failed:', err)
+      dbReady = null
+    })
+  }
+  return dbReady
+}
+
 // Register COG tile protocol (Promise-based API for MapLibre GL JS v5+)
 maplibregl.addProtocol('cog', async (params) => {
   const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
@@ -213,35 +225,40 @@ map.on('styleimagemissing', (e) => {
 })
 
 map.on('load', async () => {
-  // Initialize client-side data systems
+  // Wait for COG (heatmap) - this is critical for initial render
   try {
-    // COG is already initializing in parallel, wait for it
     await cogReady
-    await initDB(DATA_URL)
-
-    const [protectedAreas, crossings, places] = await Promise.all([
-      loadProtectedAreas(),
-      loadVesselCrossings(),
-      loadPlaces()
-    ])
-
-    // Store crossings for filtering and update sources
-    allCrossings = crossings
-
-    map.getSource('protected-areas').setData(protectedAreas)
-    map.getSource('vessel-crossings').setData(crossings)
-    map.getSource('places').setData(places)
-
-    dataInitialized = true
-
-    // Trigger repaint to show the heatmap
     map.triggerRepaint()
   } catch (err) {
-    console.error('Failed to initialize data:', err)
+    console.error('COG init failed:', err)
   }
 
-  // Load categories and places for dropdowns
-  loadCategories()
+  // Load vector layers in background (doesn't block map interaction)
+  ensureDB().then(async () => {
+    try {
+      const [protectedAreas, crossings, places] = await Promise.all([
+        loadProtectedAreas(),
+        loadVesselCrossings(),
+        loadPlaces()
+      ])
+
+      // Store crossings for filtering and update sources
+      allCrossings = crossings
+
+      map.getSource('protected-areas').setData(protectedAreas)
+      map.getSource('vessel-crossings').setData(crossings)
+      map.getSource('places').setData(places)
+
+      dataInitialized = true
+
+      // Load categories now that we have crossings data
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to load vector data:', err)
+    }
+  })
+
+  // Load places dropdown (uses JSON, not DuckDB)
   loadPlacesDropdown()
 })
 
@@ -254,7 +271,11 @@ map.on('moveend', async () => {
   }
 
   // Update debug tooltip targets layer when zoomed in enough (DEBUG_MODE only)
-  if (DEBUG_MODE && dataInitialized && zoom >= 5) {
+  if (DEBUG_MODE && zoom >= 5) {
+    // Ensure DB is ready before querying
+    await ensureDB()
+    if (!dataInitialized) return
+
     const bounds = map.getBounds()
     try {
       const targets = await loadTooltipTargetsInBounds(
@@ -337,7 +358,13 @@ function showRasterTooltip(vessels) {
 }
 
 const handleRasterHover = debounce(async (e) => {
-  if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+  if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+
+  // Ensure DB is ready before querying (lazy init if needed)
+  if (!dataInitialized) {
+    await ensureDB()
+    if (!dataInitialized) return  // Still loading vector data
+  }
 
   const { lat, lng } = e.lngLat
   const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
