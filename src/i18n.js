@@ -1,106 +1,115 @@
-// Internationalization strings
-const translations = {
-  en: {
-    protectedAreas: 'protected areas',
-    protectedAreasShort: 'protected',
-    vesselCrossings: 'vessel crossings',
-    vesselCrossingsShort: 'crossings',
-    satellite: 'satellite imagery',
-    satelliteShort: 'satellite',
-    dataSource: 'data: Global Fishing Watch',
-    dataSourceShort: 'data: GFW',
-    vessel: 'vessel',
-    mmsi: 'mmsi',
-    type: 'type',
-    flag: 'flag',
-    duration: 'duration',
-    days: 'days',
-    hours: 'hours',
-    year: 'year',
-    firstSeen: 'first seen',
-    lastSeen: 'last seen',
-    unknown: 'unknown',
-    protectedArea: 'protected area',
-    selectPlace: 'select a place of interest',
-    selectCategory: 'select vessel category',
-    allVessels: 'all vessels',
-    multiYear: 'multiple years',
-    multiYearShort: 'multi',
-    sectionVessel: 'vessel presence',
-    sectionLayers: 'additional layers',
-    // Vessel types
-    vesselType_BUNKER: 'bunker',
-    vesselType_CARGO: 'cargo',
-    vesselType_CARRIER: 'carrier',
-    vesselType_DISCREPANCY: 'discrepancy',
-    vesselType_FISHING: 'fishing',
-    vesselType_GEAR: 'gear',
-    vesselType_OTHER: 'other',
-    vesselType_PASSENGER: 'passenger',
-    vesselType_SEISMIC_VESSEL: 'seismic',
-    hoursShort: 'h',
-    more: 'more',
-  },
-  ru: {
-    protectedAreas: 'охраняемые территории',
-    protectedAreasShort: 'охраняемые',
-    vesselCrossings: 'пересечения судов',
-    vesselCrossingsShort: 'пересечения',
-    satellite: 'спутниковые снимки',
-    satelliteShort: 'спутник',
-    dataSource: 'данные: Global Fishing Watch',
-    dataSourceShort: 'данные: GFW',
-    vessel: 'судно',
-    mmsi: 'mmsi',
-    type: 'тип',
-    flag: 'флаг',
-    duration: 'длительность',
-    days: 'дней',
-    hours: 'часов',
-    year: 'год',
-    firstSeen: 'первое обнаружение',
-    lastSeen: 'последнее обнаружение',
-    unknown: 'неизвестно',
-    protectedArea: 'охраняемая территория',
-    selectPlace: 'выберите место',
-    selectCategory: 'выберите категорию судов',
-    allVessels: 'все суда',
-    multiYear: 'несколько лет',
-    multiYearShort: 'неск.',
-    sectionVessel: 'присутствие судов',
-    sectionLayers: 'дополнительные слои',
-    // Vessel types
-    vesselType_BUNKER: 'бункеровщик',
-    vesselType_CARGO: 'грузовое',
-    vesselType_CARRIER: 'перевозчик',
-    vesselType_DISCREPANCY: 'несоответствие',
-    vesselType_FISHING: 'рыболовное',
-    vesselType_GEAR: 'оборудование',
-    vesselType_OTHER: 'другое',
-    vesselType_PASSENGER: 'пассажирское',
-    vesselType_SEISMIC_VESSEL: 'сейсморазведка',
-    hoursShort: 'ч',
-    more: 'ещё',
+/**
+ * Internationalization module
+ * Loads translations from remote JSON files specified in manifest
+ */
+
+let translations = {}
+let currentLang = 'en'
+let availableLangs = ['en']
+let dataUrl = ''
+
+/**
+ * Initialize i18n with manifest configuration
+ * @param {Object} manifest - The app manifest
+ * @param {string} baseUrl - Base URL for data files
+ */
+export async function initI18n(manifest, baseUrl) {
+  dataUrl = baseUrl
+  availableLangs = manifest.ui?.availableLangs || ['en']
+  currentLang = localStorage.getItem('lang') || manifest.ui?.defaultLang || 'en'
+
+  // Validate current lang is available
+  if (!availableLangs.includes(currentLang)) {
+    currentLang = availableLangs[0]
+  }
+
+  // Load the current language
+  await loadLanguage(currentLang)
+}
+
+/**
+ * Load a language file
+ */
+async function loadLanguage(lang) {
+  try {
+    const response = await fetch(`${dataUrl}/i18n/${lang}.json`)
+    if (!response.ok) throw new Error(`Failed to load ${lang}.json`)
+    translations[lang] = await response.json()
+  } catch (err) {
+    console.error(`Failed to load language ${lang}:`, err)
+    // Fallback: try to load English
+    if (lang !== 'en' && !translations['en']) {
+      try {
+        const response = await fetch(`${dataUrl}/i18n/en.json`)
+        translations['en'] = await response.json()
+        currentLang = 'en'
+      } catch {
+        console.error('Failed to load fallback English translations')
+      }
+    }
   }
 }
 
-let currentLang = 'ru'
+/**
+ * Get translation for a key
+ */
+export function t(key) {
+  return translations[currentLang]?.[key] || key
+}
 
-export const t = (key) => translations[currentLang][key]
-
-export const tVesselType = (type) => {
+/**
+ * Get vessel type translation
+ */
+export function tVesselType(type) {
   if (!type) return t('unknown')
-  const key = `vesselType_${type}`
-  return translations[currentLang][key] || type
+  return translations[currentLang]?.vesselTypes?.[type] || type
 }
 
-export const getLang = () => currentLang
-
-export const setLang = (lang) => {
-  currentLang = lang
-}
-
-export const toggleLang = () => {
-  currentLang = currentLang === 'ru' ? 'en' : 'ru'
+/**
+ * Get current language
+ */
+export function getLang() {
   return currentLang
+}
+
+/**
+ * Set language
+ */
+export async function setLang(lang) {
+  if (!availableLangs.includes(lang)) return currentLang
+
+  // Load language if not already loaded
+  if (!translations[lang]) {
+    await loadLanguage(lang)
+  }
+
+  currentLang = lang
+  localStorage.setItem('lang', lang)
+  return currentLang
+}
+
+/**
+ * Toggle between available languages
+ */
+export async function toggleLang() {
+  const currentIndex = availableLangs.indexOf(currentLang)
+  const nextIndex = (currentIndex + 1) % availableLangs.length
+  return await setLang(availableLangs[nextIndex])
+}
+
+/**
+ * Get available languages
+ */
+export function getAvailableLangs() {
+  return availableLangs
+}
+
+/**
+ * Get localized string from an object with lang keys
+ * @param {Object} obj - Object like { en: "Hello", ru: "Привет" }
+ * @param {string} fallback - Fallback if no translation found
+ */
+export function localize(obj, fallback = '') {
+  if (!obj) return fallback
+  return obj[currentLang] || obj['en'] || Object.values(obj)[0] || fallback
 }

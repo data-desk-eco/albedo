@@ -52,6 +52,8 @@ echo "Combining years + land mask into multi-band raster..."
 uv run --with "rasterio" --with "numpy" python3 << COMBINE_EOF
 import rasterio
 import numpy as np
+import json
+from datetime import datetime, timezone
 
 years = "${YEARS}".split(',')
 print(f"Combining {len(years)} year rasters + land mask...")
@@ -80,14 +82,29 @@ with rasterio.open("data/land_mask.tif") as src:
         bands = [b[:min_h, :min_w] for b in bands]
     bands.append(land_data)
 
-# Stack and write
+# Stack and write with band descriptions for self-describing COG
 combined = np.stack(bands)
 profile.update(count=len(bands), compress='deflate', tiled=True)
 
+# Create band descriptions: years + 'land'
+band_descriptions = tuple(years) + ('land',)
+
+# Create metadata JSON for frontend consumption
+cog_metadata = {
+    'years': [int(y) for y in years],
+    'landBand': len(years),
+    'lastUpdated': datetime.now(timezone.utc).strftime('%Y-%m-%d')
+}
+
 with rasterio.open("data/vessel_combined.tif", 'w', **profile) as dst:
     dst.write(combined)
+    dst.descriptions = band_descriptions
+    # Store structured metadata in GDAL metadata domain
+    dst.update_tags(ALBEDO_CONFIG=json.dumps(cog_metadata))
 
-print(f"Created {len(bands)}-band raster (bands 0-{len(years)-1}: years, band {len(years)}: land)")
+print(f"Created {len(bands)}-band raster with metadata:")
+print(f"  Bands: {band_descriptions}")
+print(f"  Config: {cog_metadata}")
 COMBINE_EOF
 
 # Warp to Web Mercator (EPSG:3857) for MapLibre tile compatibility

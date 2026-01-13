@@ -1,65 +1,71 @@
+/**
+ * Vessel Activity Viewer - Configuration
+ * Generic viewer that loads region-specific config from manifest.json
+ */
+
+import { YEAR_PALETTE } from './cog-tiles.js'
+
 // Debug mode: set to true to visualize tooltip target grid cells
 export const DEBUG_MODE = false
 
-// Year colors: oldest (2023) → newest (2025)
-// SYNC: Must match YEAR_COLORS in cog-tiles.js
-export const YEAR_COLORS = {
-  2023: 'rgb(0, 255, 255)',   // Cyan (band 0)
-  2024: 'rgb(0, 255, 0)',     // Green (band 1)
-  2025: 'rgb(255, 0, 255)',   // Magenta (band 2)
-}
-
-// Arctic region focus
-export const ARCTIC_CENTER_LAT = 75
-export const ARCTIC_MIN_LAT_ZOOMED_OUT = 60  // Minimum latitude when zoomed out (z <= 4)
-export const ARCTIC_MIN_LAT_ZOOMED_IN = 50   // Minimum latitude when zoomed in (z > 4)
+// Manifest URL - can be overridden via environment variable
+export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'
 
 // Raster tooltip minimum zoom level
 export const RASTER_TOOLTIP_MIN_ZOOM = 8
 
-// Tile cache version - injected from .env at build time
-export const TILE_VERSION = __TILE_VERSION__
+/**
+ * Convert RGB array to CSS rgb() string
+ */
+export function rgbToCss(rgb) {
+  return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+}
 
-// Get base path for asset URLs (works with /albedo or any path prefix)
-export const basePath = window.location.pathname.endsWith('/')
-  ? window.location.pathname
-  : window.location.pathname + '/'
+/**
+ * Get CSS color for a year based on its band index
+ */
+export function getYearColor(bandIndex) {
+  const rgb = YEAR_PALETTE[bandIndex % YEAR_PALETTE.length]
+  return rgbToCss(rgb)
+}
 
-// GCS bucket for large files (COG + vessel_lookup) - supports range requests
-const GCS_URL = 'https://storage.googleapis.com/albedo-data'
+/**
+ * Create a MapLibre match expression for year-based colors
+ */
+export function createYearColorExpression(years) {
+  const expr = ['match', ['get', 'year']]
+  years.forEach((year, idx) => {
+    expr.push(year, getYearColor(idx))
+  })
+  expr.push('#ffffff')  // fallback
+  return expr
+}
 
-// Data URLs
-export const COG_URL = import.meta.env.VITE_COG_URL || GCS_URL + '/vessel_heatmap.tif'
-export const VESSEL_LOOKUP_URL = import.meta.env.VITE_VESSEL_LOOKUP_URL || GCS_URL + '/vessel_lookup.parquet'
-export const DATA_URL = import.meta.env.VITE_DATA_URL || basePath + 'data/export/'  // Small parquets stay on GitHub Pages
+/**
+ * Create map style configuration from manifest
+ * @param {Object} manifest - The loaded manifest
+ * @param {string} dataUrl - Base URL for data files
+ */
+export function createMapStyle(manifest, dataUrl) {
+  const satelliteUrl = manifest.layers?.satellite?.url ||
+    'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'
 
-// Protected area layer IDs (used for toggling visibility)
-export const PROTECTED_AREA_LAYERS = [
-  'protected-areas-fill',
-  'protected-areas-border'
-]
-
-// Create map style configuration
-// Note: Vector sources are now added dynamically after DuckDB loads
-export function createMapStyle() {
   return {
     version: 8,
-    projection: { type: 'globe' },
+    projection: { type: manifest.map?.projection || 'globe' },
     sources: {
       'sentinel-2': {
         type: 'raster',
-        tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'],
+        tiles: [satelliteUrl],
         tileSize: 256,
-        bounds: [-180, 65, 180, 90],
-        attribution: '© EOX IT Services GmbH - Sentinel-2 cloudless'
+        attribution: manifest.ui?.attribution || ''
       },
       'vessel-heatmap': {
         type: 'raster',
         tiles: ['cog://{z}/{x}/{y}'],
         tileSize: 256,
-        attribution: 'GFW 4Wings'
+        attribution: manifest.ui?.attribution || ''
       },
-      // These GeoJSON sources will be populated dynamically after data loads
       'protected-areas': {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
@@ -71,10 +77,6 @@ export function createMapStyle() {
       'places': {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
-      },
-      'activity-hotspots': {
-        type: 'geojson',
-        data: basePath + 'data/places/activity_hotspots.geojson'
       },
       'debug-tooltip-targets': {
         type: 'geojson',
@@ -91,10 +93,9 @@ export function createMapStyle() {
         id: 'sentinel-2',
         type: 'raster',
         source: 'sentinel-2',
-        layout: { 'visibility': 'none' },
+        layout: { 'visibility': manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
         paint: { 'raster-opacity': 1 }
       },
-      // Debug: tooltip target grid cells (red squares matching raster pixels)
       {
         id: 'debug-tooltip-targets',
         type: 'fill',
@@ -117,11 +118,11 @@ export function createMapStyle() {
           'raster-contrast': 0.3
         }
       },
-      // Protected areas (single layer, styled with hatch pattern)
       {
         id: 'protected-areas-fill',
         type: 'fill',
         source: 'protected-areas',
+        layout: { 'visibility': manifest.layers?.protectedAreas?.defaultVisible ? 'visible' : 'none' },
         paint: {
           'fill-pattern': 'hatch-white-md',
           'fill-opacity': 1
@@ -131,20 +132,11 @@ export function createMapStyle() {
         id: 'protected-areas-border',
         type: 'line',
         source: 'protected-areas',
+        layout: { 'visibility': manifest.layers?.protectedAreas?.defaultVisible ? 'visible' : 'none' },
         paint: {
           'line-color': '#ffffff',
           'line-width': 2,
           'line-opacity': 1
-        }
-      },
-      {
-        id: 'activity-hotspots-line',
-        type: 'line',
-        source: 'activity-hotspots',
-        paint: {
-          'line-color': '#ffff00',
-          'line-width': 2,
-          'line-opacity': 0.9
         }
       },
       {
@@ -154,20 +146,14 @@ export function createMapStyle() {
         minzoom: 0,
         maxzoom: 24,
         layout: {
-          'visibility': 'none',
+          'visibility': manifest.layers?.crossings?.defaultVisible ? 'visible' : 'none',
           'circle-sort-key': ['get', 'year']
         },
         paint: {
           'circle-radius': createCrossingsRadius(),
           'circle-color': 'transparent',
           'circle-opacity': 0,
-          'circle-stroke-color': [
-            'match', ['get', 'year'],
-            2023, YEAR_COLORS[2023],
-            2024, YEAR_COLORS[2024],
-            2025, YEAR_COLORS[2025],
-            '#ffffff'
-          ],
+          'circle-stroke-color': '#ffffff',  // Updated dynamically from COG config
           'circle-stroke-width': 2,
           'circle-stroke-opacity': 1
         }
@@ -201,7 +187,9 @@ export function createMapStyle() {
   }
 }
 
-// Helper: create crossings circle radius expression
+/**
+ * Helper: create crossings circle radius expression
+ */
 function createCrossingsRadius() {
   return [
     'interpolate', ['linear'], ['zoom'],
@@ -215,3 +203,9 @@ function createCrossingsRadius() {
     ]
   ]
 }
+
+// Protected area layer IDs (used for toggling visibility)
+export const PROTECTED_AREA_LAYERS = [
+  'protected-areas-fill',
+  'protected-areas-border'
+]

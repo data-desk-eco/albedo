@@ -1,19 +1,17 @@
 /**
  * Client-side data queries using DuckDB-WASM
- * Replaces server-side FastAPI endpoints for vector data and tooltips
+ * Generic vessel activity viewer data layer
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm'
-import { VESSEL_LOOKUP_URL } from './config.js'
 
 let db = null
 let conn = null
+let vesselLookupUrl = null
+let southLatCutoff = 57  // Default, can be updated from manifest
 
 // Track registered files to avoid re-registering
 const registeredFiles = new Set()
-
-// Southern latitude cutoff for vector features (must match cog-tiles.js)
-const SOUTH_LAT = 57
 
 /**
  * Convert BigInt to Number (DuckDB-WASM returns BigInt for some integer types)
@@ -104,14 +102,29 @@ function resultToObjects(result) {
 }
 
 /**
- * Initialize DuckDB-WASM
+ * Initialize DuckDB-WASM with manifest configuration
  * @param {string} baseUrl Base URL for data files (e.g., '/data/export/' or 'https://...')
+ * @param {Object} manifest The app manifest with data configuration
  */
-export async function initDB(baseUrl = '/data/export/') {
+export async function initDB(baseUrl, manifest) {
   const dataUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
 
+  // Store vessel lookup URL from manifest (must be absolute URL for DuckDB HTTP requests)
+  const lookupFile = manifest.data?.vectors?.lookup || 'vessel_lookup.parquet'
+  if (lookupFile.startsWith('http')) {
+    vesselLookupUrl = lookupFile
+  } else {
+    // Convert relative URL to absolute
+    const base = new URL(dataUrl, window.location.href)
+    vesselLookupUrl = new URL(lookupFile, base).href
+  }
+
+  // Get south latitude cutoff from manifest bounds
+  if (manifest.map?.bounds?.south) {
+    southLatCutoff = manifest.map.bounds.south
+  }
+
   // Use local bundles for offline support (files in public/duckdb/)
-  // Construct absolute URLs for the worker using the same basePath as config.js
   const pathname = window.location.pathname.endsWith('/')
     ? window.location.pathname
     : window.location.pathname + '/'
@@ -127,20 +140,29 @@ export async function initDB(baseUrl = '/data/export/') {
 
   conn = await db.connect()
 
-  // Pre-register small parquet files needed for map layers (~1MB total)
-  // vessel_lookup.parquet is queried from GCS via VESSEL_LOOKUP_URL (range requests)
-  const files = ['protected_areas.parquet', 'vessel_crossings.parquet', 'places.parquet']
+  // Get vector file names from manifest
+  const vectorFiles = manifest.data?.vectors || {}
+  const files = [
+    vectorFiles.protectedAreas || 'protected_areas.parquet',
+    vectorFiles.crossings || 'vessel_crossings.parquet',
+    vectorFiles.places || 'places.parquet'
+  ].filter(f => f && f !== vectorFiles.lookup)  // Exclude lookup (uses range requests)
 
   await Promise.all(files.map(async (filename) => {
-    const url = dataUrl + filename
-    const response = await fetch(url)
-    if (!response.ok) {
-      console.warn(`Failed to fetch ${filename}: ${response.status}`)
-      return
+    const url = filename.startsWith('http') ? filename : dataUrl + filename
+    const localName = filename.split('/').pop()  // Use just filename for registration
+    try {
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.warn(`Failed to fetch ${filename}: ${response.status}`)
+        return
+      }
+      const buffer = await response.arrayBuffer()
+      await db.registerFileBuffer(localName, new Uint8Array(buffer))
+      registeredFiles.add(localName)
+    } catch (err) {
+      console.warn(`Failed to load ${filename}:`, err)
     }
-    const buffer = await response.arrayBuffer()
-    await db.registerFileBuffer(filename, new Uint8Array(buffer))
-    registeredFiles.add(filename)
   }))
 }
 
@@ -166,7 +188,7 @@ export async function loadProtectedAreas() {
       geometry: parseGeometry(row.geometry),
       properties: { name: row.name }
     }))
-    .filter(feature => getMinLatitude(feature.geometry) >= SOUTH_LAT)
+    .filter(feature => getMinLatitude(feature.geometry) >= southLatCutoff)
 
   return { type: 'FeatureCollection', features }
 }
@@ -194,7 +216,7 @@ export async function loadVesselCrossings() {
       centroid_lat,
       position_count
     FROM read_parquet('vessel_crossings.parquet')
-    WHERE centroid_lat >= ${SOUTH_LAT}
+    WHERE centroid_lat >= ${southLatCutoff}
   `)
 
   const rows = resultToObjects(result)
@@ -233,7 +255,7 @@ export async function loadPlaces() {
   const result = await conn.query(`
     SELECT name_en, name_ru, lon, lat, population, scalerank
     FROM read_parquet('places.parquet')
-    WHERE lat >= ${SOUTH_LAT}
+    WHERE lat >= ${southLatCutoff}
   `)
 
   const rows = resultToObjects(result)
@@ -265,7 +287,7 @@ export async function loadPlaces() {
  */
 export async function queryVesselsAt(lat, lon, year = null) {
   // Skip queries south of the latitude cutoff
-  if (lat < SOUTH_LAT) {
+  if (lat < southLatCutoff) {
     return []
   }
 
@@ -279,7 +301,7 @@ export async function queryVesselsAt(lat, lon, year = null) {
   const eps = 0.015
   const result = await conn.query(`
     SELECT mmsi, ship_name, flag, vessel_type, year, total_hours, lat, lon
-    FROM '${VESSEL_LOOKUP_URL}'
+    FROM '${vesselLookupUrl}'
     WHERE lat BETWEEN ${gridLat - eps} AND ${gridLat + eps}
       AND lon BETWEEN ${gridLon - eps} AND ${gridLon + eps}
       ${yearFilter}
@@ -301,7 +323,7 @@ export async function queryVesselsAt(lat, lon, year = null) {
 export async function loadTooltipTargetsInBounds(minLat, maxLat, minLon, maxLon) {
   const result = await conn.query(`
     SELECT DISTINCT lat, lon
-    FROM '${VESSEL_LOOKUP_URL}'
+    FROM '${vesselLookupUrl}'
     WHERE lat BETWEEN ${minLat} AND ${maxLat}
       AND lon BETWEEN ${minLon} AND ${maxLon}
   `)
