@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
+      allowedHosts: ['albedo.datadesk.eco'],
       fs: {
         allow: ['..']
       }
