@@ -25,9 +25,13 @@ export const basePath = window.location.pathname.endsWith('/')
   ? window.location.pathname
   : window.location.pathname + '/'
 
-// Data URLs - can be overridden via env vars for CDN deployment
-export const COG_URL = import.meta.env.VITE_COG_URL || basePath + 'data/vessel_heatmap.tif'
-export const DATA_URL = import.meta.env.VITE_DATA_URL || basePath + 'data/export/'
+// GCS bucket for large files (COG + vessel_lookup) - supports range requests
+const GCS_URL = 'https://storage.googleapis.com/albedo-data'
+
+// Data URLs
+export const COG_URL = import.meta.env.VITE_COG_URL || GCS_URL + '/vessel_heatmap.tif'
+export const VESSEL_LOOKUP_URL = import.meta.env.VITE_VESSEL_LOOKUP_URL || GCS_URL + '/vessel_lookup.parquet'
+export const DATA_URL = import.meta.env.VITE_DATA_URL || basePath + 'data/export/'  // Small parquets stay on GitHub Pages
 
 // Protected area layer IDs (used for toggling visibility)
 export const PROTECTED_AREA_LAYERS = [

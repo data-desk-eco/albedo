@@ -62,20 +62,16 @@ export default defineConfig(({ mode }) => {
       {
         name: 'copy-data-files',
         closeBundle() {
-          // Copy runtime data files to dist after build
+          // Copy small data files to dist (large files served from GCS)
           const outDir = resolve(process.cwd(), 'dist')
           const dataDir = resolve(process.cwd(), 'data')
 
-          // COG heatmap
-          mkdirSync(join(outDir, 'data'), { recursive: true })
-          copyFileSync(join(dataDir, 'vessel_heatmap.tif'), join(outDir, 'data', 'vessel_heatmap.tif'))
-
-          // Parquet files
+          // Small parquet files only (vessel_lookup.parquet served from GCS)
           const exportDir = join(dataDir, 'export')
           const outExportDir = join(outDir, 'data', 'export')
           mkdirSync(outExportDir, { recursive: true })
           for (const file of readdirSync(exportDir)) {
-            if (file.endsWith('.parquet')) {
+            if (file.endsWith('.parquet') && file !== 'vessel_lookup.parquet') {
               copyFileSync(join(exportDir, file), join(outExportDir, file))
             }
           }
@@ -91,7 +87,7 @@ export default defineConfig(({ mode }) => {
             }
           }
 
-          console.log('Copied data files to dist/')
+          console.log('Copied small data files to dist/ (COG + vessel_lookup on GCS)')
         }
       }
     ],
