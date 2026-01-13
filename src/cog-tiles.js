@@ -1,22 +1,22 @@
 /**
  * Client-side COG tile renderer using geotiff.js
- * Replaces server-side rio-tiler + Pillow
+ * Reads year configuration from COG metadata for self-describing data
  */
 
 import { fromUrl, Pool } from 'geotiff'
 
-// Band indices in the COG (0-indexed in geotiff.js)
-const BAND_2023 = 0
-const BAND_2024 = 1
-const BAND_2025 = 2
-const BAND_LAND = 3
+// Color palette for years (assigned by index, cycles if >6 years)
+const YEAR_PALETTE = [
+  [0, 255, 255],    // Cyan
+  [0, 255, 0],      // Green
+  [255, 0, 255],    // Magenta
+  [255, 255, 0],    // Yellow
+  [255, 128, 0],    // Orange
+  [128, 0, 255],    // Purple
+]
 
-// Year colors (RGB) - must match config.js YEAR_COLORS
-const YEAR_COLORS = {
-  0: [0, 255, 255],    // 2023 - cyan
-  1: [0, 255, 0],      // 2024 - green
-  2: [255, 0, 255],    // 2025 - magenta
-}
+// COG configuration - populated from metadata on init
+let cogConfig = null
 
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
@@ -33,7 +33,30 @@ let mainImageBBox = null  // Store main image bbox for all calculations
 let mainImageSize = null  // Store main image dimensions
 
 /**
- * Initialize the COG reader
+ * Parse GDAL metadata XML to extract custom tags
+ */
+function parseGDALMetadata(xml) {
+  if (!xml) return {}
+  const result = {}
+  // Parse <Item name="KEY">VALUE</Item> format
+  const matches = xml.matchAll(/<Item\s+name="([^"]+)"[^>]*>([^<]*)<\/Item>/g)
+  for (const match of matches) {
+    // Decode HTML entities (GDAL stores XML, so quotes become &quot; etc.)
+    // Order matters: &amp; must be decoded first since other entities contain &
+    let value = match[2]
+      .replace(/&amp;/g, '&')
+      .replace(/&quot;/g, '"')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&apos;/g, "'")
+    result[match[1]] = value
+  }
+  return result
+}
+
+/**
+ * Initialize the COG reader and extract configuration from metadata
+ * @returns {Object} COG configuration: { years, landBand, lastUpdated, yearColors }
  */
 export async function initCOG(url) {
   tiff = await fromUrl(url, {
@@ -47,6 +70,31 @@ export async function initCOG(url) {
   const mainImage = await tiff.getImage(0)
   mainImageBBox = mainImage.getBoundingBox()
   mainImageSize = [mainImage.getWidth(), mainImage.getHeight()]
+
+  // Extract configuration from COG metadata
+  const fileDirectory = mainImage.fileDirectory
+  const gdalMetadata = parseGDALMetadata(fileDirectory.GDAL_METADATA)
+
+  if (gdalMetadata.ALBEDO_CONFIG) {
+    cogConfig = JSON.parse(gdalMetadata.ALBEDO_CONFIG)
+  } else {
+    // Fallback: try to infer from band descriptions
+    const bandCount = mainImage.getSamplesPerPixel()
+    console.warn('No ALBEDO_CONFIG in COG, using fallback config')
+    cogConfig = {
+      years: [2023, 2024, 2025].slice(0, bandCount - 1),
+      landBand: bandCount - 1,
+      lastUpdated: null
+    }
+  }
+
+  // Build year-to-color mapping
+  cogConfig.yearColors = {}
+  cogConfig.years.forEach((year, idx) => {
+    cogConfig.yearColors[year] = YEAR_PALETTE[idx % YEAR_PALETTE.length]
+  })
+
+  return cogConfig
 }
 
 /**
@@ -189,7 +237,8 @@ async function colorize(rasters, selectedBands, showLand = true, tileMinY = 0, t
   const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE)
   const pixels = imageData.data
 
-  const land = rasters[BAND_LAND]
+  const landBandIdx = cogConfig?.landBand ?? rasters.length - 1
+  const land = rasters[landBandIdx]
   const vesselBands = selectedBands.length > 0 ? selectedBands.map(b => rasters[b]) : []
 
   // Calculate Y range per pixel for latitude cutoff
@@ -255,8 +304,9 @@ async function colorize(rasters, selectedBands, showLand = true, tileMinY = 0, t
 
     let color
     if (proportion >= DOMINANCE_THRESHOLD) {
-      // Dominant year color
-      color = YEAR_COLORS[selectedBands[maxIdx]] || [180, 180, 180]
+      // Dominant year color (use band index to get palette color)
+      const bandIdx = selectedBands[maxIdx]
+      color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || [180, 180, 180]
     } else {
       // Mixed: gray
       color = [180, 180, 180]
@@ -288,3 +338,16 @@ export function clearCache() {
 export function isInitialized() {
   return tiff !== null
 }
+
+/**
+ * Get the COG configuration (years, colors, etc.)
+ * @returns {Object|null} Config object or null if not initialized
+ */
+export function getCOGConfig() {
+  return cogConfig
+}
+
+/**
+ * Export the year color palette for UI consistency
+ */
+export { YEAR_PALETTE }

@@ -1,0 +1,117 @@
+{
+  "version": "1.0",
+
+  "region": {
+    "id": "russian-arctic",
+    "name": {
+      "en": "Russian Arctic Vessel Activity",
+      "ru": "Судоходство в Российской Арктике"
+    },
+    "description": {
+      "en": "Vessel activity along Russia's Northern Sea Route",
+      "ru": "Судоходная активность вдоль Северного морского пути России"
+    }
+  },
+
+  "map": {
+    "center": [100, 75],
+    "zoom": 2.5,
+    "minZoom": 2.5,
+    "maxZoom": 14,
+    "pitch": 20,
+    "bearing": 0,
+    "bounds": {
+      "south": 57,
+      "north": 90,
+      "west": -180,
+      "east": 180
+    },
+    "projection": "globe"
+  },
+
+  "data": {
+    "cog": "../vessel_heatmap.tif",
+    "vectors": {
+      "protectedAreas": "protected_areas.parquet",
+      "crossings": "vessel_crossings.parquet",
+      "places": "places.parquet",
+      "lookup": "vessel_lookup.parquet"
+    }
+  },
+
+  "layers": {
+    "protectedAreas": {
+      "enabled": true,
+      "defaultVisible": true
+    },
+    "crossings": {
+      "enabled": true,
+      "defaultVisible": false
+    },
+    "satellite": {
+      "enabled": true,
+      "defaultVisible": false,
+      "url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg"
+    }
+  },
+
+  "ui": {
+    "defaultLang": "ru",
+    "availableLangs": ["en", "ru"],
+    "showAbout": true,
+    "attribution": "GFW 4Wings"
+  },
+
+  "places": [
+    {
+      "id": "nsr-overview",
+      "name": { "en": "Northern Sea Route", "ru": "Северный морской путь" },
+      "description": {
+        "en": "The Northern Sea Route stretches from the Kara Gate to Providence Bay, spanning Russia's Arctic coastline.",
+        "ru": "Северный морской путь простирается от Карских Ворот до бухты Провидения вдоль арктического побережья России."
+      },
+      "center": [100, 75],
+      "zoom": 2.5
+    },
+    {
+      "id": "kara-sea",
+      "name": { "en": "Kara Sea", "ru": "Карское море" },
+      "description": {
+        "en": "Gateway to the Northern Sea Route, with heavy vessel traffic around Novaya Zemlya.",
+        "ru": "Ворота Северного морского пути с интенсивным судоходством вокруг Новой Земли."
+      },
+      "center": [70, 74],
+      "zoom": 5
+    },
+    {
+      "id": "laptev-sea",
+      "name": { "en": "Laptev Sea", "ru": "Море Лаптевых" },
+      "description": {
+        "en": "Central section of the NSR, known for challenging ice conditions.",
+        "ru": "Центральный участок СМП, известный сложными ледовыми условиями."
+      },
+      "center": [125, 76],
+      "zoom": 5
+    },
+    {
+      "id": "east-siberian-sea",
+      "name": { "en": "East Siberian Sea", "ru": "Восточно-Сибирское море" },
+      "description": {
+        "en": "One of the least trafficked sections of the Northern Sea Route.",
+        "ru": "Один из наименее загруженных участков Северного морского пути."
+      },
+      "center": [160, 74],
+      "zoom": 5
+    },
+    {
+      "id": "bering-strait",
+      "name": { "en": "Bering Strait", "ru": "Берингов пролив" },
+      "description": {
+        "en": "Eastern terminus of the NSR, connecting to Pacific shipping lanes.",
+        "ru": "Восточная оконечность СМП, соединяющая с тихоокеанскими морскими путями."
+      },
+      "center": [-169, 66],
+      "zoom": 6
+    }
+  ]
+}

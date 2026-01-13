@@ -1,40 +1,50 @@
+/**
+ * Vessel Activity Viewer - Main Application
+ * Generic viewer that loads all configuration from manifest.json
+ */
+
 import './style.css'
 import maplibregl from 'maplibre-gl'
-import { t, tVesselType, getLang, setLang, toggleLang } from './i18n.js'
+import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
 import { initCOG, renderTile, clearCache as clearCOGCache } from './cog-tiles.js'
 import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt, loadTooltipTargetsInBounds } from './data-layer.js'
 import {
   DEBUG_MODE,
-  YEAR_COLORS,
-  ARCTIC_CENTER_LAT,
-  ARCTIC_MIN_LAT_ZOOMED_OUT,
-  ARCTIC_MIN_LAT_ZOOMED_IN,
   RASTER_TOOLTIP_MIN_ZOOM,
-  basePath,
-  COG_URL,
-  DATA_URL,
+  MANIFEST_URL,
   PROTECTED_AREA_LAYERS,
-  createMapStyle
+  createMapStyle,
+  getYearColor,
+  createYearColorExpression
 } from './config.js'
 
-// State
+// App state
+let manifest = null
+let dataUrl = ''
+let map = null
+
+// Map state
 let currentCategory = 'all'
 let categories = []
-let placesData = []
-const activeYears = new Set([2023, 2024, 2025])
+let activeYears = new Set()
+let knownYears = []
 let satelliteMode = false
 let hoveringCrossing = false
 let dataInitialized = false
+let allCrossings = null
 
 // COG tile cache
 const cogTileCache = new Map()
-let activeYearBands = [0, 1, 2]  // All years by default
+let activeYearBands = []
 
 // DOM elements
 const tooltip = document.getElementById('tooltip')
 const controlsEl = document.getElementById('controls')
 
-// Tooltip utilities
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
 function positionTooltip() {
   const rect = controlsEl.getBoundingClientRect()
   tooltip.style.top = (rect.bottom + 8) + 'px'
@@ -50,7 +60,6 @@ function hideTooltip() {
   tooltip.classList.remove('visible')
 }
 
-// Date formatting
 function formatDate(isoString) {
   const date = new Date(isoString)
   const day = date.getDate()
@@ -59,7 +68,6 @@ function formatDate(isoString) {
   return `${day} ${month} ${year}`
 }
 
-// Debounce utility
 function debounce(fn, delay) {
   let timeoutId
   return (...args) => {
@@ -68,7 +76,10 @@ function debounce(fn, delay) {
   }
 }
 
-// UI updates
+// ============================================================================
+// UI Functions
+// ============================================================================
+
 function updateUI() {
   const isNarrow = window.innerWidth <= 600
   const lang = getLang()
@@ -83,7 +94,7 @@ function updateUI() {
   document.getElementById('legend-section-layers').textContent = t('sectionLayers')
 
   // Update place labels language if map is loaded
-  if (typeof map !== 'undefined' && map.getLayer('place-labels')) {
+  if (map && map.getLayer('place-labels')) {
     const nameField = lang === 'ru' ? 'name_ru' : 'name_en'
     map.setLayoutProperty('place-labels', 'text-field',
       ['coalesce', ['get', nameField], ['get', lang === 'ru' ? 'name_en' : 'name_ru']]
@@ -91,12 +102,11 @@ function updateUI() {
   }
 
   // Update dropdowns
-  if (placesData.length > 0) {
+  if (manifest?.places?.length > 0) {
     const select = document.getElementById('places-select')
     const selectedValue = select.value
     populatePlacesDropdown()
     select.value = selectedValue
-    if (selectedValue !== '') showPlace(parseInt(selectedValue))
   }
 
   if (categories.length > 0) {
@@ -104,26 +114,43 @@ function updateUI() {
   }
 }
 
-// Year legend
-function initYearLegend() {
+function initYearLegend(years) {
   const container = document.getElementById('legend-years')
-  Object.entries(YEAR_COLORS)
-    .sort(([a], [b]) => Number(b) - Number(a))
-    .forEach(([year, color]) => {
-      const item = document.createElement('div')
-      item.className = 'legend-item legend-toggle active'
-      item.dataset.year = year
-      item.innerHTML = `
-        <div class="legend-symbol">
-          <div class="legend-square" style="background: ${color};"></div>
-        </div>
-        <span class="legend-text">${year}</span>
-      `
-      container.appendChild(item)
+  container.innerHTML = ''
+
+  const sortedYears = [...years].sort((a, b) => b - a)
+  sortedYears.forEach((year) => {
+    const bandIndex = years.indexOf(year)
+    const color = getYearColor(bandIndex)
+    const item = document.createElement('div')
+    item.className = 'legend-item legend-toggle active'
+    item.dataset.year = year
+    item.innerHTML = `
+      <div class="legend-symbol">
+        <div class="legend-square" style="background: ${color};"></div>
+      </div>
+      <span class="legend-text">${year}</span>
+    `
+    container.appendChild(item)
+
+    item.addEventListener('click', () => {
+      toggleYear(parseInt(item.dataset.year))
+      item.classList.toggle('active', activeYears.has(parseInt(item.dataset.year)))
     })
+  })
 }
 
-// Hatch pattern generation
+function updateMultiYearLegend() {
+  const multiYearItem = document.querySelector('.legend-multi-year')
+  if (multiYearItem) {
+    multiYearItem.classList.toggle('disabled', activeYears.size < 2)
+  }
+}
+
+// ============================================================================
+// Hatch Patterns
+// ============================================================================
+
 function createHatchPattern(color, size = 6) {
   const canvas = document.createElement('canvas')
   canvas.width = size
@@ -153,172 +180,144 @@ const hatchPatterns = {
   'hatch-black-lg': () => createHatchPattern('#000000', 16)
 }
 
-// COG initialization - start immediately, don't wait for map load
-const cogReady = initCOG(COG_URL).catch(err => {
-  console.error('COG init failed:', err)
-})
+// ============================================================================
+// Layer Controls
+// ============================================================================
 
-// DuckDB initialization - lazy load in background, doesn't block map
-let dbReady = null
-function ensureDB() {
-  if (!dbReady) {
-    dbReady = initDB(DATA_URL).catch(err => {
-      console.error('DuckDB init failed:', err)
-      dbReady = null
-    })
+function updateHeatmapSource() {
+  const years = Array.from(activeYears).sort()
+  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
+  activeYearBands = years.map(y => knownYears.indexOf(y)).filter(i => i >= 0)
+
+  cogTileCache.clear()
+  clearCOGCache()
+
+  const source = map.getSource('vessel-heatmap')
+  if (source) {
+    source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
   }
-  return dbReady
 }
 
-// Register COG tile protocol (Promise-based API for MapLibre GL JS v5+)
-maplibregl.addProtocol('cog', async (params) => {
-  const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
-  if (!match) {
-    throw new Error('Invalid COG tile URL')
-  }
+function toggleYear(year) {
+  activeYears.has(year) ? activeYears.delete(year) : activeYears.add(year)
+  updateHeatmapSource()
+  updateMultiYearLegend()
+}
 
-  // Wait for COG initialization
-  await cogReady
-
-  const [, z, x, y] = match.map(Number)
-  // Include satellite mode in cache key (land rendering differs)
-  const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}/${satelliteMode}`
-
-  if (cogTileCache.has(cacheKey)) {
-    return { data: cogTileCache.get(cacheKey) }
-  }
-
-  try {
-    // In satellite mode, make land transparent (showLand = false)
-    const buffer = await renderTile(z, x, y, activeYearBands, !satelliteMode)
-    cogTileCache.set(cacheKey, buffer)
-    return { data: buffer }
-  } catch (err) {
-    console.warn('COG tile error:', err)
-    throw err
-  }
-})
-
-// Initialize map
-const map = window.map = new maplibregl.Map({
-  container: 'map',
-  attributionControl: false,
-  style: createMapStyle(),
-  center: [100, ARCTIC_CENTER_LAT],
-  zoom: 2.5,
-  pitch: 20,
-  bearing: 0,
-  maxZoom: 14,
-  minZoom: 2.5,
-  minPitch: 0,
-  maxPitch: 30,
-  renderWorldCopies: false,
-  // Use local system fonts for offline support (no glyph server needed)
-  localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-})
-
-// Map event handlers
-map.on('styleimagemissing', (e) => {
-  if (hatchPatterns[e.id]) {
-    map.addImage(e.id, hatchPatterns[e.id](), { pixelRatio: 1 })
-  }
-})
-
-map.on('load', async () => {
-  // Wait for COG (heatmap) - this is critical for initial render
-  try {
-    await cogReady
-    map.triggerRepaint()
-  } catch (err) {
-    console.error('COG init failed:', err)
-  }
-
-  // Load vector layers in background (doesn't block map interaction)
-  ensureDB().then(async () => {
-    try {
-      const [protectedAreas, crossings, places] = await Promise.all([
-        loadProtectedAreas(),
-        loadVesselCrossings(),
-        loadPlaces()
-      ])
-
-      // Store crossings for filtering and update sources
-      allCrossings = crossings
-
-      map.getSource('protected-areas').setData(protectedAreas)
-      map.getSource('vessel-crossings').setData(crossings)
-      map.getSource('places').setData(places)
-
-      dataInitialized = true
-
-      // Load categories now that we have crossings data
-      loadCategories()
-    } catch (err) {
-      console.error('Failed to load vector data:', err)
+function toggleLayer(layerId) {
+  if (layerId === 'protected-areas') {
+    const isVisible = map.getLayoutProperty(PROTECTED_AREA_LAYERS[0], 'visibility') !== 'none'
+    const visibility = isVisible ? 'none' : 'visible'
+    PROTECTED_AREA_LAYERS.forEach(id => map.setLayoutProperty(id, 'visibility', visibility))
+  } else if (layerId === 'crossings') {
+    const isVisible = map.getLayoutProperty('crossings', 'visibility') !== 'none'
+    map.setLayoutProperty('crossings', 'visibility', isVisible ? 'none' : 'visible')
+  } else if (layerId === 'satellite') {
+    satelliteMode = !satelliteMode
+    map.setLayoutProperty('sentinel-2', 'visibility', satelliteMode ? 'visible' : 'none')
+    cogTileCache.clear()
+    clearCOGCache()
+    const source = map.getSource('vessel-heatmap')
+    if (source) {
+      source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
     }
+  }
+}
+
+// ============================================================================
+// Categories (Vessel Type Filter)
+// ============================================================================
+
+function loadCategories() {
+  categories = [{ id: 'all', label: t('allVessels') }]
+
+  if (allCrossings?.features) {
+    const types = new Set()
+    allCrossings.features.forEach(f => {
+      if (f.properties?.vessel_type) {
+        types.add(f.properties.vessel_type)
+      }
+    })
+
+    Array.from(types).sort().forEach(type => {
+      categories.push({ id: type, label: tVesselType(type) })
+    })
+  }
+
+  populateCategoryDropdown()
+}
+
+function populateCategoryDropdown() {
+  const select = document.getElementById('category-select')
+  select.innerHTML = ''
+  categories.forEach(cat => {
+    const option = document.createElement('option')
+    option.value = cat.id
+    option.textContent = cat.label
+    select.appendChild(option)
   })
+  select.value = currentCategory
+}
 
-  // Load places dropdown (uses JSON, not DuckDB)
-  loadPlacesDropdown()
-})
+function selectCategory(categoryId) {
+  currentCategory = categoryId
 
-map.on('moveend', async () => {
-  const center = map.getCenter()
-  const zoom = map.getZoom()
-  const minLat = zoom > 4 ? ARCTIC_MIN_LAT_ZOOMED_IN : ARCTIC_MIN_LAT_ZOOMED_OUT
-  if (center.lat < minLat) {
-    map.panTo([center.lng, ARCTIC_CENTER_LAT])
-  }
-
-  // Update debug tooltip targets layer when zoomed in enough (DEBUG_MODE only)
-  if (DEBUG_MODE && zoom >= 5) {
-    // Ensure DB is ready before querying
-    await ensureDB()
-    if (!dataInitialized) return
-
-    const bounds = map.getBounds()
-    try {
-      const targets = await loadTooltipTargetsInBounds(
-        bounds.getSouth(),
-        bounds.getNorth(),
-        bounds.getWest(),
-        bounds.getEast()
-      )
-      map.getSource('debug-tooltip-targets').setData(targets)
-    } catch (err) {
-      console.warn('Failed to load debug targets:', err)
+  if (allCrossings && map.getSource('vessel-crossings')) {
+    if (categoryId === 'all') {
+      map.getSource('vessel-crossings').setData(allCrossings)
+    } else {
+      const filtered = {
+        type: 'FeatureCollection',
+        features: allCrossings.features.filter(f =>
+          f.properties?.vessel_type === categoryId
+        )
+      }
+      map.getSource('vessel-crossings').setData(filtered)
     }
   }
-})
+}
 
-// Crossings tooltip
-map.on('mouseenter', 'crossings', (e) => {
-  hoveringCrossing = true
-  map.getCanvas().style.cursor = 'pointer'
+// ============================================================================
+// Places (Points of Interest)
+// ============================================================================
 
-  const props = e.features[0].properties
-  const hours = Math.round(props.total_hours)
+function populatePlacesDropdown() {
+  const select = document.getElementById('places-select')
+  const places = manifest?.places || []
 
-  showTooltip(`
-    <table>
-      <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
-      <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
-      <tr><td>${t('type')}</td><td>${tVesselType(props.vessel_type)}</td></tr>
-      <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
-      <tr><td>${t('duration')}</td><td>${hours} ${t('hours')}</td></tr>
-      <tr><td>${t('firstSeen')}</td><td>${formatDate(props.first_seen)}</td></tr>
-      <tr><td>${t('lastSeen')}</td><td>${formatDate(props.last_seen)}</td></tr>
-    </table>
-  `)
-})
+  if (places.length === 0) {
+    select.classList.add('hidden')
+    return
+  }
 
-map.on('mouseleave', 'crossings', () => {
-  hoveringCrossing = false
-  map.getCanvas().style.cursor = ''
-  hideTooltip()
-})
+  select.classList.remove('hidden')
+  select.innerHTML = `<option value="">${t('selectPlace')}</option>`
+  places.forEach((place, index) => {
+    const option = document.createElement('option')
+    option.value = index
+    option.textContent = localize(place.name)
+    select.appendChild(option)
+  })
+}
 
-// Raster vessel tooltip (client-side DuckDB query)
+function showPlace(index) {
+  const place = manifest?.places?.[index]
+  const infoEl = document.getElementById('places-info')
+
+  if (!place) {
+    infoEl.classList.add('hidden')
+    return
+  }
+
+  infoEl.innerHTML = `<span>${localize(place.description)}</span>`
+  infoEl.classList.remove('hidden')
+  map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
+}
+
+// ============================================================================
+// Tooltips
+// ============================================================================
+
 function showRasterTooltip(vessels) {
   if (!vessels || vessels.length === 0) {
     hideTooltip()
@@ -357,266 +356,280 @@ function showRasterTooltip(vessels) {
   showTooltip(html)
 }
 
-const handleRasterHover = debounce(async (e) => {
-  if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+// ============================================================================
+// Application Initialization
+// ============================================================================
 
-  // Ensure DB is ready before querying (lazy init if needed)
-  if (!dataInitialized) {
-    await ensureDB()
-    if (!dataInitialized) return  // Still loading vector data
+async function init() {
+  // 1. Load manifest
+  console.log('Loading manifest from:', MANIFEST_URL)
+  const manifestResponse = await fetch(MANIFEST_URL)
+  if (!manifestResponse.ok) {
+    throw new Error(`Failed to load manifest: ${manifestResponse.status}`)
   }
+  manifest = await manifestResponse.json()
+  console.log('Manifest loaded:', manifest.region?.id)
 
-  const { lat, lng } = e.lngLat
-  const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+  // Determine data URL (relative to manifest or absolute)
+  const manifestDir = MANIFEST_URL.substring(0, MANIFEST_URL.lastIndexOf('/') + 1)
+  dataUrl = manifestDir
 
-  try {
-    const vessels = await queryVesselsAt(lat, lng, year)
-    showRasterTooltip(vessels)
-  } catch (err) {
-    // Silently fail tooltip queries
-  }
-}, 50)
+  // 2. Initialize i18n
+  await initI18n(manifest, dataUrl)
 
-map.on('mousemove', (e) => {
-  if (hoveringCrossing) return
-  if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
-    handleRasterHover(e)
-  }
-})
+  // 3. Build COG URL from manifest
+  const cogFile = manifest.data?.cog || 'vessel_heatmap.tif'
+  const cogUrl = cogFile.startsWith('http') ? cogFile : dataUrl + cogFile
 
-map.on('mouseout', () => hideTooltip())
+  // 4. Initialize COG and get metadata
+  const cogConfig = await initCOG(cogUrl)
+  knownYears = cogConfig.years
+  activeYears = new Set(knownYears)
+  activeYearBands = knownYears.map((_, idx) => idx)
+  console.log('COG config:', cogConfig)
 
-map.on('zoom', () => {
-  if (!hoveringCrossing && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) {
-    hideTooltip()
-  }
-})
+  // 5. Register COG tile protocol
+  maplibregl.addProtocol('cog', async (params) => {
+    const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
+    if (!match) throw new Error('Invalid COG tile URL')
 
-// Layer controls
-function updateProtectedAreaColors() {
-  const hatchColor = satelliteMode ? 'white' : 'white'  // Keep white for now
-  map.setPaintProperty('protected-areas-fill', 'fill-pattern', `hatch-${hatchColor}-md`)
-  map.setPaintProperty('protected-areas-border', 'line-color', satelliteMode ? '#ffffff' : '#ffffff')
-}
+    const [, z, x, y] = match.map(Number)
+    const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}/${satelliteMode}`
 
-function updateHeatmapSource() {
-  const years = Array.from(activeYears).sort()
-
-  // Always keep heatmap visible (it contains land mask)
-  // When no years selected, we render just land
-  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
-
-  // Map years to band indices (2023→0, 2024→1, 2025→2)
-  // Empty array means no vessel data, just land
-  const yearList = Object.keys(YEAR_COLORS).map(Number).sort()
-  activeYearBands = years.map(y => yearList.indexOf(y)).filter(i => i >= 0)
-
-  // Clear our application tile cache
-  cogTileCache.clear()
-  clearCOGCache()
-
-  // Force MapLibre to reload tiles by updating the source tiles URL
-  // Adding a timestamp query param invalidates MapLibre's internal cache
-  const source = map.getSource('vessel-heatmap')
-  if (source) {
-    source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
-  }
-}
-
-function updateMultiYearLegend() {
-  const multiYearItem = document.querySelector('.legend-multi-year')
-  multiYearItem.classList.toggle('disabled', activeYears.size < 2)
-}
-
-function toggleYear(year) {
-  activeYears.has(year) ? activeYears.delete(year) : activeYears.add(year)
-  updateHeatmapSource()
-  updateMultiYearLegend()
-}
-
-function toggleLayer(layerId) {
-  if (layerId === 'protected-areas') {
-    const isVisible = map.getLayoutProperty(PROTECTED_AREA_LAYERS[0], 'visibility') !== 'none'
-    const visibility = isVisible ? 'none' : 'visible'
-    PROTECTED_AREA_LAYERS.forEach(id => map.setLayoutProperty(id, 'visibility', visibility))
-  } else if (layerId === 'crossings') {
-    const isVisible = map.getLayoutProperty('crossings', 'visibility') !== 'none'
-    map.setLayoutProperty('crossings', 'visibility', isVisible ? 'none' : 'visible')
-  } else if (layerId === 'satellite') {
-    satelliteMode = !satelliteMode
-    map.setLayoutProperty('sentinel-2', 'visibility', satelliteMode ? 'visible' : 'none')
-    updateProtectedAreaColors()
-    // Invalidate tile cache (land rendering changes with satellite mode)
-    cogTileCache.clear()
-    clearCOGCache()
-    const source = map.getSource('vessel-heatmap')
-    if (source) {
-      source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+    if (cogTileCache.has(cacheKey)) {
+      return { data: cogTileCache.get(cacheKey) }
     }
-  }
-}
 
-// Vessel type translations
-const VESSEL_TYPE_NAMES = {
-  'all': { en: 'All vessels', ru: 'Все суда' },
-  'CARGO': { en: 'Cargo', ru: 'Грузовое' },
-  'FISHING': { en: 'Fishing', ru: 'Рыболовное' },
-  'PASSENGER': { en: 'Passenger', ru: 'Пассажирское' },
-  'CARRIER': { en: 'Carrier', ru: 'Танкер' },
-  'BUNKER': { en: 'Bunker', ru: 'Бункеровщик' },
-  'SEISMIC_VESSEL': { en: 'Seismic', ru: 'Сейсморазведка' },
-  'OTHER': { en: 'Other', ru: 'Другое' },
-  'GEAR': { en: 'Gear', ru: 'Снаряжение' }
-}
-
-// Store all crossings for filtering
-let allCrossings = null
-
-// Categories - populated from vessel types in data
-async function loadCategories() {
-  // Start with "all" option
-  categories = [{ id: 'all', name_en: 'All vessels', name_ru: 'Все суда' }]
-
-  // Add vessel types from the data (using stored crossings)
-  if (allCrossings?.features) {
-    const types = new Set()
-    allCrossings.features.forEach(f => {
-      if (f.properties?.vessel_type) {
-        types.add(f.properties.vessel_type)
-      }
-    })
-
-    // Sort and add to categories
-    Array.from(types).sort().forEach(type => {
-      const names = VESSEL_TYPE_NAMES[type] || { en: type, ru: type }
-      categories.push({
-        id: type,
-        name_en: names.en,
-        name_ru: names.ru
-      })
-    })
-  }
-
-  populateCategoryDropdown()
-}
-
-function populateCategoryDropdown() {
-  const select = document.getElementById('category-select')
-  const lang = getLang()
-  select.innerHTML = ''
-  categories.forEach(cat => {
-    const option = document.createElement('option')
-    option.value = cat.id
-    option.textContent = lang === 'ru' ? cat.name_ru : cat.name_en
-    select.appendChild(option)
+    const buffer = await renderTile(z, x, y, activeYearBands, !satelliteMode)
+    cogTileCache.set(cacheKey, buffer)
+    return { data: buffer }
   })
-  select.value = currentCategory
-}
 
-function selectCategory(categoryId) {
-  currentCategory = categoryId
-
-  // Filter crossings by vessel type
-  if (allCrossings && map.getSource('vessel-crossings')) {
-    if (categoryId === 'all') {
-      map.getSource('vessel-crossings').setData(allCrossings)
-    } else {
-      const filtered = {
-        type: 'FeatureCollection',
-        features: allCrossings.features.filter(f =>
-          f.properties?.vessel_type === categoryId
-        )
-      }
-      map.getSource('vessel-crossings').setData(filtered)
-    }
-  }
-}
-
-// Places
-async function loadPlacesDropdown() {
-  try {
-    const response = await fetch(basePath + 'data/places/places.json')
-    const data = await response.json()
-    placesData = data.places
-    if (placesData.length > 0) {
-      document.getElementById('places-select').classList.remove('hidden')
-      populatePlacesDropdown()
-    }
-  } catch (err) {
-    console.warn('Could not load places:', err)
-    document.getElementById('places-select').classList.add('hidden')
-  }
-}
-
-function populatePlacesDropdown() {
-  const select = document.getElementById('places-select')
-  const lang = getLang()
-  select.innerHTML = `<option value="">${t('selectPlace')}</option>`
-  placesData.forEach((place, index) => {
-    const option = document.createElement('option')
-    option.value = index
-    option.textContent = lang === 'ru' ? place.name_ru : place.name_en
-    select.appendChild(option)
+  // 6. Initialize map with manifest config
+  const mapConfig = manifest.map || {}
+  map = window.map = new maplibregl.Map({
+    container: 'map',
+    attributionControl: false,
+    style: createMapStyle(manifest, dataUrl),
+    center: mapConfig.center || [0, 0],
+    zoom: mapConfig.zoom || 2,
+    pitch: mapConfig.pitch || 0,
+    bearing: mapConfig.bearing || 0,
+    maxZoom: mapConfig.maxZoom || 18,
+    minZoom: mapConfig.minZoom || 0,
+    minPitch: 0,
+    maxPitch: 30,
+    renderWorldCopies: false,
+    localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
-}
 
-function showPlace(index) {
-  const place = placesData[index]
-  const infoEl = document.getElementById('places-info')
+  // 7. Set up map event handlers
+  setupMapHandlers(cogConfig)
 
-  if (!place) {
-    infoEl.classList.add('hidden')
-    return
-  }
+  // 8. Set up UI event handlers
+  setupUIHandlers()
 
-  const description = getLang() === 'ru' ? place.description_ru : place.description_en
-  infoEl.innerHTML = `<span>${description}</span>`
-  infoEl.classList.remove('hidden')
-  map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
-}
-
-// Event listeners
-document.getElementById('lang-toggle').addEventListener('click', () => {
-  const newLang = toggleLang()
-  document.getElementById('lang-toggle').textContent = newLang === 'ru' ? 'en' : 'ру'
+  // 9. Initial UI update
   updateUI()
-})
+  initYearLegend(knownYears)
+  updateMultiYearLegend()
+  populatePlacesDropdown()
 
-document.getElementById('about-modal').addEventListener('click', () => {
-  document.getElementById('about-modal').classList.add('hidden')
-})
-
-document.getElementById('category-select').addEventListener('change', (e) => {
-  selectCategory(e.target.value)
-})
-
-document.getElementById('places-select').addEventListener('change', (e) => {
-  const value = e.target.value
-  if (value === '') {
-    document.getElementById('places-info').classList.add('hidden')
-    return
+  // Show lastUpdated if available
+  if (cogConfig?.lastUpdated) {
+    const dataSourceEl = document.getElementById('legend-source')
+    if (dataSourceEl) {
+      const currentText = dataSourceEl.textContent
+      dataSourceEl.textContent = `${currentText} (${cogConfig.lastUpdated})`
+    }
   }
-  showPlace(parseInt(value))
-})
+}
 
-// Initialize year legend before attaching event listeners
-initYearLegend()
-
-// Now attach event listeners (year toggles now exist)
-document.querySelectorAll('.legend-toggle').forEach(item => {
-  item.addEventListener('click', () => {
-    const year = item.dataset.year
-    const layer = item.dataset.layer
-
-    if (year) {
-      toggleYear(parseInt(year))
-      item.classList.toggle('active', activeYears.has(parseInt(year)))
-    } else if (layer) {
-      toggleLayer(layer)
-      item.classList.toggle('active')
+function setupMapHandlers(cogConfig) {
+  // Hatch pattern handler
+  map.on('styleimagemissing', (e) => {
+    if (hatchPatterns[e.id]) {
+      map.addImage(e.id, hatchPatterns[e.id](), { pixelRatio: 1 })
     }
   })
-})
 
-window.addEventListener('resize', updateUI)
-updateUI()
+  // Map load handler
+  map.on('load', async () => {
+    // Update crossings layer colors
+    if (cogConfig?.years) {
+      map.setPaintProperty('crossings', 'circle-stroke-color', createYearColorExpression(cogConfig.years))
+    }
+
+    map.triggerRepaint()
+
+    // Load vector data in background
+    try {
+      await initDB(dataUrl, manifest)
+
+      const [protectedAreas, crossings, places] = await Promise.all([
+        loadProtectedAreas(),
+        loadVesselCrossings(),
+        loadPlaces()
+      ])
+
+      allCrossings = crossings
+
+      map.getSource('protected-areas').setData(protectedAreas)
+      map.getSource('vessel-crossings').setData(crossings)
+      map.getSource('places').setData(places)
+
+      dataInitialized = true
+      loadCategories()
+    } catch (err) {
+      console.error('Failed to load vector data:', err)
+    }
+  })
+
+  // Map movement handler (constrain to region bounds)
+  const bounds = manifest.map?.bounds || {}
+  const centerLat = manifest.map?.center?.[1] || 0
+  const minLatZoomedOut = bounds.south || -90
+  const minLatZoomedIn = Math.max(bounds.south - 10, -90)
+
+  map.on('moveend', async () => {
+    const center = map.getCenter()
+    const zoom = map.getZoom()
+    const minLat = zoom > 4 ? minLatZoomedIn : minLatZoomedOut
+
+    if (center.lat < minLat) {
+      map.panTo([center.lng, centerLat])
+    }
+
+    // Debug tooltip targets
+    if (DEBUG_MODE && dataInitialized && zoom >= 5) {
+      const mapBounds = map.getBounds()
+      try {
+        const targets = await loadTooltipTargetsInBounds(
+          mapBounds.getSouth(),
+          mapBounds.getNorth(),
+          mapBounds.getWest(),
+          mapBounds.getEast()
+        )
+        map.getSource('debug-tooltip-targets').setData(targets)
+      } catch (err) {
+        console.warn('Failed to load debug targets:', err)
+      }
+    }
+  })
+
+  // Crossings tooltip
+  map.on('mouseenter', 'crossings', (e) => {
+    hoveringCrossing = true
+    map.getCanvas().style.cursor = 'pointer'
+
+    const props = e.features[0].properties
+    const hours = Math.round(props.total_hours)
+
+    showTooltip(`
+      <table>
+        <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
+        <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
+        <tr><td>${t('type')}</td><td>${tVesselType(props.vessel_type)}</td></tr>
+        <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
+        <tr><td>${t('duration')}</td><td>${hours} ${t('hours')}</td></tr>
+        <tr><td>${t('firstSeen')}</td><td>${formatDate(props.first_seen)}</td></tr>
+        <tr><td>${t('lastSeen')}</td><td>${formatDate(props.last_seen)}</td></tr>
+      </table>
+    `)
+  })
+
+  map.on('mouseleave', 'crossings', () => {
+    hoveringCrossing = false
+    map.getCanvas().style.cursor = ''
+    hideTooltip()
+  })
+
+  // Raster hover tooltip
+  const handleRasterHover = debounce(async (e) => {
+    if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+
+    const { lat, lng } = e.lngLat
+    const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+
+    try {
+      const vessels = await queryVesselsAt(lat, lng, year)
+      showRasterTooltip(vessels)
+    } catch (err) {
+      // Silently fail tooltip queries
+    }
+  }, 50)
+
+  map.on('mousemove', (e) => {
+    if (hoveringCrossing) return
+    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
+      handleRasterHover(e)
+    }
+  })
+
+  map.on('mouseout', () => hideTooltip())
+
+  map.on('zoom', () => {
+    if (!hoveringCrossing && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) {
+      hideTooltip()
+    }
+  })
+}
+
+function setupUIHandlers() {
+  // Language toggle
+  document.getElementById('lang-toggle').addEventListener('click', async () => {
+    const newLang = await toggleLang()
+    document.getElementById('lang-toggle').textContent = newLang === 'ru' ? 'en' : 'ру'
+    updateUI()
+    loadCategories()  // Refresh category labels
+  })
+
+  // About modal
+  document.getElementById('about-modal').addEventListener('click', () => {
+    document.getElementById('about-modal').classList.add('hidden')
+  })
+
+  // Category filter
+  document.getElementById('category-select').addEventListener('change', (e) => {
+    selectCategory(e.target.value)
+  })
+
+  // Places dropdown
+  document.getElementById('places-select').addEventListener('change', (e) => {
+    const value = e.target.value
+    if (value === '') {
+      document.getElementById('places-info').classList.add('hidden')
+      return
+    }
+    showPlace(parseInt(value))
+  })
+
+  // Layer toggles
+  document.querySelectorAll('.legend-toggle[data-layer]').forEach(item => {
+    item.addEventListener('click', () => {
+      const layer = item.dataset.layer
+      if (layer) {
+        toggleLayer(layer)
+        item.classList.toggle('active')
+      }
+    })
+  })
+
+  // Window resize
+  window.addEventListener('resize', updateUI)
+}
+
+// ============================================================================
+// Start the application
+// ============================================================================
+
+init().catch(err => {
+  console.error('Failed to initialize app:', err)
+  document.body.innerHTML = `
+    <div style="padding: 2rem; color: #fff; background: #1a1a1a; min-height: 100vh;">
+      <h1>Failed to load</h1>
+      <p>${err.message}</p>
+      <p>Check the console for details.</p>
+    </div>
+  `
+})
