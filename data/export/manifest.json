@@ -1,6 +1,14 @@
 {
   "version": "1.0",
 
+  "about": {
+    "title": { "en": "about this map", "ru": "о карте" },
+    "description": {
+      "en": "Interactive map of vessel presence in the Arctic based on Global Fishing Watch data. Click anywhere to continue.",
+      "ru": "Интерактивная карта присутствия судов в Арктике на основе данных Global Fishing Watch. Нажмите в любом месте, чтобы продолжить."
+    }
+  },
+
   "region": {
     "id": "russian-arctic",
     "name": {
