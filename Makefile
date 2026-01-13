@@ -1,4 +1,5 @@
-# Albedo - Northern Sea Route Traffic Analysis
+# Albedo - Static Architecture Build Pipeline
+# Zero server compute - all rendering happens in browser
 
 include .env
 export
@@ -8,7 +9,7 @@ export
 #───────────────────────────────────────────────────────────────────────────────
 
 # Full pipeline
-all: fetch convert transform tiles
+all: transform tiles export build
 
 # Fetch source data from APIs
 fetch: data/.fetch.done
@@ -27,32 +28,83 @@ data/.convert.done: data/.fetch.done
 	./scripts/convert.sh
 	@touch $@
 
-# Run dbt transformations
+# Run SQL transformations (replaces dbt)
 transform: data/data.duckdb
 
-data/data.duckdb: data/.convert.done
-	cd etl && dbt run --profiles-dir .
+data/data.duckdb: data/.convert.done etl/transform.sql
+	duckdb $@ < etl/transform.sql
 
-# Generate all tiles
-tiles: data/vessel_heatmap.tif data/protected_areas.pmtiles data/land.pmtiles data/places.pmtiles data/vessel_crossings.pmtiles data/vessel_hotspots.pmtiles
+# Generate COG with land mask
+tiles: data/vessel_heatmap.tif
 
 data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
 
-data/protected_areas.pmtiles: data/data.duckdb data/protected_areas.geojson
-	./scripts/export_protected_areas.sh
+# Export Parquet files for client-side queries
+export: data/export/.done
 
-data/land.pmtiles: data/ne_10m_land/ne_10m_land.shp
-	./scripts/export_land.sh
+data/export/.done: data/data.duckdb
+	uv run python scripts/export_parquet.py
+	@touch $@
 
-data/places.pmtiles: data/ne_10m_populated_places/ne_10m_populated_places.shp
-	./scripts/export_places.sh
+#───────────────────────────────────────────────────────────────────────────────
+# Development
+#───────────────────────────────────────────────────────────────────────────────
 
-data/vessel_crossings.pmtiles: data/data.duckdb
-	./scripts/export_crossings.sh
+install:
+	uv sync
+	npm install
 
-data/vessel_hotspots.pmtiles: data/data.duckdb
-	./scripts/export_vessel_points.sh
+# Development server (static files only - no tile server needed)
+dev:
+	npm run dev
+
+# Build for production
+build: dist
+
+dist: src/* data/vessel_heatmap.tif data/export/.done
+	npm run build
+	mkdir -p dist/data/export dist/data/places
+	cp data/vessel_heatmap.tif dist/data/
+	cp data/export/*.parquet dist/data/export/
+	cp -r data/places/* dist/data/places/
+
+# Preview production build locally
+preview: build
+	npm run preview
+
+clean:
+	rm -rf dist data/data.duckdb data/export data/vessel_heatmap.tif
+
+#───────────────────────────────────────────────────────────────────────────────
+# Deployment (Google Cloud Storage - Static)
+#───────────────────────────────────────────────────────────────────────────────
+
+GCS_BUCKET := albedo-static
+GCP_PROJECT := data-desk-web
+
+# Deploy to Google Cloud Storage (static hosting)
+deploy: dist
+	gcloud storage cp -r dist/* gs://$(GCS_BUCKET)/
+	@echo "Deployed to: https://storage.googleapis.com/$(GCS_BUCKET)/index.html"
+
+# Setup GCS bucket (run once)
+setup-gcs:
+	gcloud storage buckets create gs://$(GCS_BUCKET) \
+		--location=europe-west1 \
+		--project=$(GCP_PROJECT) \
+		--uniform-bucket-level-access
+	gcloud storage buckets add-iam-policy-binding gs://$(GCS_BUCKET) \
+		--member=allUsers \
+		--role=roles/storage.objectViewer
+	@echo '[ { "origin": ["*"], "method": ["GET", "HEAD"], "responseHeader": ["Content-Type", "Content-Range", "Accept-Ranges", "Content-Length"], "maxAgeSeconds": 3600 } ]' > /tmp/cors.json
+	gcloud storage buckets update gs://$(GCS_BUCKET) --cors-file=/tmp/cors.json
+	@rm /tmp/cors.json
+	@echo "GCS bucket configured for static hosting with CORS"
+
+#───────────────────────────────────────────────────────────────────────────────
+# Legacy targets (kept for reference during migration)
+#───────────────────────────────────────────────────────────────────────────────
 
 # Export vessel crossings as CSV for review
 export-crossings: data/vessel_crossings.csv
@@ -62,66 +114,5 @@ data/vessel_crossings.csv: data/data.duckdb
 	@echo "Exported $$(wc -l < data/vessel_crossings.csv | tr -d ' ') rows to data/vessel_crossings.csv"
 
 #───────────────────────────────────────────────────────────────────────────────
-# Development
-#───────────────────────────────────────────────────────────────────────────────
 
-install:
-	uv sync
-	yarn install
-
-serve:
-	uv run python scripts/tile_server.py
-
-dev:
-	uv run python scripts/tile_server.py & PID=$$!; trap "kill $$PID 2>/dev/null" EXIT INT TERM; yarn dev
-
-build:
-	yarn build
-
-clean:
-	rm -rf data dist
-
-#───────────────────────────────────────────────────────────────────────────────
-# Vessel Lookup (for production tooltips)
-#───────────────────────────────────────────────────────────────────────────────
-
-# Create the lookup parquet from full data.duckdb
-lookup: data/vessel_lookup.parquet
-
-data/vessel_lookup.parquet: data/data.duckdb
-	uv run python scripts/create_vessel_lookup.py
-
-# Upload lookup to GitHub release (run after 'make lookup')
-upload-lookup: data/vessel_lookup.parquet
-	@echo "Uploading vessel_lookup.parquet to GitHub release data-v1..."
-	gh release upload data-v1 data/vessel_lookup.parquet --clobber
-	@echo "Done! Container rebuild will use the new lookup file."
-
-#───────────────────────────────────────────────────────────────────────────────
-# Deployment (Cloud Run)
-#───────────────────────────────────────────────────────────────────────────────
-
-PROJECT_NAME := albedo
-GCP_PROJECT := data-desk-web
-REGION := europe-west1
-DOMAIN := tools.datadesk.eco
-
-deploy:
-	gcloud run deploy $(PROJECT_NAME) \
-		--source . \
-		--region $(REGION) \
-		--project $(GCP_PROJECT) \
-		--allow-unauthenticated \
-		--port 8080 \
-		--max-instances 10 \
-		--min-instances 0 \
-		--memory 1Gi \
-		--cpu 1
-	@echo "Live at: https://$(PROJECT_NAME).$(DOMAIN)"
-
-logs:
-	gcloud run logs read --service $(PROJECT_NAME) --region $(REGION) --project $(GCP_PROJECT) --limit 50
-
-#───────────────────────────────────────────────────────────────────────────────
-
-.PHONY: all fetch convert transform tiles export-crossings install serve dev build clean deploy logs
+.PHONY: all fetch convert transform tiles export install dev build preview clean deploy setup-gcs export-crossings

@@ -2,22 +2,817 @@
 
 ## Overview
 
-Migrate from the current multi-tool spatial stack to a minimal architecture centered on DuckDB + rio-tiler. The goal is fewer dependencies, less abstraction, and a cleaner mental model.
+Migrate from server-rendered tiles to a **fully static, client-side architecture**. The entire application becomes static files on Cloud Storage, with all rendering and queries happening in the browser.
 
-**Current stack:** DuckDB, dbt, rasterio, GDAL CLI, tippecanoe, PMTiles, rio-tiler, Pillow, FastAPI, MapLibre GL
+**Current stack:** DuckDB, dbt, rasterio, GDAL, tippecanoe, PMTiles, rio-tiler, Pillow, FastAPI, Cloud Run
 
-**Target stack:** DuckDB, rasterio, rio-tiler, FastAPI, MapLibre GL
+**Target stack:** DuckDB (build only), geotiff.js, DuckDB-WASM, MapLibre GL, Google Cloud Storage
+
+**Result:** Zero server compute. Infinite scale. ~$0.50/month hosting.
 
 ---
 
-## Phase 1: Remove dbt, Use Plain SQL
+## Architecture
+
+```
+Cloud Storage (~100 MB)
+├── index.html + JS/CSS           ~2 MB    (Vite build)
+├── vessel_heatmap.tif            ~18 MB   (COG: 3 vessel bands + land mask)
+└── data.parquet                  ~80 MB   (vectors + tooltips)
+
+Browser
+├── geotiff.js          → reads COG via range requests, renders raster tiles
+├── DuckDB-WASM         → queries Parquet for vectors + tooltips
+└── MapLibre GL         → composites all layers
+
+External
+└── Sentinel-2 tiles    → EOX public CDN (satellite imagery option)
+```
+
+### Data flow
+
+1. **Raster tiles**: MapLibre requests tile → custom protocol → geotiff.js fetches ~20KB from COG → JS colorizes → returns ImageBitmap
+2. **Vector layers**: On load → DuckDB-WASM queries Parquet → returns GeoJSON → MapLibre renders
+3. **Tooltips**: On hover → DuckDB-WASM queries Parquet → instant (data cached)
+4. **Year filtering**: Instant re-render, no network (COG data already cached)
+
+---
+
+## Phase 1: Create Combined COG with Land Mask
 
 ### Goal
-Replace dbt with plain SQL scripts executed directly by DuckDB CLI.
+Add land as band 4 in the vessel heatmap COG. Single file serves both vessels and land.
 
-### Files to Create
+### Changes to `scripts/export_raster.sh`
 
-**`etl/transform.sql`** — Single file containing all transformations:
+```bash
+#!/bin/bash
+set -e
+
+cd "$(dirname "$0")/.."
+source .env
+
+IFS=',' read -ra YEAR_ARRAY <<< "$YEARS"
+
+# Export per-year vessel activity
+echo "Exporting vessel activity per year..."
+for year in "${YEAR_ARRAY[@]}"; do
+  echo "  → ${year}"
+  duckdb data/data.duckdb -c "
+    COPY (
+      SELECT lon, lat, sum(hours) as hours
+      FROM vessel_positions
+      WHERE year = ${year}
+      GROUP BY lat, lon
+    ) TO 'data/vessel_activity_${year}.csv' (HEADER);
+  "
+done
+
+# Generate per-year rasters
+echo "Creating per-year rasters..."
+for year in "${YEAR_ARRAY[@]}"; do
+  INPUT_CSV="data/vessel_activity_${year}.csv" \
+  OUTPUT_PATH="data/vessel_activity_${year}.tif" \
+  uv run python scripts/create_raster.py
+done
+
+# Create land mask at same resolution
+echo "Creating land mask..."
+gdal_rasterize -burn 1 \
+  -te -180 56 180 90 \
+  -tr 0.01 0.01 \
+  -ot Float32 \
+  -co COMPRESS=DEFLATE \
+  data/ne_10m_land/ne_10m_land.shp \
+  data/land_mask.tif
+
+# Combine all bands: years + land mask
+echo "Combining into 4-band raster..."
+uv run python3 << 'PYTHON_EOF'
+import rasterio
+import numpy as np
+
+years = "${YEARS}".split(',')
+
+# Read first year to get profile
+with rasterio.open(f"data/vessel_activity_{years[0]}.tif") as src:
+    profile = src.profile.copy()
+    bands = [src.read(1)]
+
+# Read remaining years
+for year in years[1:]:
+    with rasterio.open(f"data/vessel_activity_{year}.tif") as src:
+        bands.append(src.read(1))
+
+# Read land mask
+with rasterio.open("data/land_mask.tif") as src:
+    bands.append(src.read(1))
+
+# Stack and write
+combined = np.stack(bands)
+profile.update(count=len(bands), compress='deflate', tiled=True)
+
+with rasterio.open("data/vessel_combined.tif", 'w', **profile) as dst:
+    dst.write(combined)
+
+print(f"Created {len(bands)}-band raster")
+PYTHON_EOF
+
+# Convert to Cloud-Optimized GeoTIFF
+echo "Creating COG..."
+gdal_translate -of COG \
+  -co COMPRESS=DEFLATE \
+  -co OVERVIEWS=AUTO \
+  -co RESAMPLING=NEAREST \
+  data/vessel_combined.tif \
+  data/vessel_heatmap.tif
+
+# Cleanup
+rm -f data/vessel_activity_*.csv data/vessel_activity_*.tif
+rm -f data/vessel_combined.tif data/land_mask.tif
+
+echo "✓ Created: data/vessel_heatmap.tif ($(du -h data/vessel_heatmap.tif | cut -f1))"
+```
+
+### Verification
+```bash
+gdalinfo data/vessel_heatmap.tif | grep Band
+# Should show 4 bands with overviews
+```
+
+---
+
+## Phase 2: Create Static Parquet Export
+
+### Goal
+Export all vector data and tooltip data to a single Parquet file optimized for DuckDB-WASM range queries.
+
+### Create `scripts/export_parquet.py`
+
+```python
+#!/usr/bin/env python3
+"""Export all data to a single Parquet file for client-side queries."""
+
+import duckdb
+
+OUTPUT = "data/data.parquet"
+
+def main():
+    db = duckdb.connect("data/data.duckdb", read_only=True)
+
+    # Export as multi-table Parquet using Hive partitioning
+    # DuckDB-WASM can query specific partitions via range requests
+
+    print("Exporting protected areas...")
+    db.execute("""
+        COPY (
+            SELECT
+                'protected_areas' as _table,
+                feature_id,
+                area_name,
+                ST_AsGeoJSON(geometry) as geometry
+            FROM protected_areas_ocean
+        ) TO 'data/export/protected_areas.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+
+    print("Exporting vessel crossings...")
+    db.execute("""
+        COPY (
+            SELECT
+                'vessel_crossings' as _table,
+                feature_id,
+                area_name,
+                vessel_id,
+                mmsi,
+                ship_name,
+                flag,
+                vessel_type,
+                gear_type,
+                total_hours,
+                first_seen,
+                last_seen,
+                year,
+                centroid_lon,
+                centroid_lat,
+                position_count
+            FROM vessel_crossings
+        ) TO 'data/export/vessel_crossings.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+
+    print("Exporting vessel lookup (tooltips)...")
+    db.execute("""
+        COPY (
+            SELECT
+                'vessel_lookup' as _table,
+                lat,
+                lon,
+                mmsi,
+                ship_name,
+                flag,
+                vessel_type,
+                year,
+                total_hours
+            FROM (
+                SELECT
+                    lat, lon, mmsi, ship_name, flag, vessel_type, year,
+                    SUM(hours) as total_hours,
+                    ROW_NUMBER() OVER (PARTITION BY lat, lon, year ORDER BY SUM(hours) DESC) as rn
+                FROM vessel_positions
+                GROUP BY lat, lon, mmsi, ship_name, flag, vessel_type, year
+            )
+            WHERE rn <= 5  -- Top 5 vessels per cell per year
+            ORDER BY lat, lon, year, total_hours DESC
+        ) TO 'data/export/vessel_lookup.parquet' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE 100000)
+    """)
+
+    print("Exporting places...")
+    db.execute("""
+        COPY (
+            SELECT
+                'places' as _table,
+                name_en,
+                name_ru,
+                lon,
+                lat,
+                population,
+                scalerank
+            FROM (
+                SELECT
+                    NAME as name_en,
+                    NAME_RU as name_ru,
+                    ST_X(geom) as lon,
+                    ST_Y(geom) as lat,
+                    POP_MAX as population,
+                    SCALERANK as scalerank
+                FROM ST_Read('data/ne_10m_populated_places/ne_10m_populated_places.shp')
+                WHERE SCALERANK <= 5
+                  AND ST_Y(geom) >= 57
+                  AND ADM0_A3 = 'RUS'
+            )
+        ) TO 'data/export/places.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+
+    db.close()
+
+    # Combine into single file for simpler deployment
+    print("Combining into single Parquet file...")
+    db = duckdb.connect()
+    db.execute("""
+        COPY (
+            SELECT * FROM read_parquet('data/export/*.parquet')
+        ) TO 'data/data.parquet' (FORMAT PARQUET, COMPRESSION ZSTD)
+    """)
+    db.close()
+
+    import os
+    size_mb = os.path.getsize(OUTPUT) / 1024 / 1024
+    print(f"✓ Created: {OUTPUT} ({size_mb:.1f} MB)")
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## Phase 3: Client-Side Tile Rendering
+
+### Goal
+Replace server-side rio-tiler with client-side geotiff.js.
+
+### Install dependencies
+
+```bash
+npm install geotiff
+```
+
+### Create `src/cog-tiles.js`
+
+```javascript
+/**
+ * Client-side COG tile renderer using geotiff.js
+ * Replaces server-side rio-tiler + Pillow
+ */
+
+import GeoTIFF, { Pool } from 'geotiff'
+
+// Band indices in the COG
+const BAND_2023 = 0
+const BAND_2024 = 1
+const BAND_2025 = 2
+const BAND_LAND = 3
+
+// Year colors (RGB)
+const YEAR_COLORS = {
+  0: [0, 255, 255],    // 2023 - cyan
+  1: [0, 255, 0],      // 2024 - green
+  2: [255, 0, 255],    // 2025 - magenta
+}
+
+const DOMINANCE_THRESHOLD = 0.6
+const TILE_SIZE = 256
+
+let tiff = null
+let pool = null
+let imageCache = new Map()
+
+/**
+ * Initialize the COG reader
+ */
+export async function initCOG(url) {
+  tiff = await GeoTIFF.fromUrl(url, {
+    cacheSize: 100,
+    blockSize: 65536,
+  })
+  pool = new Pool(navigator.hardwareConcurrency || 4)
+  console.log(`COG initialized: ${url}`)
+}
+
+/**
+ * Get the appropriate image for a zoom level (uses COG overviews)
+ */
+async function getImageForZoom(z) {
+  if (imageCache.has(z)) {
+    return imageCache.get(z)
+  }
+
+  const imageCount = await tiff.getImageCount()
+  // COG overviews: image 0 is full res, 1+ are overviews
+  // Map zoom levels to appropriate overview
+  const overviewIndex = Math.max(0, Math.min(imageCount - 1, imageCount - 1 - z + 2))
+
+  const image = await tiff.getImage(overviewIndex)
+  imageCache.set(z, image)
+  return image
+}
+
+/**
+ * Convert tile coordinates to geographic bbox
+ */
+function tileToBBox(z, x, y) {
+  const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, z)
+  const north = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))
+
+  const n2 = Math.PI - (2 * Math.PI * (y + 1)) / Math.pow(2, z)
+  const south = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n2) - Math.exp(-n2)))
+
+  const west = (x / Math.pow(2, z)) * 360 - 180
+  const east = ((x + 1) / Math.pow(2, z)) * 360 - 180
+
+  return [west, south, east, north]
+}
+
+/**
+ * Render a single tile
+ */
+export async function renderTile(z, x, y, selectedBands = [0, 1, 2]) {
+  if (!tiff) {
+    throw new Error('COG not initialized')
+  }
+
+  const image = await getImageForZoom(z)
+  const [imgWidth, imgHeight] = [image.getWidth(), image.getHeight()]
+  const [minX, minY, maxX, maxY] = image.getBoundingBox()
+
+  // Tile bbox
+  const [tileWest, tileSouth, tileEast, tileNorth] = tileToBBox(z, x, y)
+
+  // Check if tile intersects image
+  if (tileEast < minX || tileWest > maxX || tileNorth < minY || tileSouth > maxY) {
+    return createEmptyTile()
+  }
+
+  // Calculate pixel window
+  const pixelWidth = (maxX - minX) / imgWidth
+  const pixelHeight = (maxY - minY) / imgHeight
+
+  const windowX = Math.floor((tileWest - minX) / pixelWidth)
+  const windowY = Math.floor((maxY - tileNorth) / pixelHeight)
+  const windowWidth = Math.ceil((tileEast - tileWest) / pixelWidth)
+  const windowHeight = Math.ceil((tileNorth - tileSouth) / pixelHeight)
+
+  // Clamp to image bounds
+  const clampedX = Math.max(0, Math.min(windowX, imgWidth))
+  const clampedY = Math.max(0, Math.min(windowY, imgHeight))
+  const clampedWidth = Math.min(windowWidth, imgWidth - clampedX)
+  const clampedHeight = Math.min(windowHeight, imgHeight - clampedY)
+
+  if (clampedWidth <= 0 || clampedHeight <= 0) {
+    return createEmptyTile()
+  }
+
+  try {
+    // Read all 4 bands for the tile window
+    const rasters = await image.readRasters({
+      window: [clampedX, clampedY, clampedX + clampedWidth, clampedY + clampedHeight],
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+      pool,
+    })
+
+    return colorize(rasters, selectedBands)
+  } catch (err) {
+    console.warn(`Tile ${z}/${x}/${y} read error:`, err.message)
+    return createEmptyTile()
+  }
+}
+
+/**
+ * Create an empty transparent tile
+ */
+function createEmptyTile() {
+  const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
+  return canvas.transferToImageBitmap()
+}
+
+/**
+ * Colorize raster data into RGBA ImageBitmap
+ */
+function colorize(rasters, selectedBands) {
+  const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
+  const ctx = canvas.getContext('2d')
+  const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE)
+  const pixels = imageData.data
+
+  const land = rasters[BAND_LAND]
+  const vesselBands = selectedBands.map(b => rasters[b])
+
+  for (let i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
+    const px = i * 4
+
+    // Land: white
+    if (land[i] === 1) {
+      pixels[px] = 255
+      pixels[px + 1] = 255
+      pixels[px + 2] = 255
+      pixels[px + 3] = 255
+      continue
+    }
+
+    // Get vessel values for selected bands
+    const values = vesselBands.map(band => band[i] || 0)
+    const total = values.reduce((a, b) => a + b, 0)
+
+    // No activity: transparent (ocean)
+    if (total === 0) {
+      pixels[px + 3] = 0
+      continue
+    }
+
+    // Find dominant band
+    let maxVal = 0
+    let maxIdx = 0
+    for (let j = 0; j < values.length; j++) {
+      if (values[j] > maxVal) {
+        maxVal = values[j]
+        maxIdx = j
+      }
+    }
+
+    const proportion = maxVal / total
+
+    // Brightness (log scale, minimum 0.7 for visibility)
+    const brightness = Math.min(1, Math.max(0.7, Math.log1p(total) / Math.log1p(50)))
+
+    let color
+    if (proportion >= DOMINANCE_THRESHOLD) {
+      // Dominant year color
+      color = YEAR_COLORS[selectedBands[maxIdx]] || [180, 180, 180]
+    } else {
+      // Mixed: gray
+      color = [180, 180, 180]
+    }
+
+    pixels[px] = Math.round(color[0] * brightness)
+    pixels[px + 1] = Math.round(color[1] * brightness)
+    pixels[px + 2] = Math.round(color[2] * brightness)
+    pixels[px + 3] = 255
+  }
+
+  ctx.putImageData(imageData, 0, 0)
+  return canvas.transferToImageBitmap()
+}
+
+/**
+ * Clear the image cache (call on cleanup)
+ */
+export function clearCache() {
+  imageCache.clear()
+}
+```
+
+### Create `src/data-layer.js`
+
+```javascript
+/**
+ * Client-side data queries using DuckDB-WASM
+ * Replaces server-side FastAPI endpoints
+ */
+
+import * as duckdb from '@duckdb/duckdb-wasm'
+
+let db = null
+let conn = null
+const DATA_URL = import.meta.env.VITE_DATA_URL || '/data/data.parquet'
+
+/**
+ * Initialize DuckDB-WASM and register remote Parquet file
+ */
+export async function initDB() {
+  const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles()
+  const bundle = await duckdb.selectBundle(JSDELIVR_BUNDLES)
+
+  const worker = new Worker(bundle.mainWorker)
+  const logger = new duckdb.ConsoleLogger()
+
+  db = new duckdb.AsyncDuckDB(logger, worker)
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker)
+
+  conn = await db.connect()
+
+  // Register the remote Parquet file
+  await conn.query(`
+    CREATE VIEW data AS SELECT * FROM read_parquet('${DATA_URL}')
+  `)
+
+  console.log('DuckDB-WASM initialized')
+}
+
+/**
+ * Load protected areas as GeoJSON FeatureCollection
+ */
+export async function loadProtectedAreas() {
+  const result = await conn.query(`
+    SELECT
+      feature_id as id,
+      area_name as name,
+      geometry
+    FROM data
+    WHERE _table = 'protected_areas'
+  `)
+
+  const features = result.toArray().map(row => ({
+    type: 'Feature',
+    id: row.id,
+    geometry: JSON.parse(row.geometry),
+    properties: { name: row.name }
+  }))
+
+  return { type: 'FeatureCollection', features }
+}
+
+/**
+ * Load vessel crossings as GeoJSON FeatureCollection
+ */
+export async function loadVesselCrossings() {
+  const result = await conn.query(`
+    SELECT
+      feature_id,
+      area_name,
+      vessel_id,
+      mmsi,
+      ship_name,
+      flag,
+      vessel_type,
+      gear_type,
+      total_hours,
+      first_seen,
+      last_seen,
+      year,
+      centroid_lon,
+      centroid_lat,
+      position_count
+    FROM data
+    WHERE _table = 'vessel_crossings'
+  `)
+
+  const features = result.toArray().map(row => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [row.centroid_lon, row.centroid_lat]
+    },
+    properties: {
+      feature_id: row.feature_id,
+      area_name: row.area_name,
+      vessel_id: row.vessel_id,
+      mmsi: row.mmsi,
+      ship_name: row.ship_name,
+      flag: row.flag,
+      vessel_type: row.vessel_type,
+      gear_type: row.gear_type,
+      total_hours: row.total_hours,
+      first_seen: row.first_seen,
+      last_seen: row.last_seen,
+      year: row.year,
+      position_count: row.position_count
+    }
+  }))
+
+  return { type: 'FeatureCollection', features }
+}
+
+/**
+ * Load places as GeoJSON FeatureCollection
+ */
+export async function loadPlaces() {
+  const result = await conn.query(`
+    SELECT name_en, name_ru, lon, lat, population, scalerank
+    FROM data
+    WHERE _table = 'places'
+  `)
+
+  const features = result.toArray().map(row => ({
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [row.lon, row.lat]
+    },
+    properties: {
+      name_en: row.name_en,
+      name_ru: row.name_ru,
+      population: row.population,
+      scalerank: row.scalerank
+    }
+  }))
+
+  return { type: 'FeatureCollection', features }
+}
+
+/**
+ * Query vessels at a grid cell for tooltips
+ */
+export async function queryVesselsAt(lat, lon, year = null) {
+  const gridLat = Math.round(lat * 100) / 100
+  const gridLon = Math.round(lon * 100) / 100
+
+  const yearFilter = year ? `AND year = ${year}` : ''
+
+  const result = await conn.query(`
+    SELECT mmsi, ship_name, flag, vessel_type, year, total_hours
+    FROM data
+    WHERE _table = 'vessel_lookup'
+      AND lat = ${gridLat}
+      AND lon = ${gridLon}
+      ${yearFilter}
+    ORDER BY total_hours DESC
+    LIMIT 10
+  `)
+
+  return result.toArray()
+}
+
+/**
+ * Close the database connection
+ */
+export async function closeDB() {
+  if (conn) await conn.close()
+  if (db) await db.terminate()
+}
+```
+
+---
+
+## Phase 4: Update Frontend
+
+### Goal
+Integrate client-side tile rendering and data queries with MapLibre.
+
+### Update `src/main.js`
+
+Key changes:
+1. Remove PMTiles protocol registration
+2. Add custom COG tile protocol
+3. Load vector layers from DuckDB-WASM
+4. Update tooltip handler to use client-side queries
+
+```javascript
+// Remove these imports:
+// import * as pmtiles from 'pmtiles'
+
+// Add these imports:
+import { initCOG, renderTile } from './cog-tiles.js'
+import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt } from './data-layer.js'
+
+// Remove PMTiles protocol:
+// const protocol = new pmtiles.Protocol()
+// maplibregl.addProtocol('pmtiles', protocol.tile)
+
+// Add COG tile protocol:
+const cogTileCache = new Map()
+let activeYearBands = [0, 1, 2]  // All years by default
+
+maplibregl.addProtocol('cog', (params, callback) => {
+  const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
+  if (!match) {
+    callback(new Error('Invalid COG tile URL'))
+    return { cancel: () => {} }
+  }
+
+  const [, z, x, y] = match.map(Number)
+  const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}`
+
+  if (cogTileCache.has(cacheKey)) {
+    callback(null, cogTileCache.get(cacheKey))
+    return { cancel: () => {} }
+  }
+
+  renderTile(z, x, y, activeYearBands)
+    .then(bitmap => {
+      cogTileCache.set(cacheKey, bitmap)
+      callback(null, bitmap)
+    })
+    .catch(err => callback(err))
+
+  return { cancel: () => {} }
+})
+
+// Initialize on load
+async function init() {
+  // Initialize COG reader
+  const cogUrl = import.meta.env.VITE_COG_URL || '/data/vessel_heatmap.tif'
+  await initCOG(cogUrl)
+
+  // Initialize DuckDB
+  await initDB()
+
+  // Load vector data
+  const [protectedAreas, crossings, places] = await Promise.all([
+    loadProtectedAreas(),
+    loadVesselCrossings(),
+    loadPlaces()
+  ])
+
+  // Add sources
+  map.addSource('protected-areas', { type: 'geojson', data: protectedAreas })
+  map.addSource('vessel-crossings', { type: 'geojson', data: crossings })
+  map.addSource('places', { type: 'geojson', data: places })
+
+  // ... add layers
+}
+
+// Update tooltip handler
+async function handleRasterHover(e) {
+  if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+
+  const { lat, lng } = e.lngLat
+  const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+  const vessels = await queryVesselsAt(lat, lng, year)
+
+  showRasterTooltip(vessels)
+}
+
+// Update year toggle to clear tile cache and re-render
+function updateHeatmapSource() {
+  const years = Array.from(activeYears).sort()
+  activeYearBands = years.map(y => y - 2023)
+
+  // Clear cache and trigger repaint
+  cogTileCache.clear()
+  map.triggerRepaint()
+}
+```
+
+### Update `src/config.js`
+
+Remove PMTiles sources, use GeoJSON:
+
+```javascript
+export function createMapStyle() {
+  return {
+    version: 8,
+    projection: { type: 'globe' },
+    sources: {
+      'sentinel-2': {
+        type: 'raster',
+        tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'],
+        tileSize: 256,
+        bounds: [-180, 65, 180, 90]
+      },
+      'vessel-heatmap': {
+        type: 'raster',
+        tiles: ['cog://{z}/{x}/{y}'],
+        tileSize: 256
+      }
+      // Vector sources added dynamically after DuckDB loads
+    },
+    layers: [
+      { id: 'background', type: 'background', paint: { 'background-color': '#000000' } },
+      { id: 'sentinel-2', type: 'raster', source: 'sentinel-2', layout: { visibility: 'none' } },
+      { id: 'vessel-heatmap', type: 'raster', source: 'vessel-heatmap' }
+      // Vector layers added dynamically
+    ]
+  }
+}
+```
+
+---
+
+## Phase 5: Simplify ETL
+
+### Goal
+Remove dbt, use plain SQL.
+
+### Create `etl/transform.sql`
 
 ```sql
 -- Albedo ETL Pipeline
@@ -31,7 +826,23 @@ LOAD spatial;
 -- =============================================================================
 
 CREATE OR REPLACE TABLE vessel_presence AS
-SELECT * FROM read_parquet('data/gfw/*/*.parquet');
+SELECT
+    year,
+    vessel->>'mmsi' as mmsi,
+    vessel->>'imo' as imo,
+    vessel->>'shipName' as ship_name,
+    vessel->>'callsign' as callsign,
+    vessel->>'flag' as flag,
+    vessel->>'vesselType' as vessel_type,
+    vessel->>'geartype' as gear_type,
+    CAST(vessel->>'hours' AS DOUBLE) as hours,
+    CAST(vessel->>'lat' AS DOUBLE) as lat,
+    CAST(vessel->>'lon' AS DOUBLE) as lon,
+    TRY_CAST(vessel->>'entryTimestamp' AS TIMESTAMP) as entry_timestamp,
+    TRY_CAST(vessel->>'exitTimestamp' AS TIMESTAMP) as exit_timestamp,
+    vessel->>'vesselId' as vessel_id,
+    vessel->>'dataset' as dataset
+FROM read_parquet('data/gfw/*/*.parquet');
 
 -- =============================================================================
 -- INTERMEDIATE: Clean and snap to grid
@@ -39,698 +850,383 @@ SELECT * FROM read_parquet('data/gfw/*/*.parquet');
 
 CREATE OR REPLACE TABLE vessel_positions AS
 SELECT
-    vessel->>'id' as vessel_id,
-    CAST(vessel->>'mmsi' AS VARCHAR) as mmsi,
-    vessel->>'shipname' as ship_name,
-    vessel->>'flag' as flag,
-    vessel->>'vesselType' as vessel_type,
-    ROUND(CAST(vessel->>'lat' AS DOUBLE), 2) as lat,
-    ROUND(CAST(vessel->>'lon' AS DOUBLE), 2) as lon,
-    CAST(vessel->>'hours' AS DOUBLE) as hours,
+    vessel_id,
+    mmsi,
+    ship_name,
+    flag,
+    vessel_type,
+    gear_type,
+    ROUND(lat, 2) as lat,
+    ROUND(lon, 2) as lon,
+    hours,
+    entry_timestamp,
+    exit_timestamp,
     year
 FROM vessel_presence
-WHERE vessel->>'lat' IS NOT NULL
-  AND vessel->>'lon' IS NOT NULL
-  AND CAST(vessel->>'lat' AS DOUBLE) BETWEEN 56 AND 90;
+WHERE mmsi IS NOT NULL
+  AND lat IS NOT NULL
+  AND lon IS NOT NULL
+  AND hours > 0;
 
 -- =============================================================================
--- MARTS: Aggregated tables
+-- PROTECTED AREAS (ocean-only)
 -- =============================================================================
 
--- Vessel activity summary (one row per vessel)
+CREATE OR REPLACE TABLE protected_areas_ocean AS
+WITH study_area AS (
+    SELECT ST_GeomFromText('POLYGON((-180 57, 180 57, 180 90, -180 90, -180 57))') as geometry
+),
+land_union AS (
+    SELECT ST_Union_Agg(geom) as geometry
+    FROM ST_Read('data/ne_10m_land/ne_10m_land.shp')
+),
+ocean_mask AS (
+    SELECT ST_Difference(s.geometry, l.geometry) as geometry
+    FROM study_area s, land_union l
+),
+protected_areas_raw AS (
+    SELECT
+        feature.id as feature_id,
+        feature.properties.title as area_name,
+        ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
+    FROM (
+        SELECT unnest(features) as feature
+        FROM read_json_auto('data/protected_areas.geojson', maximum_object_size=200000000)
+    )
+)
+SELECT
+    pa.feature_id,
+    pa.area_name,
+    ST_Intersection(pa.geometry, o.geometry) as geometry
+FROM protected_areas_raw pa, ocean_mask o
+WHERE ST_Intersects(pa.geometry, o.geometry)
+  AND pa.feature_id != 'oopt_wth_details.fid-e747cd5_19a6f70ccf9_-2215';
+
+-- =============================================================================
+-- VESSEL CROSSINGS
+-- =============================================================================
+
+CREATE OR REPLACE TABLE vessel_crossings AS
+WITH crossings_raw AS (
+    SELECT
+        pa.feature_id,
+        pa.area_name,
+        vp.*
+    FROM vessel_positions vp
+    CROSS JOIN protected_areas_ocean pa
+    WHERE ST_Within(ST_Point(vp.lon, vp.lat), pa.geometry)
+)
+SELECT
+    feature_id,
+    area_name,
+    vessel_id,
+    mmsi,
+    ship_name,
+    flag,
+    vessel_type,
+    gear_type,
+    SUM(hours) as total_hours,
+    MIN(entry_timestamp) as first_seen,
+    MAX(exit_timestamp) as last_seen,
+    EXTRACT(YEAR FROM MIN(entry_timestamp))::INTEGER as year,
+    SUM(lon * hours) / SUM(hours) as centroid_lon,
+    SUM(lat * hours) / SUM(hours) as centroid_lat,
+    COUNT(*) as position_count
+FROM crossings_raw
+GROUP BY feature_id, area_name, vessel_id, mmsi, ship_name, flag, vessel_type, gear_type
+HAVING SUM(hours) >= 1;
+
+-- =============================================================================
+-- VESSEL ACTIVITY (summary)
+-- =============================================================================
+
 CREATE OR REPLACE TABLE vessel_activity AS
 SELECT
     vessel_id,
     mmsi,
-    FIRST(ship_name) as ship_name,
-    FIRST(flag) as flag,
-    FIRST(vessel_type) as vessel_type,
+    ship_name,
+    flag,
+    vessel_type,
+    gear_type,
+    COUNT(*) as total_detections,
     SUM(hours) as total_hours,
-    COUNT(*) as position_count,
-    MIN(year) as first_year,
-    MAX(year) as last_year
+    MIN(entry_timestamp) as first_seen,
+    MAX(exit_timestamp) as last_seen,
+    LIST(DISTINCT year ORDER BY year) as years_active
 FROM vessel_positions
-GROUP BY vessel_id, mmsi;
-
--- Vessel crossings with protected areas
-CREATE OR REPLACE TABLE vessel_crossings AS
-WITH protected_areas AS (
-    SELECT * FROM ST_Read('data/protected_areas.geojson')
-)
-SELECT
-    vp.vessel_id,
-    vp.mmsi,
-    vp.ship_name,
-    vp.flag,
-    vp.vessel_type,
-    pa.name as protected_area_name,
-    pa.category as protected_area_category,
-    SUM(vp.hours) as hours_in_area,
-    SUM(vp.lon * vp.hours) / SUM(vp.hours) as centroid_lon,
-    SUM(vp.lat * vp.hours) / SUM(vp.hours) as centroid_lat,
-    MIN(vp.year) as first_year,
-    MAX(vp.year) as last_year
-FROM vessel_positions vp
-JOIN protected_areas pa
-  ON ST_Within(ST_Point(vp.lon, vp.lat), pa.geom)
-GROUP BY vp.vessel_id, vp.mmsi, vp.ship_name, vp.flag, vp.vessel_type,
-         pa.name, pa.category
-HAVING SUM(vp.hours) >= 1;
-
--- =============================================================================
--- EXPORTS: GeoJSON for frontend
--- =============================================================================
-
--- Export protected areas as GeoJSON
-COPY (
-    SELECT json_group_array(json_object(
-        'type', 'Feature',
-        'geometry', ST_AsGeoJSON(geom)::JSON,
-        'properties', json_object(
-            'name', name,
-            'category', category
-        )
-    )) as features
-    FROM ST_Read('data/protected_areas.geojson')
-) TO 'data/exports/protected_areas.geojson' (FORMAT JSON);
-
--- Export vessel crossings as GeoJSON
-COPY (
-    SELECT json_object(
-        'type', 'FeatureCollection',
-        'features', json_group_array(json_object(
-            'type', 'Feature',
-            'geometry', json_object(
-                'type', 'Point',
-                'coordinates', [centroid_lon, centroid_lat]
-            ),
-            'properties', json_object(
-                'vessel_id', vessel_id,
-                'mmsi', mmsi,
-                'ship_name', ship_name,
-                'flag', flag,
-                'vessel_type', vessel_type,
-                'protected_area', protected_area_name,
-                'hours', hours_in_area
-            )
-        ))
-    )
-    FROM vessel_crossings
-) TO 'data/exports/vessel_crossings.geojson' (FORMAT JSON);
+GROUP BY vessel_id, mmsi, ship_name, flag, vessel_type, gear_type;
 ```
 
-### Files to Delete
+### Files to delete
 
 ```
 etl/dbt_project.yml
-etl/profiles.yml (if exists)
-etl/models/staging/
-etl/models/intermediate/
-etl/models/marts/
+etl/profiles.yml
+etl/.user.yml
+etl/models/
 etl/macros/
+etl/target/
 ```
-
-Keep `etl/` directory with just `transform.sql`.
-
-### Makefile Changes
-
-Replace:
-```makefile
-transform:
-	cd etl && dbt run --target prod
-```
-
-With:
-```makefile
-transform:
-	mkdir -p data/exports
-	duckdb data/data.duckdb < etl/transform.sql
-```
-
-### Dependencies to Remove
-
-In `pyproject.toml`, remove:
-- `dbt-core`
-- `dbt-duckdb`
 
 ---
 
-## Phase 2: Remove tippecanoe and PMTiles
+## Phase 6: Update Dependencies
 
-### Goal
-Serve vector data as GeoJSON instead of PMTiles. For small datasets (< 10k features), GeoJSON is simpler and fast enough.
-
-### Tile Server Changes
-
-**`scripts/tile_server.py`** — Add GeoJSON API endpoints:
-
-```python
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
-import duckdb
-
-app = FastAPI()
-db = duckdb.connect('data/data.duckdb', read_only=True)
-
-@app.get("/api/protected-areas")
-def get_protected_areas():
-    """Serve protected areas as GeoJSON FeatureCollection"""
-    result = db.execute("""
-        SELECT json_object(
-            'type', 'FeatureCollection',
-            'features', json_group_array(json_object(
-                'type', 'Feature',
-                'geometry', ST_AsGeoJSON(geom)::JSON,
-                'properties', json_object(
-                    'name', name,
-                    'category', category,
-                    'area_km2', ST_Area(geom::GEOGRAPHY) / 1e6
-                )
-            ))
-        )
-        FROM protected_areas_ocean
-    """).fetchone()[0]
-    return JSONResponse(content=json.loads(result))
-
-@app.get("/api/vessel-crossings")
-def get_vessel_crossings():
-    """Serve vessel crossings as GeoJSON FeatureCollection"""
-    result = db.execute("""
-        SELECT json_object(
-            'type', 'FeatureCollection',
-            'features', json_group_array(json_object(
-                'type', 'Feature',
-                'geometry', json_object(
-                    'type', 'Point',
-                    'coordinates', [centroid_lon, centroid_lat]
-                ),
-                'properties', json_object(
-                    'vessel_id', vessel_id,
-                    'mmsi', mmsi,
-                    'ship_name', ship_name,
-                    'flag', flag,
-                    'vessel_type', vessel_type,
-                    'protected_area', protected_area_name,
-                    'hours', ROUND(hours_in_area, 1),
-                    'first_year', first_year,
-                    'last_year', last_year
-                )
-            ))
-        )
-        FROM vessel_crossings
-    """).fetchone()[0]
-    return JSONResponse(content=json.loads(result))
-
-@app.get("/api/places")
-def get_places():
-    """Serve places of interest as GeoJSON"""
-    # Read from static file or database table
-    with open('data/places/places.geojson') as f:
-        return JSONResponse(content=json.load(f))
-```
-
-### Frontend Changes
-
-**`src/main.js`** — Replace PMTiles sources with GeoJSON:
-
-Remove PMTiles protocol registration:
-```javascript
-// DELETE THIS:
-import { Protocol } from 'pmtiles';
-let protocol = new Protocol();
-maplibregl.addProtocol('pmtiles', protocol.tile);
-```
-
-Replace PMTiles sources:
-```javascript
-// BEFORE:
-map.addSource('protected-areas', {
-    type: 'vector',
-    url: 'pmtiles://data/protected_areas.pmtiles'
-});
-
-// AFTER:
-map.addSource('protected-areas', {
-    type: 'geojson',
-    data: '/api/protected-areas'
-});
-
-// BEFORE:
-map.addSource('vessel-crossings', {
-    type: 'vector',
-    url: 'pmtiles://data/vessel_crossings.pmtiles'
-});
-
-// AFTER:
-map.addSource('vessel-crossings', {
-    type: 'geojson',
-    data: '/api/vessel-crossings'
-});
-```
-
-Update layer definitions (remove `source-layer` property):
-```javascript
-// BEFORE:
-map.addLayer({
-    id: 'crossings-circles',
-    type: 'circle',
-    source: 'vessel-crossings',
-    'source-layer': 'crossings',  // DELETE THIS LINE
-    paint: { ... }
-});
-
-// AFTER:
-map.addLayer({
-    id: 'crossings-circles',
-    type: 'circle',
-    source: 'vessel-crossings',
-    paint: { ... }
-});
-```
-
-### Special Case: Land Layer
-
-Natural Earth land is larger (~10MB GeoJSON). Options:
-
-1. **Keep as PMTiles** (recommended if you need zoom-dependent simplification)
-2. **Simplify and serve as GeoJSON** using DuckDB:
-   ```sql
-   -- Simplify geometry for web display
-   SELECT ST_Simplify(geom, 0.01) FROM land WHERE ...
-   ```
-3. **Use external basemap** — If using Sentinel-2, you may not need land polygons at all
-
-### Files to Delete
-
-```
-data/protected_areas.pmtiles
-data/vessel_crossings.pmtiles
-data/places.pmtiles
-scripts/export_crossings.sh
-scripts/export_protected_areas.sh (if uses tippecanoe)
-```
-
-### Makefile Changes
-
-Remove tippecanoe targets:
-```makefile
-# DELETE:
-crossings-tiles:
-	tippecanoe -o data/vessel_crossings.pmtiles ...
-```
-
-### Dependencies to Remove
-
-In `package.json`, remove:
-- `pmtiles`
-
-System dependency no longer needed:
-- `tippecanoe`
-
----
-
-## Phase 3: Consolidate Raster Pipeline
-
-### Goal
-Use rasterio exclusively for all raster operations. Remove GDAL CLI dependency.
-
-### Changes to `scripts/create_raster.py`
-
-```python
-import numpy as np
-import rasterio
-from rasterio.transform import from_bounds
-from rasterio.enums import Resampling
-import csv
-
-# Configuration
-RESOLUTION = 0.01  # degrees
-BOUNDS = {
-    'west': 20,
-    'east': 200,  # -160 wrapped
-    'south': 56,
-    'north': 90
-}
-
-def create_cog(input_csvs: list[str], output_path: str):
-    """
-    Create a Cloud-Optimized GeoTIFF directly from CSV data.
-
-    Args:
-        input_csvs: List of CSV files [2023.csv, 2024.csv, 2025.csv]
-        output_path: Output COG path
-    """
-    # Calculate dimensions
-    width = int((BOUNDS['east'] - BOUNDS['west']) / RESOLUTION)
-    height = int((BOUNDS['north'] - BOUNDS['south']) / RESOLUTION)
-
-    # Initialize bands array
-    bands = np.zeros((len(input_csvs), height, width), dtype=np.float32)
-
-    # Read each CSV into a band
-    for band_idx, csv_path in enumerate(input_csvs):
-        with open(csv_path) as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                lon = float(row['lon'])
-                lat = float(row['lat'])
-                hours = float(row['hours'])
-
-                # Convert to pixel coordinates
-                col = int((lon - BOUNDS['west']) / RESOLUTION)
-                row_idx = int((BOUNDS['north'] - lat) / RESOLUTION)
-
-                if 0 <= col < width and 0 <= row_idx < height:
-                    bands[band_idx, row_idx, col] += hours
-
-    # Create transform
-    transform = from_bounds(
-        BOUNDS['west'], BOUNDS['south'],
-        BOUNDS['east'], BOUNDS['north'],
-        width, height
-    )
-
-    # Write COG directly (rasterio 1.3+ supports COG driver)
-    profile = {
-        'driver': 'COG',
-        'dtype': 'float32',
-        'width': width,
-        'height': height,
-        'count': len(input_csvs),
-        'crs': 'EPSG:4326',
-        'transform': transform,
-        'compress': 'deflate',
-        'predictor': 2,
-        'blocksize': 512,
-        'overview_resampling': Resampling.nearest,
-    }
-
-    with rasterio.open(output_path, 'w', **profile) as dst:
-        for i, band in enumerate(bands, start=1):
-            dst.write(band, i)
-
-    print(f"Created COG: {output_path}")
-    print(f"  Dimensions: {width} x {height}")
-    print(f"  Bands: {len(input_csvs)}")
-
-if __name__ == '__main__':
-    import sys
-    create_cog(sys.argv[1:-1], sys.argv[-1])
-```
-
-### Changes to `scripts/export_raster.sh`
-
-Simplify to just export CSVs and call Python:
-
-```bash
-#!/bin/bash
-set -e
-
-# Export per-year CSVs from DuckDB
-for year in 2023 2024 2025; do
-    duckdb data/data.duckdb -csv -c "
-        SELECT lon, lat, SUM(hours) as hours
-        FROM vessel_positions
-        WHERE year = $year
-        GROUP BY lon, lat
-    " > data/vessel_${year}.csv
-done
-
-# Create COG with all bands
-python scripts/create_raster.py \
-    data/vessel_2023.csv \
-    data/vessel_2024.csv \
-    data/vessel_2025.csv \
-    data/vessel_heatmap.tif
-
-# Cleanup intermediate files
-rm -f data/vessel_202*.csv
-```
-
-### Files to Delete
-
-```
-scripts/export_raster.sh (replace with above)
-```
-
-Remove GDAL CLI calls like:
-```bash
-# DELETE any gdal_translate calls
-gdal_translate -of COG ...
-```
-
-### Dependencies
-
-Ensure rasterio is >= 1.3.0 for native COG support.
-
----
-
-## Phase 4: Simplify Tile Colorization
-
-### Goal
-Remove Pillow dependency. Use rio-tiler's built-in rendering or NumPy directly.
-
-### Changes to `scripts/tile_server.py`
-
-Replace Pillow-based colorization:
-
-```python
-import numpy as np
-from rio_tiler.io import Reader
-from rio_tiler.models import ImageData
-from fastapi import Response
-import io
-
-# Color scheme (RGB)
-COLORS = {
-    0: np.array([0, 255, 255]),    # 2023 - Cyan
-    1: np.array([0, 255, 0]),      # 2024 - Green
-    2: np.array([255, 0, 255]),    # 2025 - Magenta
-}
-GRAY = np.array([128, 128, 128])
-DOMINANCE_THRESHOLD = 0.6
-
-@app.get("/tiles/{z}/{x}/{y}.png")
-def get_tile(z: int, x: int, y: int, years: str = "0,1,2"):
-    """Serve colorized raster tile"""
-    band_indices = [int(i) for i in years.split(',')]
-
-    with Reader("data/vessel_heatmap.tif") as src:
-        # Read requested bands
-        img = src.tile(x, y, z, indexes=[i + 1 for i in band_indices])
-        data = img.data  # shape: (bands, height, width)
-
-    # Colorize
-    rgb = colorize_tile(data, band_indices)
-
-    # Encode to PNG using rio-tiler's utilities
-    # Or use imageio for minimal dependencies:
-    import imageio
-    buf = io.BytesIO()
-    imageio.imwrite(buf, rgb, format='PNG')
-    buf.seek(0)
-
-    return Response(content=buf.read(), media_type="image/png")
-
-def colorize_tile(data: np.ndarray, band_indices: list[int]) -> np.ndarray:
-    """
-    Convert multi-band activity data to RGB image.
-
-    Args:
-        data: Array of shape (bands, height, width)
-        band_indices: Which years each band represents
-
-    Returns:
-        RGBA array of shape (height, width, 4)
-    """
-    bands, height, width = data.shape
-
-    # Calculate total and proportions
-    total = np.sum(data, axis=0)  # (height, width)
-
-    # Avoid division by zero
-    total_safe = np.where(total > 0, total, 1)
-    proportions = data / total_safe  # (bands, height, width)
-
-    # Find dominant band
-    dominant_idx = np.argmax(data, axis=0)  # (height, width)
-    dominant_proportion = np.max(proportions, axis=0)
-
-    # Initialize RGB
-    rgb = np.zeros((height, width, 4), dtype=np.uint8)
-
-    # Calculate brightness (log scale)
-    brightness = np.clip(np.log1p(total) / np.log1p(50), 0, 1)
-
-    # Apply colors
-    for i, band_idx in enumerate(band_indices):
-        mask = (dominant_idx == i) & (dominant_proportion >= DOMINANCE_THRESHOLD)
-        color = COLORS.get(band_idx, GRAY)
-        for c in range(3):
-            rgb[:, :, c] = np.where(mask,
-                                    (color[c] * brightness * 255).astype(np.uint8),
-                                    rgb[:, :, c])
-
-    # Mixed areas (no dominant year)
-    mixed_mask = dominant_proportion < DOMINANCE_THRESHOLD
-    for c in range(3):
-        rgb[:, :, c] = np.where(mixed_mask & (total > 0),
-                                (GRAY[c] * brightness * 255).astype(np.uint8),
-                                rgb[:, :, c])
-
-    # Alpha channel
-    rgb[:, :, 3] = np.where(total > 0, 255, 0)
-
-    return rgb
-```
-
-### Dependencies to Remove
-
-In `pyproject.toml`, remove:
-- `Pillow`
-
-Add (if not present):
-- `imageio`
-
-Or use rio-tiler's built-in PNG encoding if available.
-
----
-
-## Phase 5: Update Dependencies
-
-### Final `pyproject.toml`
-
-```toml
-[project]
-name = "albedo"
-version = "0.1.0"
-requires-python = ">=3.11"
-
-dependencies = [
-    "duckdb>=1.0.0",
-    "rasterio>=1.3.0",
-    "rio-tiler>=6.0.0",
-    "fastapi>=0.100.0",
-    "uvicorn>=0.23.0",
-    "imageio>=2.31.0",
-]
-
-[tool.uv]
-dev-dependencies = [
-    "pytest>=7.0.0",
-]
-```
-
-### Final `package.json`
+### `package.json`
 
 ```json
 {
   "name": "albedo",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
-    "maplibre-gl": "^5.0.0"
+    "@duckdb/duckdb-wasm": "^1.29.0",
+    "@fontsource/inter": "^5.2.8",
+    "geotiff": "^2.1.3",
+    "maplibre-gl": "^5.14.0"
   },
   "devDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^7.2.7"
   }
 }
 ```
 
-Removed:
-- `pmtiles`
+Removed: `pmtiles`
+
+### `pyproject.toml`
+
+```toml
+[project]
+name = "albedo"
+version = "2.0.0"
+requires-python = ">=3.11"
+dependencies = [
+    "duckdb>=1.0.0",
+    "rasterio>=1.3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+```
+
+Removed: `fastapi`, `uvicorn`, `rio-tiler`, `pillow`, `requests`, `beautifulsoup4`, `pandas`
 
 ---
 
-## Phase 6: Update Makefile
+## Phase 7: Update Build & Deploy
 
-### Final `Makefile`
+### `Makefile`
 
 ```makefile
-.PHONY: all install fetch convert transform tiles dev clean
+# Albedo - Static Build Pipeline
 
-# Default target
-all: fetch convert transform tiles
+.PHONY: all install fetch convert transform tiles export build deploy clean
+
+# Full pipeline
+all: transform tiles export build
 
 # Install dependencies
 install:
 	uv sync
 	npm install
 
-# Fetch raw data from GFW API
+# Fetch source data
 fetch:
 	./scripts/fetch_vessel_presence.sh
 	./scripts/fetch_protected_areas.sh
+	./scripts/fetch_land.sh
 
 # Convert JSON to Parquet
 convert:
 	./scripts/convert.sh
 
 # Run SQL transformations
-transform:
-	mkdir -p data/exports
-	duckdb data/data.duckdb < etl/transform.sql
+transform: data/data.duckdb
 
-# Generate raster tiles (COG)
-tiles:
+data/data.duckdb: data/.convert.done
+	duckdb $@ < etl/transform.sql
+
+# Generate COG with land mask
+tiles: data/vessel_heatmap.tif
+
+data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
 
-# Development server
-dev:
-	uvicorn scripts.tile_server:app --reload --port 8000 &
-	npm run dev
+# Export Parquet for client
+export: data/data.parquet
 
-# Create lookup database for production
-lookup:
-	python scripts/create_vessel_lookup.py
+data/data.parquet: data/data.duckdb
+	uv run python scripts/export_parquet.py
 
-# Clean generated files
+# Build frontend
+build: dist
+
+dist: src/* data/vessel_heatmap.tif data/data.parquet
+	npm run build
+	cp data/vessel_heatmap.tif dist/data/
+	cp data/data.parquet dist/data/
+
+# Deploy to Google Cloud Storage
+deploy: dist
+	gcloud storage cp -r dist/* gs://albedo-static/
+	@echo "Deployed to: https://storage.googleapis.com/albedo-static/index.html"
+
+# Clean
 clean:
-	rm -rf data/data.duckdb
-	rm -rf data/exports/
-	rm -f data/vessel_heatmap.tif
+	rm -rf dist data/data.duckdb data/data.parquet data/vessel_heatmap.tif
+```
+
+### Setup Google Cloud Storage
+
+```bash
+# Create bucket (run once)
+gcloud storage buckets create gs://albedo-static \
+  --location=europe-west1 \
+  --uniform-bucket-level-access
+
+# Enable public access
+gcloud storage buckets add-iam-policy-binding gs://albedo-static \
+  --member=allUsers \
+  --role=roles/storage.objectViewer
+
+# Enable CORS for range requests
+cat > /tmp/cors.json << 'EOF'
+[
+  {
+    "origin": ["*"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Range", "Accept-Ranges", "Content-Length"],
+    "maxAgeSeconds": 3600
+  }
+]
+EOF
+gcloud storage buckets update gs://albedo-static --cors-file=/tmp/cors.json
+
+# Optional: Set up Cloud CDN for better performance
+# gcloud compute backend-buckets create albedo-backend --gcs-bucket-name=albedo-static
+# gcloud compute url-maps create albedo-lb --default-backend-bucket=albedo-backend
+```
+
+### `vite.config.js`
+
+```javascript
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  base: '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'duckdb': ['@duckdb/duckdb-wasm'],
+          'geotiff': ['geotiff'],
+          'maplibre': ['maplibre-gl']
+        }
+      }
+    }
+  },
+  define: {
+    __TILE_VERSION__: JSON.stringify(process.env.TILE_VERSION || '1')
+  }
+})
+```
+
+---
+
+## Phase 8: Delete Server Code
+
+### Files to delete
+
+```
+scripts/tile_server.py
+scripts/create_vessel_lookup.py
+scripts/export_crossings.sh
+scripts/export_protected_areas.sh
+scripts/export_land.sh
+scripts/export_places.sh
+scripts/export_vessel_points.sh
+Dockerfile
+cloudbuild.yaml
+.github/workflows/deploy.yml
+```
+
+### Files to keep (modified)
+
+```
+scripts/fetch_vessel_presence.sh
+scripts/fetch_protected_areas.sh
+scripts/fetch_land.sh
+scripts/convert.sh
+scripts/export_raster.sh (updated)
+scripts/export_parquet.py (new)
+scripts/create_raster.py
+scripts/raster_utils.py
 ```
 
 ---
 
 ## Migration Checklist
 
-### Phase 1: Remove dbt
-- [ ] Create `etl/transform.sql` with all SQL logic
-- [ ] Update Makefile `transform` target
-- [ ] Delete `etl/models/`, `etl/macros/`, `dbt_project.yml`
-- [ ] Remove dbt from `pyproject.toml`
-- [ ] Test: `make transform` produces correct `data.duckdb`
+### Phase 1: Combined COG
+- [ ] Update `scripts/export_raster.sh` to include land mask as band 4
+- [ ] Test: `gdalinfo data/vessel_heatmap.tif` shows 4 bands
+- [ ] Verify file size ~18MB
 
-### Phase 2: Remove PMTiles
-- [ ] Add GeoJSON API endpoints to `tile_server.py`
-- [ ] Update `src/main.js` to use GeoJSON sources
-- [ ] Remove PMTiles protocol registration from frontend
-- [ ] Remove `source-layer` from layer definitions
-- [ ] Delete PMTiles export scripts
-- [ ] Remove `pmtiles` from `package.json`
-- [ ] Test: Map renders protected areas and crossings
+### Phase 2: Parquet Export
+- [ ] Create `scripts/export_parquet.py`
+- [ ] Test: `duckdb -c "SELECT _table, COUNT(*) FROM read_parquet('data/data.parquet') GROUP BY 1"`
+- [ ] Verify file size ~80MB
 
-### Phase 3: Consolidate Raster
-- [ ] Update `create_raster.py` to output COG directly
-- [ ] Remove GDAL CLI calls from `export_raster.sh`
-- [ ] Test: `make tiles` produces valid COG
+### Phase 3: Client-Side Tiles
+- [ ] Install `geotiff` npm package
+- [ ] Create `src/cog-tiles.js`
+- [ ] Test: Tiles render in browser console
 
-### Phase 4: Simplify Colorization
-- [ ] Update tile colorization to use imageio instead of Pillow
-- [ ] Remove Pillow from `pyproject.toml`
-- [ ] Test: Tiles render correctly with year filtering
+### Phase 4: Client-Side Data
+- [ ] Install `@duckdb/duckdb-wasm` npm package
+- [ ] Create `src/data-layer.js`
+- [ ] Test: `await loadProtectedAreas()` returns GeoJSON
 
-### Phase 5: Final Cleanup
-- [ ] Update `pyproject.toml` with final dependencies
-- [ ] Update `package.json` with final dependencies
-- [ ] Run `uv sync` and `npm install`
-- [ ] Full pipeline test: `make all && make dev`
-- [ ] Verify all functionality works
+### Phase 5: Update Frontend
+- [ ] Remove PMTiles imports and protocol
+- [ ] Add COG protocol and DuckDB initialization
+- [ ] Update map sources to use GeoJSON
+- [ ] Test: Full map loads with all layers
+
+### Phase 6: Simplify ETL
+- [ ] Create `etl/transform.sql`
+- [ ] Delete dbt files
+- [ ] Test: `make transform` creates correct tables
+
+### Phase 7: Deploy
+- [ ] Create GCS bucket with public access and CORS
+- [ ] Update Makefile deploy target
+- [ ] Test: `make deploy` uploads to GCS
+- [ ] Test: Site loads from GCS URL
+
+### Phase 8: Cleanup
+- [ ] Delete server code
+- [ ] Delete unused dependencies
+- [ ] Update README/CLAUDE.md
+
+---
+
+## Cost Comparison
+
+| Component | Before (Cloud Run) | After (Cloud Storage) |
+|-----------|-------------------|----------------------|
+| Compute | $50-150/month at scale | $0 |
+| Storage | ~$1/month | ~$0.50/month |
+| Bandwidth | Included | ~$0.12/GB (free with CDN) |
+| **Total at HN scale** | **$100+/month** | **<$5/month** |
 
 ---
 
@@ -738,33 +1234,16 @@ clean:
 
 ### Before
 ```
-GFW API → JSON → Parquet → dbt/DuckDB → {GDAL, tippecanoe} → {COG, PMTiles} → FastAPI/rio-tiler → MapLibre
-                              ↓
-                           Pillow
+User → Cloud Run (FastAPI) → rio-tiler → COG
+                          → DuckDB → PMTiles/Parquet
 ```
 
-**Tools:** DuckDB, dbt, rasterio, GDAL, tippecanoe, PMTiles, rio-tiler, Pillow, FastAPI, MapLibre
+**Problems:** Server compute on every request, doesn't scale, costs money
 
 ### After
 ```
-GFW API → JSON → Parquet → DuckDB/SQL → rasterio → COG → FastAPI/rio-tiler → MapLibre
-                              ↓
-                           GeoJSON
+User → Browser → geotiff.js → COG (GCS, range requests)
+              → DuckDB-WASM → Parquet (GCS, range requests)
 ```
 
-**Tools:** DuckDB, rasterio, rio-tiler, FastAPI, MapLibre
-
-### Reduction
-- **Removed:** dbt, GDAL CLI, tippecanoe, PMTiles, Pillow
-- **Simplified:** Single SQL file, direct COG creation, native GeoJSON serving
-- **Result:** ~50% fewer dependencies, clearer data flow
-
----
-
-## Notes for Implementation
-
-1. **Test incrementally** — Complete each phase fully before moving to the next
-2. **Keep backups** — Don't delete old files until new approach is verified
-3. **GeoJSON performance** — If any vector dataset exceeds ~50k features, consider keeping PMTiles for just that layer
-4. **Land layer decision** — Evaluate whether land polygons are needed at all given Sentinel-2 basemap
-5. **COG driver** — Requires rasterio >= 1.3.0; check with `rio --version`
+**Benefits:** Zero server, infinite scale, ~$0/month, instant filter changes
