@@ -40,10 +40,10 @@
   "data": {
     "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vectors": {
-      "protectedAreas": "protected_areas.parquet",
-      "crossings": "vessel_crossings.parquet",
-      "places": "places.parquet",
-      "lookup": "https://storage.googleapis.com/albedo-data/vessel_lookup.parquet"
+      "protectedAreas": "protected_areas.json",
+      "crossings": "vessel_crossings.json",
+      "places": "places.json",
+      "lookup": "https://storage.googleapis.com/albedo-data/vessel_lookup.sqlite"
     }
   },
 

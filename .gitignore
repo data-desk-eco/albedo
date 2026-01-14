@@ -2,7 +2,9 @@
 data/.*.done
 data/*.jsonl
 data/*.parquet
-!data/export/*.parquet
+data/export/*.parquet
+data/export/*.sqlite
+!data/export/*.json
 !data/export/manifest.json
 !data/export/i18n/
 data/gfw/

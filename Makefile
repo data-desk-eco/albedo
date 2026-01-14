@@ -40,11 +40,11 @@ tiles: data/vessel_heatmap.tif
 data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
 
-# Export Parquet files for client-side queries
+# Export SQLite + JSON files for client-side queries
 export: data/export/.done
 
 data/export/.done: data/data.duckdb
-	uv run python scripts/export_parquet.py
+	uv run python scripts/export_sqlite.py
 	@touch $@
 
 #───────────────────────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 # Deploy large data files to GCS (COG + vessel_lookup for range requests)
 deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/vessel_heatmap.tif gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/vessel_lookup.parquet gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/vessel_lookup.sqlite gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)
