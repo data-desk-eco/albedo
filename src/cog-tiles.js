@@ -21,10 +21,14 @@ let cogConfig = null
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
 
-// Southern latitude cutoff (57°N in Web Mercator Y coordinate)
+// Latitude cutoffs (in Web Mercator Y coordinates)
 // Formula: y = R * ln(tan(π/4 + lat/2)) where R = 20037508.34 / π
 const SOUTH_LAT_DEG = 57
 const SOUTH_LAT_MERCATOR = 20037508.34 * Math.log(Math.tan(Math.PI / 4 + (SOUTH_LAT_DEG * Math.PI / 180) / 2)) / Math.PI
+
+// Northern cutoff to prevent stretching artifacts at the Web Mercator limit on globe projection
+const NORTH_LAT_DEG = 85.0
+const NORTH_LAT_MERCATOR = 20037508.34 * Math.log(Math.tan(Math.PI / 4 + (NORTH_LAT_DEG * Math.PI / 180) / 2)) / Math.PI
 
 let tiff = null
 let pool = null
@@ -252,8 +256,8 @@ async function colorize(rasters, selectedBands, showLand = true, tileMinY = 0, t
     const row = Math.floor(i / TILE_SIZE)
     const pixelY = tileMaxY - (row + 0.5) * yPerPixel
 
-    // Skip pixels south of the latitude cutoff
-    if (pixelY < SOUTH_LAT_MERCATOR) {
+    // Skip pixels outside latitude cutoffs
+    if (pixelY < SOUTH_LAT_MERCATOR || pixelY > NORTH_LAT_MERCATOR) {
       pixels[px + 3] = 0  // transparent
       continue
     }
