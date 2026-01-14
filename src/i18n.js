@@ -16,7 +16,12 @@ let dataUrl = ''
 export async function initI18n(manifest, baseUrl) {
   dataUrl = baseUrl
   availableLangs = manifest.ui?.availableLangs || ['en']
-  currentLang = localStorage.getItem('lang') || manifest.ui?.defaultLang || 'en'
+
+  // Language priority: localStorage > browser preference > manifest default > 'en'
+  const browserLang = navigator.languages
+    ?.map(l => l.split('-')[0])
+    .find(l => availableLangs.includes(l))
+  currentLang = localStorage.getItem('lang') || browserLang || manifest.ui?.defaultLang || 'en'
 
   // Validate current lang is available
   if (!availableLangs.includes(currentLang)) {
