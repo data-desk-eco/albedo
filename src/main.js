@@ -442,14 +442,6 @@ async function init() {
   updateMultiYearLegend()
   populatePlacesDropdown()
 
-  // Show lastUpdated if available
-  if (cogConfig?.lastUpdated) {
-    const dataSourceEl = document.getElementById('legend-source')
-    if (dataSourceEl) {
-      const currentText = dataSourceEl.textContent
-      dataSourceEl.textContent = `${currentText} (${cogConfig.lastUpdated})`
-    }
-  }
 }
 
 function setupMapHandlers(cogConfig) {
