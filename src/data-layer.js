@@ -300,13 +300,12 @@ export async function queryVesselsAt(lat, lon, year = null) {
   // Use larger epsilon to account for Web Mercator -> WGS84 coordinate differences
   const eps = 0.015
   const result = await conn.query(`
-    SELECT mmsi, ship_name, flag, vessel_type, year, total_hours, lat, lon
+    SELECT mmsi, ship_name, flag, vessel_type, year, total_hours, cell_count
     FROM '${vesselLookupUrl}'
     WHERE lat BETWEEN ${gridLat - eps} AND ${gridLat + eps}
       AND lon BETWEEN ${gridLon - eps} AND ${gridLon + eps}
       ${yearFilter}
     ORDER BY total_hours DESC
-    LIMIT 10
   `)
 
   return resultToObjects(result)

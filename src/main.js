@@ -331,7 +331,8 @@ function showRasterTooltip(vessels) {
   }
 
   const displayVessels = vessels.slice(0, 5)
-  const moreCount = vessels.length > 5 ? vessels.length - 5 : 0
+  const totalCount = vessels[0]?.cell_count || vessels.length
+  const moreCount = totalCount > 5 ? totalCount - 5 : 0
 
   let html = `
     <div class="vessel-row vessel-header">
