@@ -7,7 +7,7 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
 import { initCOG, renderTile, clearCache as clearCOGCache } from './cog-tiles.js'
-import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt, loadTooltipTargetsInBounds } from './data-layer.js'
+import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt } from './data-layer.js'
 import {
   DEBUG_MODE,
   RASTER_TOOLTIP_MIN_ZOOM,
@@ -499,21 +499,6 @@ function setupMapHandlers(cogConfig) {
       map.panTo([center.lng, centerLat])
     }
 
-    // Debug tooltip targets
-    if (DEBUG_MODE && dataInitialized && zoom >= 5) {
-      const mapBounds = map.getBounds()
-      try {
-        const targets = await loadTooltipTargetsInBounds(
-          mapBounds.getSouth(),
-          mapBounds.getNorth(),
-          mapBounds.getWest(),
-          mapBounds.getEast()
-        )
-        map.getSource('debug-tooltip-targets').setData(targets)
-      } catch (err) {
-        console.warn('Failed to load debug targets:', err)
-      }
-    }
   })
 
   // Crossings tooltip

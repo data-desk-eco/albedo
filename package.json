@@ -11,10 +11,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@duckdb/duckdb-wasm": "^1.29.0",
     "@fontsource/inter": "^5.2.8",
     "geotiff": "^2.1.3",
-    "maplibre-gl": "^5.14.0"
+    "maplibre-gl": "^5.14.0",
+    "sql.js-httpvfs": "^0.8.12"
   },
   "devDependencies": {
     "vite": "^7.2.7"

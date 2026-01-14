@@ -1,27 +1,24 @@
 /**
- * Client-side data queries using DuckDB-WASM
- * Generic vessel activity viewer data layer
+ * Client-side data queries
+ * - SQLite (sql.js-httpvfs) for small vector data
+ * - Binary tiles for vessel lookups (zero-dependency, ~60MB total)
  */
 
-import * as duckdb from '@duckdb/duckdb-wasm'
+import { createDbWorker } from 'sql.js-httpvfs'
+import { initVesselTiles, queryVesselsAt as queryTileVessels, isInitialized as tilesInitialized } from './vessel-tiles.js'
 
-let db = null
-let conn = null
-let vesselLookupUrl = null
+let vectorsDb = null
 let southLatCutoff = 57  // Default, can be updated from manifest
 
-// Track registered files to avoid re-registering
-const registeredFiles = new Set()
-
-/**
- * Convert BigInt to Number (DuckDB-WASM returns BigInt for some integer types)
- */
-function convertValue(val) {
-  if (typeof val === 'bigint') {
-    return Number(val)
-  }
-  return val
-}
+// sql.js-httpvfs worker configuration
+const workerUrl = new URL(
+  'sql.js-httpvfs/dist/sqlite.worker.js',
+  import.meta.url
+)
+const wasmUrl = new URL(
+  'sql.js-httpvfs/dist/sql-wasm.wasm',
+  import.meta.url
+)
 
 /**
  * Parse geometry - handles both string (needs JSON.parse) and object (already parsed)
@@ -57,113 +54,63 @@ function getMinLatitude(geometry) {
 }
 
 /**
- * Convert Arrow query result to array of plain objects
+ * Convert sql.js result to array of plain objects
  */
 function resultToObjects(result) {
-  const arr = result.toArray()
-  if (arr.length === 0) return []
+  if (!result || result.length === 0) return []
 
-  const columns = result.schema.fields.map(f => f.name)
-  const firstRow = arr[0]
-
-  // Check if direct property access works
-  if (firstRow[columns[0]] !== undefined) {
-    return arr.map(row => {
-      const obj = {}
-      for (const col of columns) {
-        obj[col] = convertValue(row[col])
-      }
-      return obj
+  const { columns, values } = result[0]
+  return values.map(row => {
+    const obj = {}
+    columns.forEach((col, i) => {
+      obj[col] = row[i]
     })
-  }
-
-  // Fallback: use get() method if available
-  if (typeof firstRow.get === 'function') {
-    return arr.map(row => {
-      const obj = {}
-      for (const col of columns) {
-        obj[col] = convertValue(row.get(col))
-      }
-      return obj
-    })
-  }
-
-  // Last resort: column-based access
-  const rows = []
-  for (let i = 0; i < result.numRows; i++) {
-    const row = {}
-    for (const col of columns) {
-      const colData = result.getChild(col)
-      row[col] = colData ? convertValue(colData.get(i)) : undefined
-    }
-    rows.push(row)
-  }
-  return rows
+    return obj
+  })
 }
 
 /**
- * Initialize DuckDB-WASM with manifest configuration
+ * Initialize databases with manifest configuration
  * @param {string} baseUrl Base URL for data files (e.g., '/data/export/' or 'https://...')
  * @param {Object} manifest The app manifest with data configuration
  */
 export async function initDB(baseUrl, manifest) {
   const dataUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl + '/'
 
-  // Store vessel lookup URL from manifest (must be absolute URL for DuckDB HTTP requests)
-  const lookupFile = manifest.data?.vectors?.lookup || 'vessel_lookup.parquet'
-  if (lookupFile.startsWith('http')) {
-    vesselLookupUrl = lookupFile
-  } else {
-    // Convert relative URL to absolute
-    const base = new URL(dataUrl, window.location.href)
-    vesselLookupUrl = new URL(lookupFile, base).href
-  }
-
   // Get south latitude cutoff from manifest bounds
   if (manifest.map?.bounds?.south) {
     southLatCutoff = manifest.map.bounds.south
   }
 
-  // Use local bundles for offline support (files in public/duckdb/)
-  const pathname = window.location.pathname.endsWith('/')
-    ? window.location.pathname
-    : window.location.pathname + '/'
-  const workerUrl = window.location.origin + pathname + 'duckdb/duckdb-browser-eh.worker.js'
-  const wasmUrl = window.location.origin + pathname + 'duckdb/duckdb-eh.wasm'
+  // Determine URLs for SQLite files
+  const vectorsFile = manifest.data?.vectors?.vectors || 'vectors.sqlite'
 
-  // Create worker directly from the local script
-  const worker = new Worker(workerUrl)
-  const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING)
+  const vectorsUrl = vectorsFile.startsWith('http')
+    ? vectorsFile
+    : new URL(vectorsFile, new URL(dataUrl, window.location.href)).href
 
-  db = new duckdb.AsyncDuckDB(logger, worker)
-  await db.instantiate(wasmUrl)
-
-  conn = await db.connect()
-
-  // Get vector file names from manifest
-  const vectorFiles = manifest.data?.vectors || {}
-  const files = [
-    vectorFiles.protectedAreas || 'protected_areas.parquet',
-    vectorFiles.crossings || 'vessel_crossings.parquet',
-    vectorFiles.places || 'places.parquet'
-  ].filter(f => f && f !== vectorFiles.lookup)  // Exclude lookup (uses range requests)
-
-  await Promise.all(files.map(async (filename) => {
-    const url = filename.startsWith('http') ? filename : dataUrl + filename
-    const localName = filename.split('/').pop()  // Use just filename for registration
-    try {
-      const response = await fetch(url)
-      if (!response.ok) {
-        console.warn(`Failed to fetch ${filename}: ${response.status}`)
-        return
+  // Initialize vectors database (small, loaded entirely)
+  vectorsDb = await createDbWorker(
+    [
+      {
+        from: 'inline',
+        config: {
+          serverMode: 'full',
+          url: vectorsUrl,
+          requestChunkSize: 1024 * 1024  // 1MB chunks for small file
+        }
       }
-      const buffer = await response.arrayBuffer()
-      await db.registerFileBuffer(localName, new Uint8Array(buffer))
-      registeredFiles.add(localName)
-    } catch (err) {
-      console.warn(`Failed to load ${filename}:`, err)
-    }
-  }))
+    ],
+    workerUrl.toString(),
+    wasmUrl.toString()
+  )
+
+  // Initialize vessel tiles (binary format, fetched on demand)
+  const tilesUrl = manifest.data?.vectors?.tiles || 'tiles/'
+  const tilesBaseUrl = tilesUrl.startsWith('http')
+    ? tilesUrl
+    : new URL(tilesUrl, new URL(dataUrl, window.location.href)).href
+  await initVesselTiles(tilesBaseUrl)
 }
 
 /**
@@ -171,12 +118,9 @@ export async function initDB(baseUrl, manifest) {
  * @returns {Object} GeoJSON FeatureCollection
  */
 export async function loadProtectedAreas() {
-  const result = await conn.query(`
-    SELECT
-      feature_id as id,
-      area_name as name,
-      geometry
-    FROM read_parquet('protected_areas.parquet')
+  const result = await vectorsDb.db.exec(`
+    SELECT feature_id as id, area_name as name, geometry
+    FROM protected_areas
   `)
 
   const rows = resultToObjects(result)
@@ -198,24 +142,12 @@ export async function loadProtectedAreas() {
  * @returns {Object} GeoJSON FeatureCollection
  */
 export async function loadVesselCrossings() {
-  const result = await conn.query(`
+  const result = await vectorsDb.db.exec(`
     SELECT
-      feature_id,
-      area_name,
-      vessel_id,
-      mmsi,
-      ship_name,
-      flag,
-      vessel_type,
-      gear_type,
-      total_hours,
-      first_seen,
-      last_seen,
-      year,
-      centroid_lon,
-      centroid_lat,
-      position_count
-    FROM read_parquet('vessel_crossings.parquet')
+      feature_id, area_name, vessel_id, mmsi, ship_name, flag,
+      vessel_type, gear_type, total_hours, first_seen, last_seen,
+      year, centroid_lon, centroid_lat, position_count
+    FROM vessel_crossings
     WHERE centroid_lat >= ${southLatCutoff}
   `)
 
@@ -252,9 +184,9 @@ export async function loadVesselCrossings() {
  * @returns {Object} GeoJSON FeatureCollection
  */
 export async function loadPlaces() {
-  const result = await conn.query(`
+  const result = await vectorsDb.db.exec(`
     SELECT name_en, name_ru, lon, lat, population, scalerank
-    FROM read_parquet('places.parquet')
+    FROM places
     WHERE lat >= ${southLatCutoff}
   `)
 
@@ -279,7 +211,7 @@ export async function loadPlaces() {
 
 /**
  * Query vessels at a grid cell for tooltips
- * Uses efficient row-group pruning since data is sorted by (lat, lon)
+ * Uses binary tiles - fetches tile on first access, then cached
  * @param {number} lat Latitude
  * @param {number} lon Longitude
  * @param {number|null} year Optional year filter
@@ -291,63 +223,7 @@ export async function queryVesselsAt(lat, lon, year = null) {
     return []
   }
 
-  // Snap to 0.01 degree grid (same as raster)
-  const gridLat = Math.round(lat * 100) / 100
-  const gridLon = Math.round(lon * 100) / 100
-
-  const yearFilter = year ? `AND year = ${year}` : ''
-
-  // Use larger epsilon to account for Web Mercator -> WGS84 coordinate differences
-  const eps = 0.015
-  const result = await conn.query(`
-    SELECT mmsi, ship_name, flag, vessel_type, year, total_hours, cell_count
-    FROM '${vesselLookupUrl}'
-    WHERE lat BETWEEN ${gridLat - eps} AND ${gridLat + eps}
-      AND lon BETWEEN ${gridLon - eps} AND ${gridLon + eps}
-      ${yearFilter}
-    ORDER BY total_hours DESC
-  `)
-
-  return resultToObjects(result)
-}
-
-/**
- * Load tooltip target points for debug visualization within a bounding box
- * @param {number} minLat
- * @param {number} maxLat
- * @param {number} minLon
- * @param {number} maxLon
- * @returns {Object} GeoJSON FeatureCollection
- */
-export async function loadTooltipTargetsInBounds(minLat, maxLat, minLon, maxLon) {
-  const result = await conn.query(`
-    SELECT DISTINCT lat, lon
-    FROM '${vesselLookupUrl}'
-    WHERE lat BETWEEN ${minLat} AND ${maxLat}
-      AND lon BETWEEN ${minLon} AND ${maxLon}
-  `)
-
-  const rows = resultToObjects(result)
-
-  // Create grid cell polygons (0.01° squares) matching raster pixels
-  // Grid coordinates represent the top-left corner of each cell
-  const CELL_SIZE = 0.01
-  const features = rows.map(row => ({
-    type: 'Feature',
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [row.lon, row.lat],
-        [row.lon + CELL_SIZE, row.lat],
-        [row.lon + CELL_SIZE, row.lat - CELL_SIZE],
-        [row.lon, row.lat - CELL_SIZE],
-        [row.lon, row.lat]
-      ]]
-    },
-    properties: {}
-  }))
-
-  return { type: 'FeatureCollection', features }
+  return queryTileVessels(lat, lon, year)
 }
 
 /**
@@ -355,19 +231,15 @@ export async function loadTooltipTargetsInBounds(minLat, maxLat, minLon, maxLon)
  * @returns {boolean}
  */
 export function isInitialized() {
-  return db !== null && conn !== null
+  return vectorsDb !== null && tilesInitialized()
 }
 
 /**
- * Close the database connection
+ * Close the database connections
  */
 export async function closeDB() {
-  if (conn) {
-    await conn.close()
-    conn = null
-  }
-  if (db) {
-    await db.terminate()
-    db = null
+  if (vectorsDb) {
+    vectorsDb.worker.terminate()
+    vectorsDb = null
   }
 }

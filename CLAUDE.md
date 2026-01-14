@@ -1,5 +1,7 @@
 # Albedo
 
+- Always use yarn for managing JS dependencies
+
 Map of shipping activity along Russia's Northern Sea Route. Consultancy project for Arctida.
 
 ## Architecture
@@ -10,11 +12,11 @@ Fully static, client-side architecture. Zero server compute - all rendering happ
 Cloud Storage (~100 MB)
 ├── index.html + JS/CSS           ~2 MB    (Vite build)
 ├── vessel_heatmap.tif            ~18 MB   (COG: 3 vessel bands + land mask)
-└── data/export/*.parquet         ~80 MB   (vectors + tooltips)
+└── data/export/*.sqlite          ~80 MB   (vectors + tooltips)
 
 Browser
 ├── geotiff.js          → reads COG via range requests, renders raster tiles
-├── DuckDB-WASM         → queries Parquet for vectors + tooltips
+├── sql.js-httpvfs      → queries SQLite via HTTP range requests
 └── MapLibre GL         → composites all layers
 ```
 
@@ -26,7 +28,7 @@ make fetch     # Fetch GFW data + protected areas + basemaps
 make convert   # Convert JSON → Parquet
 make transform # Run SQL transformations → data/data.duckdb
 make tiles     # Generate COG heatmap with land mask
-make export    # Export Parquet files for client
+make export    # Export SQLite files for client
 make dev       # Start dev server at http://localhost:5173
 ```
 
@@ -38,7 +40,7 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 2. **Convert**: JSON → Parquet with DuckDB
 3. **Transform**: `etl/transform.sql` → `data/data.duckdb` (2.6GB)
 4. **Tiles**: Export COG with land mask (`data/vessel_heatmap.tif`)
-5. **Export**: Parquet files for client (`data/export/*.parquet`)
+5. **Export**: SQLite files for client (`data/export/*.sqlite`)
 
 ## Database (data/data.duckdb)
 
@@ -50,17 +52,15 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 ## Client-side data
 
 Exported to `data/export/`:
-- `protected_areas.parquet` — Protected area polygons as GeoJSON
-- `vessel_crossings.parquet` — Vessel crossing points
-- `vessel_lookup.parquet` — Pre-aggregated vessel data for tooltips (sorted for fast queries)
-- `places.parquet` — Place names
+- `vectors.sqlite` — Protected areas, vessel crossings, and places (small, loaded at startup)
+- `vessel_lookup.sqlite` — Pre-aggregated vessel data for tooltips (large, HTTP range requests)
 
 ## Frontend
 
 Vite-based build with:
 - MapLibre GL JS for rendering
 - geotiff.js for client-side COG tile rendering
-- DuckDB-WASM for client-side data queries
+- sql.js-httpvfs for client-side SQLite queries via HTTP range requests
 - Globe projection with raster heatmap visualization
 - Arctic-focused navigation (pitch + zoom limits, latitude constraint)
 
@@ -73,7 +73,7 @@ Vite-based build with:
 │   ├── main.js             # App logic + map
 │   ├── config.js           # Map style and constants
 │   ├── cog-tiles.js        # Client-side COG tile renderer
-│   ├── data-layer.js       # DuckDB-WASM queries
+│   ├── data-layer.js       # sql.js-httpvfs queries
 │   ├── i18n.js             # Internationalization
 │   └── style.css           # Styles
 ├── vite.config.js          # Vite configuration
@@ -81,14 +81,14 @@ Vite-based build with:
 ├── Makefile                # Pipeline orchestration
 ├── scripts/                # Data fetching & processing
 │   ├── export_raster.sh    # Generate COG with land mask
-│   └── export_parquet.py   # Export Parquet for client
+│   └── export_sqlite.py    # Export SQLite for client
 ├── etl/
 │   └── transform.sql       # SQL transformations (replaces dbt)
 └── data/                   # Generated data (gitignored)
     ├── gfw/                # Raw GFW API responses
     ├── data.duckdb         # Transformed data (2.6GB)
     ├── vessel_heatmap.tif  # COG raster heatmap with land mask
-    └── export/             # Parquet files for client
+    └── export/             # SQLite files for client
 ```
 
 ## Sources
@@ -100,5 +100,5 @@ Vite-based build with:
 
 - **Data**: DuckDB + plain SQL
 - **Tiles**: GDAL (COG generation)
-- **Frontend**: Vite + MapLibre GL JS + geotiff.js + DuckDB-WASM
+- **Frontend**: Vite + MapLibre GL JS + geotiff.js + sql.js-httpvfs
 - **Hosting**: Google Cloud Storage (static files)

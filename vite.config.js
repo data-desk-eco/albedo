@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'duckdb': ['@duckdb/duckdb-wasm'],
+            'sql': ['sql.js-httpvfs'],
             'geotiff': ['geotiff'],
             'maplibre': ['maplibre-gl']
           }
@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => {
               res.setHeader('Content-Length', stat.size)
               res.setHeader('Accept-Ranges', 'bytes')
 
-              // Handle range requests for COG files
+              // Handle range requests for COG and SQLite files
               const range = req.headers.range
               if (range) {
                 const parts = range.replace(/bytes=/, '').split('-')
@@ -67,12 +67,13 @@ export default defineConfig(({ mode }) => {
           const outDir = resolve(process.cwd(), 'dist')
           const dataDir = resolve(process.cwd(), 'data')
 
-          // Small parquet files only (vessel_lookup.parquet served from GCS)
+          // Small SQLite files only (vessel_lookup.sqlite served from GCS)
           const exportDir = join(dataDir, 'export')
           const outExportDir = join(outDir, 'data', 'export')
           mkdirSync(outExportDir, { recursive: true })
           for (const file of readdirSync(exportDir)) {
-            if (file.endsWith('.parquet') && file !== 'vessel_lookup.parquet') {
+            // Copy vectors.sqlite (small), skip vessel_lookup.sqlite (large, on GCS)
+            if (file === 'vectors.sqlite') {
               copyFileSync(join(exportDir, file), join(outExportDir, file))
             }
           }
@@ -107,12 +108,9 @@ export default defineConfig(({ mode }) => {
             }
           }
 
-          console.log('Copied small data files to dist/ (COG + vessel_lookup on GCS)')
+          console.log('Copied small data files to dist/ (COG + vessel_lookup.sqlite on GCS)')
         }
       }
-    ],
-    optimizeDeps: {
-      exclude: ['@duckdb/duckdb-wasm']  // Don't pre-bundle DuckDB WASM
-    }
+    ]
   }
 })
