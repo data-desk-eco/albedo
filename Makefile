@@ -40,11 +40,12 @@ tiles: data/vessel_heatmap.tif
 data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
 
-# Export Parquet files for client-side queries
+# Export client-side data files
 export: data/export/.done
 
 data/export/.done: data/data.duckdb
-	uv run python scripts/export_parquet.py
+	./scripts/export_sqlite.sh
+	uv run python scripts/export_tiles.py
 	@touch $@
 
 #───────────────────────────────────────────────────────────────────────────────
@@ -53,22 +54,22 @@ data/export/.done: data/data.duckdb
 
 install:
 	uv sync
-	npm install
+	yarn install
 
 # Development server (static files only - no tile server needed)
 dev:
-	npm run dev
+	yarn run dev
 
 # Build for production (Vite handles data copying via plugin)
 SRC_FILES := $(shell find src -type f 2>/dev/null)
 build: dist
 
 dist: $(SRC_FILES) index.html vite.config.js data/export/.done
-	npm run build
+	yarn run build
 
 # Preview production build locally
 preview: build
-	npm run preview
+	yarn run preview
 
 clean:
 	rm -rf dist data/data.duckdb data/export data/vessel_heatmap.tif
@@ -82,10 +83,10 @@ clean:
 GCS_BUCKET := albedo-data
 GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
-# Deploy large data files to GCS (COG + vessel_lookup for range requests)
+# Deploy large data files to GCS (COG + vessel tiles for range requests)
 deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/vessel_heatmap.tif gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/vessel_lookup.parquet gs://$(GCS_BUCKET)/
+	gcloud storage cp -r data/export/tiles gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)
