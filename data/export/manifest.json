@@ -41,7 +41,7 @@
     "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vectors": {
       "vectors": "vectors.sqlite",
-      "tiles": "tiles/"
+      "tiles": "https://storage.googleapis.com/albedo-data/tiles/"
     }
   },
 
