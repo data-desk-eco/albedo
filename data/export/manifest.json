@@ -43,7 +43,7 @@
       "protectedAreas": "protected_areas.parquet",
       "crossings": "vessel_crossings.parquet",
       "places": "places.parquet",
-      "lookup": "vessel_lookup.parquet"
+      "lookup": "https://storage.googleapis.com/albedo-data/vessel_lookup.parquet"
     }
   },
 
