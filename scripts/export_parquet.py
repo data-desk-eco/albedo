@@ -80,12 +80,13 @@ def main():
             ranked AS (
                 SELECT v.lat, v.lon, v.mmsi, v.ship_name, v.flag, v.vessel_type, v.year,
                        CAST(SUM(v.hours) AS INTEGER) as total_hours,
-                       ROW_NUMBER() OVER (PARTITION BY v.lat, v.lon ORDER BY SUM(v.hours) DESC) as rn
+                       ROW_NUMBER() OVER (PARTITION BY v.lat, v.lon ORDER BY SUM(v.hours) DESC) as rn,
+                       COUNT(*) OVER (PARTITION BY v.lat, v.lon) as cell_count
                 FROM vessel_positions v
                 INNER JOIN cell_totals c ON v.lat = c.lat AND v.lon = c.lon
                 GROUP BY v.lat, v.lon, v.mmsi, v.ship_name, v.flag, v.vessel_type, v.year
             )
-            SELECT lat, lon, mmsi, ship_name, flag, vessel_type, year, total_hours
+            SELECT lat, lon, mmsi, ship_name, flag, vessel_type, year, total_hours, cell_count
             FROM ranked
             WHERE rn <= 5
             ORDER BY lat, lon
