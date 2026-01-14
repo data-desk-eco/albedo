@@ -38,7 +38,7 @@
   },
 
   "data": {
-    "cog": "../vessel_heatmap.tif",
+    "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vectors": {
       "protectedAreas": "protected_areas.parquet",
       "crossings": "vessel_crossings.parquet",
