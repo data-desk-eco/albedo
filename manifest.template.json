@@ -37,7 +37,7 @@
     },
     "vectors": {
       "protected-areas": {
-        "url": "data/export/vectors.pmtiles",
+        "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -55,7 +55,7 @@
         ]
       },
       "places": {
-        "url": "data/export/vectors.pmtiles",
+        "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
