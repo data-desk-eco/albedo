@@ -25,7 +25,7 @@
   },
 
   "data": {
-    "cog": "vessel_heatmap.tif",
+    "cog": "${COG_URL}",
     "vesselData": "vessel_data.bin",
     "cogsByType": ${COGS_BY_TYPE}
   },
@@ -37,7 +37,7 @@
     },
     "vectors": {
       "protected-areas": {
-        "url": "vectors.pmtiles",
+        "url": "data/export/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -55,7 +55,7 @@
         ]
       },
       "places": {
-        "url": "vectors.pmtiles",
+        "url": "data/export/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {

@@ -280,6 +280,12 @@ function loadCategories() {
 
 function populateCategoryDropdown() {
   const select = document.getElementById('category-select')
+  // Hide dropdown if only "all" category (no type-specific COGs)
+  if (categories.length <= 1) {
+    select.classList.add('hidden')
+    return
+  }
+  select.classList.remove('hidden')
   select.innerHTML = ''
   categories.forEach(cat => {
     const option = document.createElement('option')
