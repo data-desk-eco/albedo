@@ -15,6 +15,7 @@
   "days": "days",
   "hours": "hours",
   "year": "year",
+  "date": "date",
   "firstSeen": "first seen",
   "lastSeen": "last seen",
   "unknown": "unknown",

@@ -104,17 +104,4 @@ setup-gcs:
 	@rm /tmp/cors.json
 	@echo "GCS bucket configured with CORS for range requests"
 
-#───────────────────────────────────────────────────────────────────────────────
-# Utilities
-#───────────────────────────────────────────────────────────────────────────────
-
-# Export vessel crossings as CSV for review
-export-crossings: data/vessel_crossings.csv
-
-data/vessel_crossings.csv: data/data.duckdb
-	duckdb data/data.duckdb -c "COPY (SELECT feature_id, area_name, vessel_id, mmsi, ship_name, flag, vessel_type, gear_type, total_hours, first_seen, last_seen, year, centroid_lon, centroid_lat, position_count FROM vessel_crossings ORDER BY total_hours DESC) TO 'data/vessel_crossings.csv' (HEADER, DELIMITER ',');"
-	@echo "Exported $$(wc -l < data/vessel_crossings.csv | tr -d ' ') rows to data/vessel_crossings.csv"
-
-#───────────────────────────────────────────────────────────────────────────────
-
-.PHONY: all fetch convert transform tiles export install dev build preview clean deploy-data setup-gcs export-crossings
+.PHONY: all fetch convert transform tiles export install dev build preview clean deploy-data setup-gcs

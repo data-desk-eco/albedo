@@ -12,6 +12,7 @@ let vessels = []
 let blockIndex = []  // [{hilbertStart, hilbertEnd, offset, compressedLen}]
 let dataUrl = ''
 let blockCache = new Map()  // blockId -> Map(cellKey -> vessels[])
+let dataVersion = 2  // Track format version for parsing
 
 /**
  * Convert lat/lon to grid coordinates for Hilbert curve
@@ -113,9 +114,9 @@ export async function initVesselTiles(url) {
     throw new Error(`Invalid magic: ${magic}`)
   }
 
-  const version = headerView.getUint16(4, true)
-  if (version !== 2) {
-    throw new Error(`Unsupported version: ${version}`)
+  dataVersion = headerView.getUint16(4, true)
+  if (dataVersion !== 2 && dataVersion !== 3) {
+    throw new Error(`Unsupported version: ${dataVersion}`)
   }
 
   const blockCount = headerView.getUint16(6, true)
@@ -243,6 +244,19 @@ async function loadBlock(blockId) {
       const hours = view.getUint16(offset, true)
       offset += 2
 
+      // v3 adds timestamps
+      let firstSeen = null
+      let lastSeen = null
+      if (dataVersion >= 3) {
+        const firstTs = view.getUint32(offset, true)
+        offset += 4
+        const lastTs = view.getUint32(offset, true)
+        offset += 4
+        // Convert Unix timestamps to ISO strings (0 means no data)
+        if (firstTs > 0) firstSeen = new Date(firstTs * 1000).toISOString()
+        if (lastTs > 0) lastSeen = new Date(lastTs * 1000).toISOString()
+      }
+
       const vessel = vessels[vesselId] || { mmsi: '', shipName: '' }
       cellVessels.push({
         mmsi: vessel.mmsi,
@@ -251,7 +265,9 @@ async function loadBlock(blockId) {
         vessel_type: vesselTypes[typeId] || null,
         year: 2020 + yearOffset,
         total_hours: hours,
-        cell_count: totalCount
+        cell_count: totalCount,
+        first_seen: firstSeen,
+        last_seen: lastSeen
       })
     }
 

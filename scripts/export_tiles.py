@@ -4,10 +4,10 @@
 Generates:
   - vessel_data.bin: Single file with header, block index, lookup tables, and compressed blocks
 
-Format (v2):
+Format (v3):
   Header (16 bytes):
     magic: 4 bytes ("VSSL")
-    version: u16
+    version: u16 (3)
     block_count: u16
     cell_count: u32
     lookup_offset: u32
@@ -26,6 +26,20 @@ Format (v2):
   Blocks (independently gzip-compressed):
     [block 0: ~1000 cells sorted by hilbert index]
     ...
+
+  Cell format:
+    lat: i16 (× 100)
+    lon: i16 (× 100)
+    total_vessels: u16
+    vessel_count: u8
+    vessels[]:
+      vessel_id: u24 (3 bytes LE)
+      flag_id: u8
+      type_id: u8
+      year_offset: u8 (year - 2020)
+      hours: u16
+      first_seen: u32 (Unix timestamp)
+      last_seen: u32 (Unix timestamp)
 """
 import gzip
 import struct
@@ -147,13 +161,15 @@ def build_cells(
         ranked AS (
             SELECT v.lat, v.lon, v.mmsi, v.flag, v.vessel_type, v.year,
                    CAST(SUM(v.hours) AS INTEGER) as total_hours,
+                   MIN(v.entry_timestamp) as first_seen,
+                   MAX(v.exit_timestamp) as last_seen,
                    ROW_NUMBER() OVER (PARTITION BY v.lat, v.lon ORDER BY SUM(v.hours) DESC) as rn,
                    COUNT(*) OVER (PARTITION BY v.lat, v.lon) as cell_count
             FROM vessel_positions v
             JOIN cells c USING (lat, lon)
             GROUP BY v.lat, v.lon, v.mmsi, v.flag, v.vessel_type, v.year
         )
-        SELECT lat, lon, mmsi, flag, vessel_type, year, total_hours, cell_count
+        SELECT lat, lon, mmsi, flag, vessel_type, year, total_hours, first_seen, last_seen, cell_count
         FROM ranked WHERE rn <= 5
         ORDER BY lat, lon
     """
@@ -161,9 +177,12 @@ def build_cells(
 
     # Group by cell
     cell_data = defaultdict(lambda: {"vessels": [], "total": 0})
-    for lat, lon, mmsi, flag, vessel_type, year, total_hours, cell_count in rows:
+    for lat, lon, mmsi, flag, vessel_type, year, total_hours, first_seen, last_seen, cell_count in rows:
         key = (lat, lon)
         cell_data[key]["total"] = cell_count
+        # Convert timestamps to Unix epoch (seconds), default to 0 if None
+        first_ts = int(first_seen.timestamp()) if first_seen else 0
+        last_ts = int(last_seen.timestamp()) if last_seen else 0
         cell_data[key]["vessels"].append(
             (
                 vessel_to_id.get(mmsi, 0),
@@ -171,6 +190,8 @@ def build_cells(
                 type_to_id.get(vessel_type, 255),
                 max(0, min(255, (year or 2020) - 2020)),
                 min(65535, total_hours or 0),
+                first_ts,
+                last_ts,
             )
         )
 
@@ -198,10 +219,11 @@ def encode_block(cells: list[tuple[int, float, float, int, list]]) -> bytes:
         # total_vessels and vessel_count
         buf.extend(struct.pack("<HB", total_vessels, len(vessels)))
 
-        for vessel_id, flag_id, type_id, year_offset, hours in vessels:
-            # Pack: vessel_id (3 bytes LE), flag_id, type_id, year, hours
+        for vessel_id, flag_id, type_id, year_offset, hours, first_ts, last_ts in vessels:
+            # Pack: vessel_id (3 bytes LE), flag_id, type_id, year, hours, first_ts, last_ts
             buf.extend(struct.pack("<I", vessel_id)[:3])  # 3 bytes of u32
             buf.extend(struct.pack("<BBBH", flag_id, type_id, year_offset, hours))
+            buf.extend(struct.pack("<II", first_ts, last_ts))  # 2x u32 timestamps
 
     return bytes(buf)
 
@@ -278,7 +300,7 @@ def main():
     header = struct.pack(
         "<4sHHII",
         b"VSSL",  # magic
-        2,  # version
+        3,  # version (v3 adds timestamps)
         len(blocks),  # block_count
         len(cells),  # cell_count
         lookup_offset,  # lookup_offset

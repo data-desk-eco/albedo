@@ -56,10 +56,6 @@
       "enabled": true,
       "defaultVisible": true
     },
-    "crossings": {
-      "enabled": true,
-      "defaultVisible": false
-    },
     "satellite": {
       "enabled": true,
       "defaultVisible": false,
@@ -68,10 +64,20 @@
   },
 
   "ui": {
+    "title": "Albedo",
+    "favicon": "magenta",
     "defaultLang": "ru",
     "availableLangs": ["en", "ru"],
     "showAbout": true,
-    "attribution": "GFW 4Wings"
+    "attribution": "GFW 4Wings",
+    "theme": {
+      "background": "#000000",
+      "text": "#ffffff",
+      "textMuted": "rgba(255, 255, 255, 0.7)",
+      "panelBg": "rgba(0, 0, 0, 0.6)",
+      "panelBorder": "rgba(255, 255, 255, 0.2)",
+      "panelHover": "rgba(255, 255, 255, 0.1)"
+    }
   },
 
   "places": [

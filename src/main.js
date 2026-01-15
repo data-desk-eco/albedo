@@ -7,15 +7,14 @@ import './style.css'
 import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
 import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize, switchCOG } from './cog-tiles.js'
-import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt } from './data-layer.js'
+import { initDB, loadProtectedAreas, loadPlaces, queryVesselsAt } from './data-layer.js'
 import {
   DEBUG_MODE,
   RASTER_TOOLTIP_MIN_ZOOM,
   MANIFEST_URL,
   PROTECTED_AREA_LAYERS,
   createMapStyle,
-  getYearColor,
-  createYearColorExpression
+  getYearColor
 } from './config.js'
 
 // App state
@@ -30,9 +29,7 @@ let cogUrls = {}  // { 'all': url, 'FISHING': url, ... }
 let activeYears = new Set()
 let knownYears = []
 let satelliteMode = false
-let hoveringCrossing = false
 let dataInitialized = false
-let allCrossings = null
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -75,6 +72,36 @@ function debounce(fn, delay) {
     clearTimeout(timeoutId)
     timeoutId = setTimeout(() => fn(...args), delay)
   }
+}
+
+/**
+ * Apply UI settings from manifest (title, favicon, theme)
+ */
+function applyManifestUI(manifest) {
+  const ui = manifest.ui || {}
+
+  // Set page title
+  if (ui.title) {
+    document.title = ui.title
+  }
+
+  // Set favicon
+  if (ui.favicon) {
+    const link = document.createElement('link')
+    link.rel = 'icon'
+    link.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><circle cx='5' cy='5' r='4' fill='${ui.favicon}'/></svg>`
+    document.head.appendChild(link)
+  }
+
+  // Apply theme as CSS custom properties
+  const theme = ui.theme || {}
+  const root = document.documentElement
+  if (theme.background) root.style.setProperty('--ui-background', theme.background)
+  if (theme.text) root.style.setProperty('--ui-color', theme.text)
+  if (theme.textMuted) root.style.setProperty('--ui-color-muted', theme.textMuted)
+  if (theme.panelBg) root.style.setProperty('--ui-bg', theme.panelBg)
+  if (theme.panelBorder) root.style.setProperty('--ui-border', `1px solid ${theme.panelBorder}`)
+  if (theme.panelHover) root.style.setProperty('--ui-bg-hover', theme.panelHover)
 }
 
 /**
@@ -126,7 +153,6 @@ function updateUI() {
 
   // Legend labels (use short versions on narrow screens)
   document.getElementById('legend-protected').textContent = t(isNarrow ? 'protectedAreasShort' : 'protectedAreas')
-  document.getElementById('legend-crossings').textContent = t(isNarrow ? 'vesselCrossingsShort' : 'vesselCrossings')
   document.getElementById('legend-satellite').textContent = t(isNarrow ? 'satelliteShort' : 'satellite')
   document.getElementById('legend-multi-year').textContent = t(isNarrow ? 'multiYearShort' : 'multiYear')
   document.getElementById('legend-section-vessel').textContent = t(isNarrow ? 'sectionVesselShort' : 'sectionVessel')
@@ -262,9 +288,6 @@ function toggleLayer(layerId) {
     const isVisible = map.getLayoutProperty(PROTECTED_AREA_LAYERS[0], 'visibility') !== 'none'
     const visibility = isVisible ? 'none' : 'visible'
     PROTECTED_AREA_LAYERS.forEach(id => map.setLayoutProperty(id, 'visibility', visibility))
-  } else if (layerId === 'crossings') {
-    const isVisible = map.getLayoutProperty('crossings', 'visibility') !== 'none'
-    map.setLayoutProperty('crossings', 'visibility', isVisible ? 'none' : 'visible')
   } else if (layerId === 'satellite') {
     satelliteMode = !satelliteMode
     map.setLayoutProperty('sentinel-2', 'visibility', satelliteMode ? 'visible' : 'none')
@@ -379,40 +402,42 @@ function showPlace(index) {
 // Tooltips
 // ============================================================================
 
+function formatDateShort(isoString) {
+  if (!isoString) return '?'
+  const date = new Date(isoString)
+  const day = date.getDate()
+  const month = date.toLocaleString(getLang() === 'ru' ? 'ru' : 'en', { month: 'short' })
+  const year = String(date.getFullYear()).slice(-2)
+  return `${day} ${month} ${year}`
+}
+
 function showRasterTooltip(vessels) {
   if (!vessels || vessels.length === 0) {
     hideTooltip()
     return
   }
 
-  const displayVessels = vessels.slice(0, 5)
+  const displayVessels = vessels.slice(0, 3)
   const totalCount = vessels[0]?.cell_count || vessels.length
-  const moreCount = totalCount > 5 ? totalCount - 5 : 0
+  const moreCount = totalCount > 3 ? totalCount - 3 : 0
 
-  let html = `
-    <div class="vessel-row vessel-header">
-      <span class="vessel-mmsi">${t('mmsi')}</span>
-      <span class="vessel-name">${t('vessel')}</span>
-      <span class="vessel-type">${t('type')}</span>
-      <span class="vessel-flag">${t('flag')}</span>
-      <span class="vessel-hours">${t('hours')}</span>
-      <span class="vessel-year">${t('year')}</span>
-    </div>
-  `
+  const rows = [
+    { key: t('vessel'), values: displayVessels.map(v => v.ship_name || t('unknown')) },
+    { key: t('mmsi'), values: displayVessels.map(v => v.mmsi) },
+    { key: t('type'), values: displayVessels.map(v => tVesselType(v.vessel_type)) },
+    { key: t('flag'), values: displayVessels.map(v => v.flag || '?') },
+    { key: t('hours'), values: displayVessels.map(v => Math.round(v.total_hours) + t('hoursShort')) },
+    { key: t('date'), values: displayVessels.map(v => v.last_seen ? formatDateShort(v.last_seen) : v.year) }
+  ]
 
-  html += displayVessels.map(v => `
-    <div class="vessel-row">
-      <span class="vessel-mmsi">${v.mmsi}</span>
-      <span class="vessel-name">${v.ship_name || t('unknown')}</span>
-      <span class="vessel-type">${tVesselType(v.vessel_type)}</span>
-      <span class="vessel-flag">${v.flag || '?'}</span>
-      <span class="vessel-hours">${Math.round(v.total_hours)}${t('hoursShort')}</span>
-      <span class="vessel-year">${v.year}</span>
-    </div>
-  `).join('')
+  let html = '<table>'
+  html += rows.map(row =>
+    `<tr><td>${row.key}</td>${row.values.map(v => `<td>${v}</td>`).join('')}</tr>`
+  ).join('')
+  html += '</table>'
 
   if (moreCount > 0) {
-    html += `<div style="padding-top: 6px; color: #fff;">+${moreCount} ${t('more')}</div>`
+    html += `<div style="padding-top: 8px; color: var(--ui-color-muted);">+${moreCount} ${t('more')}</div>`
   }
 
   showTooltip(html)
@@ -431,6 +456,9 @@ async function init() {
   }
   manifest = await manifestResponse.json()
   console.log('Manifest loaded:', manifest.region?.id)
+
+  // Apply UI settings from manifest
+  applyManifestUI(manifest)
 
   // Determine data URL (relative to manifest or absolute)
   const manifestDir = MANIFEST_URL.substring(0, MANIFEST_URL.lastIndexOf('/') + 1)
@@ -507,7 +535,7 @@ async function init() {
   initYearLegend(knownYears)
   updateMultiYearLegend()
   populatePlacesDropdown()
-  loadCategories()  // Now uses manifest's cogsByType, not crossings data
+  loadCategories()
 
 }
 
@@ -521,37 +549,24 @@ function setupMapHandlers(cogConfig) {
 
   // Map load handler
   map.on('load', async () => {
-    // Update crossings layer colors
-    if (cogConfig?.years) {
-      map.setPaintProperty('crossings', 'circle-stroke-color', createYearColorExpression(cogConfig.years))
-    }
-
     map.triggerRepaint()
 
     // Load vector data in background
     try {
       await initDB(dataUrl, manifest)
 
-      const [protectedAreas, crossings, places] = await Promise.all([
+      const [protectedAreas, places] = await Promise.all([
         loadProtectedAreas(),
-        loadVesselCrossings(),
         loadPlaces()
       ])
 
-      allCrossings = crossings
-
       map.getSource('protected-areas').setData(protectedAreas)
-      map.getSource('vessel-crossings').setData(crossings)
       map.getSource('places').setData(places)
 
       dataInitialized = true
 
-      // Hide loading screen
-      const loading = document.getElementById('loading')
-      if (loading) {
-        loading.classList.add('fade')
-        setTimeout(() => loading.remove(), 300)
-      }
+      // Fade in the map
+      document.getElementById('map').classList.add('ready')
     } catch (err) {
       console.error('Failed to load vector data:', err)
     }
@@ -572,33 +587,6 @@ function setupMapHandlers(cogConfig) {
       map.panTo([center.lng, centerLat])
     }
 
-  })
-
-  // Crossings tooltip
-  map.on('mouseenter', 'crossings', (e) => {
-    hoveringCrossing = true
-    map.getCanvas().style.cursor = 'pointer'
-
-    const props = e.features[0].properties
-    const hours = Math.round(props.total_hours)
-
-    showTooltip(`
-      <table>
-        <tr><td>${t('vessel')}</td><td>${props.ship_name || t('unknown')}</td></tr>
-        <tr><td>${t('mmsi')}</td><td>${props.mmsi}</td></tr>
-        <tr><td>${t('type')}</td><td>${tVesselType(props.vessel_type)}</td></tr>
-        <tr><td>${t('flag')}</td><td>${props.flag || t('unknown')}</td></tr>
-        <tr><td>${t('duration')}</td><td>${hours} ${t('hours')}</td></tr>
-        <tr><td>${t('firstSeen')}</td><td>${formatDate(props.first_seen)}</td></tr>
-        <tr><td>${t('lastSeen')}</td><td>${formatDate(props.last_seen)}</td></tr>
-      </table>
-    `)
-  })
-
-  map.on('mouseleave', 'crossings', () => {
-    hoveringCrossing = false
-    map.getCanvas().style.cursor = ''
-    hideTooltip()
   })
 
   // Raster hover tooltip - use throttle for immediate response
@@ -669,7 +657,6 @@ function setupMapHandlers(cogConfig) {
   }, 16)  // ~60fps throttle - fires immediately, then rate-limits
 
   map.on('mousemove', (e) => {
-    if (hoveringCrossing) return
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
       handleRasterHover(e)
     }
@@ -677,8 +664,24 @@ function setupMapHandlers(cogConfig) {
 
   map.on('mouseout', () => hideTooltip())
 
+  // Touch support - tap to show tooltip
+  map.on('click', async (e) => {
+    if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+
+    const { lat, lng } = e.lngLat
+    const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+    const vesselType = currentCategory === 'all' ? null : currentCategory
+
+    try {
+      const vessels = await queryVesselsAt(lat, lng, year, vesselType)
+      showRasterTooltip(vessels)
+    } catch (err) {
+      // Silently fail
+    }
+  })
+
   map.on('zoom', () => {
-    if (!hoveringCrossing && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) {
+    if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) {
       hideTooltip()
     }
   })

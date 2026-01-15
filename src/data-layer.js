@@ -138,48 +138,6 @@ export async function loadProtectedAreas() {
 }
 
 /**
- * Load vessel crossings as GeoJSON FeatureCollection
- * @returns {Object} GeoJSON FeatureCollection
- */
-export async function loadVesselCrossings() {
-  const result = await vectorsDb.db.exec(`
-    SELECT
-      feature_id, area_name, vessel_id, mmsi, ship_name, flag,
-      vessel_type, gear_type, total_hours, first_seen, last_seen,
-      year, centroid_lon, centroid_lat, position_count
-    FROM vessel_crossings
-    WHERE centroid_lat >= ${southLatCutoff}
-  `)
-
-  const rows = resultToObjects(result)
-
-  const features = rows.map(row => ({
-    type: 'Feature',
-    geometry: {
-      type: 'Point',
-      coordinates: [row.centroid_lon, row.centroid_lat]
-    },
-    properties: {
-      feature_id: row.feature_id,
-      area_name: row.area_name,
-      vessel_id: row.vessel_id,
-      mmsi: row.mmsi,
-      ship_name: row.ship_name,
-      flag: row.flag,
-      vessel_type: row.vessel_type,
-      gear_type: row.gear_type,
-      total_hours: row.total_hours,
-      first_seen: row.first_seen,
-      last_seen: row.last_seen,
-      year: row.year,
-      position_count: row.position_count
-    }
-  }))
-
-  return { type: 'FeatureCollection', features }
-}
-
-/**
  * Load places as GeoJSON FeatureCollection
  * @returns {Object} GeoJSON FeatureCollection
  */

@@ -30,18 +30,6 @@ export function getYearColor(bandIndex) {
 }
 
 /**
- * Create a MapLibre match expression for year-based colors
- */
-export function createYearColorExpression(years) {
-  const expr = ['match', ['get', 'year']]
-  years.forEach((year, idx) => {
-    expr.push(year, getYearColor(idx))
-  })
-  expr.push('#ffffff')  // fallback
-  return expr
-}
-
-/**
  * Create map style configuration from manifest
  * @param {Object} manifest - The loaded manifest
  * @param {string} dataUrl - Base URL for data files
@@ -81,10 +69,6 @@ export function createMapStyle(manifest, dataUrl) {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
       },
-      'vessel-crossings': {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      },
       'places': {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
@@ -98,7 +82,7 @@ export function createMapStyle(manifest, dataUrl) {
       {
         id: 'background',
         type: 'background',
-        paint: { 'background-color': '#000000' }
+        paint: { 'background-color': manifest.ui?.theme?.background || '#000000' }
       },
       {
         id: 'sentinel-2',
@@ -151,25 +135,6 @@ export function createMapStyle(manifest, dataUrl) {
         }
       },
       {
-        id: 'crossings',
-        type: 'circle',
-        source: 'vessel-crossings',
-        minzoom: 0,
-        maxzoom: 24,
-        layout: {
-          'visibility': manifest.layers?.crossings?.defaultVisible ? 'visible' : 'none',
-          'circle-sort-key': ['get', 'year']
-        },
-        paint: {
-          'circle-radius': createCrossingsRadius(),
-          'circle-color': 'transparent',
-          'circle-opacity': 0,
-          'circle-stroke-color': '#ffffff',  // Updated dynamically from COG config
-          'circle-stroke-width': 2,
-          'circle-stroke-opacity': 1
-        }
-      },
-      {
         id: 'place-labels',
         type: 'symbol',
         source: 'places',
@@ -196,23 +161,6 @@ export function createMapStyle(manifest, dataUrl) {
       }
     ]
   }
-}
-
-/**
- * Helper: create crossings circle radius expression
- */
-function createCrossingsRadius() {
-  return [
-    'interpolate', ['linear'], ['zoom'],
-    2.5, [
-      'interpolate', ['linear'], ['get', 'total_hours'],
-      1, 3, 24, 5, 168, 10, 720, 18
-    ],
-    10, [
-      'interpolate', ['linear'], ['get', 'total_hours'],
-      1, 6, 24, 10, 168, 20, 720, 36
-    ]
-  ]
 }
 
 // Protected area layer IDs (used for toggling visibility)
