@@ -32,6 +32,7 @@ let satelliteMode = false
 let hoveringCrossing = false
 let dataInitialized = false
 let allCrossings = null
+let isBouncingBack = false
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -494,21 +495,44 @@ function setupMapHandlers(cogConfig) {
 
   // Map movement handler (constrain to region bounds)
   const bounds = manifest.map?.bounds || {}
-  const centerLat = manifest.map?.center?.[1] || 0
-  const minLatZoomedOut = bounds.south || -90
-  const minLatZoomedIn = Math.max(bounds.south - 10, -90)
+  const southLat = bounds.south || 57
 
-  map.on('moveend', async () => {
+  // Gentle bounce-back when user views latitudes below study area
+  map.on('move', () => {
+    if (isBouncingBack) return
+
     const center = map.getCenter()
     const zoom = map.getZoom()
-    const minLat = zoom > 4 ? minLatZoomedIn : minLatZoomedOut
+
+    // Allow more southern exploration when zoomed in
+    const minLat = zoom > 4 ? southLat - 10 : southLat
 
     if (center.lat < minLat) {
-      map.panTo([center.lng, centerLat])
-    }
+      isBouncingBack = true
 
+      // Calculate bounce target - ease back to just above the limit
+      const targetLat = minLat + 5
+
+      map.easeTo({
+        center: [center.lng, targetLat],
+        duration: 800,
+        easing: (t) => {
+          // Ease-out with slight overshoot for natural bounce feel
+          const c4 = (2 * Math.PI) / 3
+          return t === 0 ? 0 : t === 1 ? 1 :
+            Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1
+        }
+      })
+
+      map.once('moveend', () => {
+        isBouncingBack = false
+      })
+    }
+  })
+
+  map.on('moveend', async () => {
     // Debug tooltip targets
-    if (DEBUG_MODE && dataInitialized && zoom >= 5) {
+    if (DEBUG_MODE && dataInitialized && map.getZoom() >= 5) {
       const mapBounds = map.getBounds()
       try {
         const targets = await loadTooltipTargetsInBounds(
