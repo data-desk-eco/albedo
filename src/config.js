@@ -38,12 +38,23 @@ export function createMapStyle(manifest) {
   const bounds = manifest.map?.bounds || {}
 
   // Build sources from manifest
+  const southBound = bounds.south ?? -90
   const sources = {
     'vessel-heatmap': {
       type: 'raster',
       tiles: ['cog://{z}/{x}/{y}'],
       tileSize: 256,
       attribution: manifest.ui?.attribution || ''
+    },
+    'south-mask': {
+      type: 'geojson',
+      data: {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [[[-180, -90], [180, -90], [180, southBound], [-180, southBound], [-180, -90]]]
+        }
+      }
     },
     'debug-tooltip-targets': {
       type: 'geojson',
@@ -57,12 +68,8 @@ export function createMapStyle(manifest) {
       type: 'raster',
       tiles: [manifest.layers.satellite.url],
       tileSize: 256,
-      bounds: [
-        bounds.west ?? -180,
-        bounds.south ?? -90,
-        bounds.east ?? 180,
-        bounds.north ?? 90
-      ]
+      // Clip at south bound (use -180/180 for lon to avoid antimeridian issues)
+      bounds: [-180, bounds.south ?? -90, 180, bounds.north ?? 90]
     }
   }
 
@@ -94,6 +101,13 @@ export function createMapStyle(manifest) {
       source: 'satellite',
       layout: { visibility: manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
       paint: { 'raster-opacity': 1 }
+    })
+    // Mask to hide satellite below south bound
+    layers.push({
+      id: 'south-mask',
+      type: 'fill',
+      source: 'south-mask',
+      paint: { 'fill-color': theme.background || '#000000' }
     })
   }
 

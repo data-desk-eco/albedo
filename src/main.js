@@ -487,19 +487,6 @@ function setupMapHandlers() {
     document.getElementById('map').classList.add('ready')
   })
 
-  // Constrain to region bounds
-  const bounds = manifest.map?.bounds || {}
-  const centerLat = manifest.map?.center?.[1] || 0
-  const minLatZoomedOut = bounds.south ?? -90
-  const minLatZoomedIn = Math.max((bounds.south ?? -90) - 10, -90)
-
-  map.on('moveend', () => {
-    const center = map.getCenter()
-    const zoom = map.getZoom()
-    const minLat = zoom > 4 ? minLatZoomedIn : minLatZoomedOut
-    if (center.lat < minLat) map.panTo([center.lng, centerLat])
-  })
-
   // Vessel tooltips
   let lastQueryCell = null
   const handleRasterHover = throttle(async (e) => {
