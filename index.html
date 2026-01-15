@@ -3,19 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Albedo</title>
-  <link id="favicon" rel="icon" type="image/svg+xml">
-  <script>c=['%23f0f','%230f0','%230ff'];n=(+localStorage.f+1)%3;localStorage.f=n;document.getElementById('favicon').href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="'+c[n]+'"/></svg>'</script>
+  <title>Loading...</title>
   <!-- Preconnect to external tile server for faster satellite imagery -->
   <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin>
   <link rel="dns-prefetch" href="https://tiles.maps.eox.at">
   <style>
-    #loading{position:fixed;inset:0;background:#000;z-index:9999}
-    #loading.fade{opacity:0;transition:opacity .3s}
+    #map{opacity:0;transition:opacity 0.8s ease-out}
+    #map.ready{opacity:1}
   </style>
 </head>
 <body>
-<div id="loading"></div>
 <div id="map"></div>
 <div id="about-modal">
   <div id="about-content">
@@ -49,12 +46,6 @@
       <div class="legend-hatch"></div>
     </div>
     <span id="legend-protected" class="legend-text"></span>
-  </div>
-  <div class="legend-item legend-toggle" data-layer="crossings">
-    <div class="legend-symbol">
-      <div class="legend-circle"></div>
-    </div>
-    <span id="legend-crossings" class="legend-text"></span>
   </div>
   <div class="legend-item legend-toggle" data-layer="satellite">
     <div class="legend-symbol">

@@ -6,20 +6,26 @@
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 :root {
+  /* Font settings */
   --ui-font-size: 14px;
   --ui-font-family: 'JetBrains Mono', monospace;
   --ui-font-weight: 300;
   --ui-panel-width: 220px;
-  --ui-color: #fff;
+  --ui-blur: blur(6px);
+
+  /* Theme defaults - overridden by manifest */
+  --ui-background: #000000;
+  --ui-color: #ffffff;
   --ui-color-muted: rgba(255, 255, 255, 0.7);
-  --ui-bg: rgba(0, 0, 0, 0.5);
-  --ui-border: 1px solid rgba(255, 255, 255, 0.3);
+  --ui-bg: rgba(0, 0, 0, 0.6);
+  --ui-border: 1px solid rgba(255, 255, 255, 0.2);
   --ui-bg-hover: rgba(255, 255, 255, 0.1);
 }
 
 body {
   margin: 0;
   padding: 0;
+  background: var(--ui-background);
 }
 
 /* Shared panel styles */
@@ -36,6 +42,8 @@ body {
   color: var(--ui-color);
   background: var(--ui-bg);
   border: var(--ui-border);
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
 }
 
 /* Map */
@@ -44,7 +52,7 @@ body {
   top: 0;
   bottom: 0;
   width: 100%;
-  background: hsl(0, 0%, 2%);
+  background: var(--ui-background);
 }
 
 /* Logo */
@@ -100,7 +108,7 @@ body {
 
 .legend-section-title {
   font-size: var(--ui-font-size);
-  color: var(--ui-color);
+  color: var(--ui-color-muted);
   margin-bottom: 12px;
 }
 
@@ -153,14 +161,6 @@ body {
 .legend-square {
   width: 18px;
   height: 18px;
-}
-
-.legend-circle {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: transparent;
-  border: 2px solid var(--ui-color);
 }
 
 .legend-hatch {
@@ -266,8 +266,7 @@ body {
   pointer-events: none;
   display: none;
   box-sizing: border-box;
-  min-width: 400px;
-  max-width: 600px;
+  min-width: var(--ui-panel-width);
   font-size: var(--ui-font-size);
 }
 
@@ -281,44 +280,12 @@ body {
 
 #tooltip td:first-child {
   text-align: right;
-}
-
-/* Vessel row grid */
-#tooltip .vessel-row {
-  display: grid;
-  grid-template-columns: 100px 150px 115px 45px 55px 55px;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  font-size: var(--ui-font-size);
-  align-items: center;
-}
-
-#tooltip .vessel-row.vessel-header {
-  font-weight: 400;
-  font-size: 14px;
   color: var(--ui-color-muted);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-#tooltip .vessel-row:last-child {
-  border-bottom: none;
-}
-
-#tooltip .vessel-name,
-#tooltip .vessel-type {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#tooltip .vessel-name {
-  font-weight: 400;
-}
-
-#tooltip .vessel-hours,
-#tooltip .vessel-year {
-  text-align: right;
+/* Tooltip tables */
+#tooltip table {
+  border-collapse: collapse;
 }
 
 /* About modal */
@@ -328,7 +295,9 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -341,7 +310,7 @@ body {
 }
 
 #about-content {
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--ui-bg);
   padding: 32px 40px;
   max-width: 500px;
   margin: 20px;
