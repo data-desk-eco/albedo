@@ -83,10 +83,10 @@ clean:
 GCS_BUCKET := albedo-data
 GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
-# Deploy large data files to GCS (COG + vessel tiles for range requests)
+# Deploy large data files to GCS (COG + vessel data for range requests)
 deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/vessel_heatmap.tif gs://$(GCS_BUCKET)/
-	gcloud storage cp -r data/export/tiles gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)
