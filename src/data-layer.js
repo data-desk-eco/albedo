@@ -105,12 +105,12 @@ export async function initDB(baseUrl, manifest) {
     wasmUrl.toString()
   )
 
-  // Initialize vessel tiles (binary format, fetched on demand)
-  const tilesUrl = manifest.data?.vectors?.tiles || 'tiles/'
-  const tilesBaseUrl = tilesUrl.startsWith('http')
-    ? tilesUrl
-    : new URL(tilesUrl, new URL(dataUrl, window.location.href)).href
-  await initVesselTiles(tilesBaseUrl)
+  // Initialize vessel data (Hilbert-ordered binary format, fetched on demand via range requests)
+  const vesselDataUrl = manifest.data?.vectors?.vesselData || 'vessel_data.bin'
+  const vesselDataFullUrl = vesselDataUrl.startsWith('http')
+    ? vesselDataUrl
+    : new URL(vesselDataUrl, new URL(dataUrl, window.location.href)).href
+  await initVesselTiles(vesselDataFullUrl)
 }
 
 /**

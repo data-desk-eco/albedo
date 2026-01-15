@@ -86,7 +86,7 @@ vessel_data.bin:
 │   [vessel_types: count + (len, string)[]]               │
 │   [vessels: count + (mmsi, name_len, name)[]]           │
 ├─────────────────────────────────────────────────────────┤
-│ Blocks (independently brotli-compressed)                │
+│ Blocks (independently gzip-compressed)                  │
 │   [block 0: ~1000 cells sorted by hilbert index]        │
 │   [block 1: ~1000 cells sorted by hilbert index]        │
 │   ...                                                   │
@@ -126,7 +126,7 @@ if (!blockCache.has(block.id)) {
   const resp = await fetch('vessel_data.bin', {
     headers: { Range: `bytes=${block.offset}-${block.offset + block.len - 1}` }
   })
-  const decompressed = await decompress(resp, 'br')
+  const decompressed = await decompress(resp, 'gzip')
   blockCache.set(block.id, parseBlock(decompressed))
 }
 
@@ -177,7 +177,7 @@ function xyToHilbert(x, y, order = 16) {
 1. Add Hilbert curve functions to export script
 2. Sort cells by Hilbert index
 3. Group into fixed-size blocks (~1000 cells each)
-4. Compress each block with brotli
+4. Compress each block with gzip
 5. Generate block index
 6. Concatenate into single file
 7. Update JS decoder to:
