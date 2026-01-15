@@ -9,8 +9,13 @@
   <!-- Preconnect to external tile server for faster satellite imagery -->
   <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin>
   <link rel="dns-prefetch" href="https://tiles.maps.eox.at">
+  <style>
+    #loading{position:fixed;inset:0;background:#000;z-index:9999}
+    #loading.fade{opacity:0;transition:opacity .3s}
+  </style>
 </head>
 <body>
+<div id="loading"></div>
 <div id="map"></div>
 <div id="about-modal">
   <div id="about-content">
