@@ -114,6 +114,14 @@ function updateUI() {
     const selectedValue = select.value
     populatePlacesDropdown()
     select.value = selectedValue
+
+    // Update place description if one is selected
+    if (selectedValue !== '') {
+      const place = manifest.places[parseInt(selectedValue)]
+      if (place) {
+        document.getElementById('places-info').innerHTML = `<span>${localize(place.description)}</span>`
+      }
+    }
   }
 
   if (categories.length > 0) {
