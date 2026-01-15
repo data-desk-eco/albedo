@@ -70,6 +70,12 @@ export default defineConfig(({ mode }) => {
           const outExportDir = join(outDir, 'data', 'export')
           mkdirSync(outExportDir, { recursive: true })
 
+          // Copy vectors.pmtiles
+          const vectorsSrc = join(exportDir, 'vectors.pmtiles')
+          if (existsSync(vectorsSrc)) {
+            copyFileSync(vectorsSrc, join(outExportDir, 'vectors.pmtiles'))
+          }
+
           // Copy manifest.json
           const manifestSrc = join(exportDir, 'manifest.json')
           if (existsSync(manifestSrc)) {
