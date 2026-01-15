@@ -6,7 +6,7 @@
 import { YEAR_PALETTE } from './cog-tiles.js'
 
 // Debug mode: set to true to visualize tooltip target grid cells
-export const DEBUG_MODE = false
+export const DEBUG_MODE = true
 
 // Manifest URL - can be overridden via environment variable
 export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'
