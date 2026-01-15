@@ -103,7 +103,7 @@ function applyManifestUI(manifest) {
 // ============================================================================
 
 function updateUI() {
-  const isNarrow = window.innerWidth <= 600
+  const isNarrow = window.innerWidth <= 768
   const lang = getLang()
 
   // About modal
@@ -468,12 +468,12 @@ async function init() {
   setupUIHandlers()
 
   // 9. Initial UI
-  updateUI()
   initYearLegend(knownYears)
   initLayerToggles()
   updateMultiYearLegend()
   populatePlacesDropdown()
   loadCategories()
+  updateUI()
 }
 
 function setupMapHandlers() {
