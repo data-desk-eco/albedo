@@ -393,6 +393,9 @@ async function init() {
   // 2. Initialize i18n
   await initI18n(manifest, dataUrl)
 
+  // Set language toggle button to show the OTHER language (what you can switch to)
+  document.getElementById('lang-toggle').textContent = getLang() === 'ru' ? 'en' : 'ру'
+
   // 3. Build COG URLs from manifest
   const cogFile = manifest.data?.cog || 'vessel_heatmap.tif'
   const cogUrl = cogFile.startsWith('http') ? cogFile : dataUrl + cogFile
