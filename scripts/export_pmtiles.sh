@@ -16,7 +16,7 @@ mkdir -p "$EXPORT_DIR" "$TEMP_DIR"
 
 echo "Exporting GeoJSON layers..."
 
-# Export protected areas as GeoJSON FeatureCollection
+# Export protected areas as GeoJSON FeatureCollection, clipped to SOUTH_LAT
 duckdb "$DUCKDB_PATH" -json -c "
 INSTALL spatial; LOAD spatial;
 SELECT json_object(
@@ -25,11 +25,14 @@ SELECT json_object(
     json_object(
       'type', 'Feature',
       'properties', json_object('id', feature_id, 'name', area_name),
-      'geometry', ST_AsGeoJSON(geometry)::JSON
+      'geometry', ST_AsGeoJSON(
+        ST_Intersection(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'))
+      )::JSON
     )
   )
 ) as geojson
-FROM protected_areas_ocean;
+FROM protected_areas_ocean
+WHERE ST_Intersects(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'));
 " | jq -r '.[0].geojson' > "$TEMP_DIR/protected_areas.geojson"
 
 # Export places as GeoJSON FeatureCollection
