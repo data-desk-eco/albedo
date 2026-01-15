@@ -15,7 +15,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'sql': ['sql.js-httpvfs'],
             'geotiff': ['geotiff'],
             'maplibre': ['maplibre-gl']
           }
@@ -67,16 +66,9 @@ export default defineConfig(({ mode }) => {
           const outDir = resolve(process.cwd(), 'dist')
           const dataDir = resolve(process.cwd(), 'data')
 
-          // Small SQLite files only (vessel_lookup.sqlite served from GCS)
           const exportDir = join(dataDir, 'export')
           const outExportDir = join(outDir, 'data', 'export')
           mkdirSync(outExportDir, { recursive: true })
-          for (const file of readdirSync(exportDir)) {
-            // Copy vectors.sqlite (small), skip vessel_lookup.sqlite (large, on GCS)
-            if (file === 'vectors.sqlite') {
-              copyFileSync(join(exportDir, file), join(outExportDir, file))
-            }
-          }
 
           // Copy manifest.json
           const manifestSrc = join(exportDir, 'manifest.json')
@@ -108,7 +100,7 @@ export default defineConfig(({ mode }) => {
             }
           }
 
-          console.log('Copied small data files to dist/ (COG + vessel_lookup.sqlite on GCS)')
+          console.log('Copied data files to dist/')
         }
       }
     ]
