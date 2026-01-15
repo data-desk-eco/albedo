@@ -356,11 +356,6 @@
   dependencies:
     "@types/geojson" "*"
 
-comlink@^4.3.0:
-  version "4.4.2"
-  resolved "https://registry.npmjs.org/comlink/-/comlink-4.4.2.tgz"
-  integrity sha512-OxGdvBmJuNKSCMO4NTl1L47VRp6xn2wG4F/2hYzB6tiCb709otOxtEYCSvK80PtjODfXXZu8ds+Nw5kVCjqd2g==
-
 earcut@^3.0.2:
   version "3.0.2"
   resolved "https://registry.npmjs.org/earcut/-/earcut-3.0.2.tgz"
@@ -402,6 +397,11 @@ fdir@^6.5.0:
   version "6.5.0"
   resolved "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz"
   integrity sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==
+
+fflate@^0.8.2:
+  version "0.8.2"
+  resolved "https://registry.yarnpkg.com/fflate/-/fflate-0.8.2.tgz#fc8631f5347812ad6028bbe4a2308b2792aa1dea"
+  integrity sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==
 
 fsevents@~2.3.2, fsevents@~2.3.3:
   version "2.3.3"
@@ -523,6 +523,13 @@ picomatch@^4.0.3:
   resolved "https://registry.npmjs.org/picomatch/-/picomatch-4.0.3.tgz"
   integrity sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==
 
+pmtiles@^4.3.2:
+  version "4.3.2"
+  resolved "https://registry.yarnpkg.com/pmtiles/-/pmtiles-4.3.2.tgz#214f32488437e60bc1a74dad045f62306f117d50"
+  integrity sha512-Ath2F2U2E37QyNXjN1HOF+oLiNIbdrDYrk/K3C9K4Pgw2anwQX10y4WYWEH9O75vPiu0gBbSWIAbSG19svyvZg==
+  dependencies:
+    fflate "^0.8.2"
+
 postcss@^8.5.6:
   version "8.5.6"
   resolved "https://registry.npmjs.org/postcss/-/postcss-8.5.6.tgz"
@@ -599,13 +606,6 @@ source-map-js@^1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/source-map-js/-/source-map-js-1.2.1.tgz"
   integrity sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==
-
-sql.js-httpvfs@^0.8.12:
-  version "0.8.12"
-  resolved "https://registry.npmjs.org/sql.js-httpvfs/-/sql.js-httpvfs-0.8.12.tgz"
-  integrity sha512-lcEBc2q0psFRfdCx8Di22oUIkkv5MUIaVO/fGCj/Jjx6YQDKVylQEcjd7NSSbmINHTRwVkm/vWP8uuevT7Rkkw==
-  dependencies:
-    comlink "^4.3.0"
 
 supercluster@^8.0.1:
   version "8.0.1"

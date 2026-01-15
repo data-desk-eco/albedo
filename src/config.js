@@ -1,6 +1,6 @@
 /**
  * Vessel Activity Viewer - Configuration
- * Generic viewer that loads region-specific config from manifest.json
+ * Generic viewer that loads config from manifest.json and COG metadata
  */
 
 import { YEAR_PALETTE } from './cog-tiles.js'
@@ -32,139 +32,123 @@ export function getYearColor(bandIndex) {
 /**
  * Create map style configuration from manifest
  * @param {Object} manifest - The loaded manifest
- * @param {string} dataUrl - Base URL for data files
  */
-export function createMapStyle(manifest, dataUrl) {
-  const satelliteUrl = manifest.layers?.satellite?.url ||
-    'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'
-
-  // Use manifest bounds for satellite layer clipping (same as raster heatmap)
+export function createMapStyle(manifest) {
+  const theme = manifest.ui?.theme || {}
   const bounds = manifest.map?.bounds || {}
-  const satelliteBounds = [
-    bounds.west ?? -180,
-    bounds.south ?? -90,
-    bounds.east ?? 180,
-    bounds.north ?? 90
+
+  // Build sources from manifest
+  const sources = {
+    'vessel-heatmap': {
+      type: 'raster',
+      tiles: ['cog://{z}/{x}/{y}'],
+      tileSize: 256,
+      attribution: manifest.ui?.attribution || ''
+    }
+  }
+
+  // Add satellite source if configured
+  if (manifest.layers?.satellite?.url) {
+    sources['satellite'] = {
+      type: 'raster',
+      tiles: [manifest.layers.satellite.url],
+      tileSize: 256,
+      bounds: [
+        bounds.west ?? -180,
+        bounds.south ?? -90,
+        bounds.east ?? 180,
+        bounds.north ?? 90
+      ]
+    }
+  }
+
+  // Add PMTiles vector sources from manifest
+  const vectorLayers = manifest.layers?.vectors || {}
+  for (const [id, config] of Object.entries(vectorLayers)) {
+    if (config.url) {
+      sources[id] = {
+        type: 'vector',
+        url: `pmtiles://${config.url}`
+      }
+    }
+  }
+
+  // Build layers
+  const layers = [
+    {
+      id: 'background',
+      type: 'background',
+      paint: { 'background-color': theme.background || '#000000' }
+    }
   ]
+
+  // Satellite layer (if configured)
+  if (sources['satellite']) {
+    layers.push({
+      id: 'satellite',
+      type: 'raster',
+      source: 'satellite',
+      layout: { visibility: manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
+      paint: { 'raster-opacity': 1 }
+    })
+  }
+
+  // Vessel heatmap (always present)
+  layers.push({
+    id: 'vessel-heatmap',
+    type: 'raster',
+    source: 'vessel-heatmap',
+    paint: {
+      'raster-opacity': 1,
+      'raster-resampling': 'nearest',
+      'raster-brightness-max': 1,
+      'raster-contrast': 0.3
+    }
+  })
+
+  // Debug layer for tooltip targets
+  layers.push({
+    id: 'debug-tooltip-targets',
+    type: 'fill',
+    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    minzoom: 5,
+    paint: {
+      'fill-color': '#ff0000',
+      'fill-opacity': 0.5,
+      'fill-outline-color': '#ff0000'
+    }
+  })
+
+  // Add vector layers from manifest
+  for (const [sourceId, config] of Object.entries(vectorLayers)) {
+    if (!config.style) continue
+
+    for (const layerStyle of config.style) {
+      layers.push({
+        ...layerStyle,
+        source: sourceId,
+        layout: {
+          ...layerStyle.layout,
+          visibility: config.defaultVisible !== false ? 'visible' : 'none'
+        }
+      })
+    }
+  }
 
   return {
     version: 8,
     glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     projection: { type: manifest.map?.projection || 'globe' },
-    sources: {
-      'sentinel-2': {
-        type: 'raster',
-        tiles: [satelliteUrl],
-        tileSize: 256,
-        bounds: satelliteBounds,
-        attribution: manifest.ui?.attribution || ''
-      },
-      'vessel-heatmap': {
-        type: 'raster',
-        tiles: ['cog://{z}/{x}/{y}'],
-        tileSize: 256,
-        attribution: manifest.ui?.attribution || ''
-      },
-      'protected-areas': {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      },
-      'places': {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      },
-      'debug-tooltip-targets': {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      }
-    },
-    layers: [
-      {
-        id: 'background',
-        type: 'background',
-        paint: { 'background-color': manifest.ui?.theme?.background || '#000000' }
-      },
-      {
-        id: 'sentinel-2',
-        type: 'raster',
-        source: 'sentinel-2',
-        layout: { 'visibility': manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
-        paint: { 'raster-opacity': 1 }
-      },
-      {
-        id: 'vessel-heatmap',
-        type: 'raster',
-        source: 'vessel-heatmap',
-        paint: {
-          'raster-opacity': 1,
-          'raster-resampling': 'nearest',
-          'raster-brightness-max': 1,
-          'raster-contrast': 0.3
-        }
-      },
-      {
-        id: 'debug-tooltip-targets',
-        type: 'fill',
-        source: 'debug-tooltip-targets',
-        minzoom: 5,
-        paint: {
-          'fill-color': '#ff0000',
-          'fill-opacity': 0.5,
-          'fill-outline-color': '#ff0000'
-        }
-      },
-      {
-        id: 'protected-areas-fill',
-        type: 'fill',
-        source: 'protected-areas',
-        layout: { 'visibility': manifest.layers?.protectedAreas?.defaultVisible ? 'visible' : 'none' },
-        paint: {
-          'fill-pattern': 'hatch-white-md',
-          'fill-opacity': 1
-        }
-      },
-      {
-        id: 'protected-areas-border',
-        type: 'line',
-        source: 'protected-areas',
-        layout: { 'visibility': manifest.layers?.protectedAreas?.defaultVisible ? 'visible' : 'none' },
-        paint: {
-          'line-color': '#ffffff',
-          'line-width': 2,
-          'line-opacity': 1
-        }
-      },
-      {
-        id: 'place-labels',
-        type: 'symbol',
-        source: 'places',
-        minzoom: 2,
-        layout: {
-          'text-field': ['coalesce', ['get', 'name_ru'], ['get', 'name_en']],
-          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-size': [
-            'interpolate', ['linear'], ['zoom'],
-            2.5, ['case', ['<=', ['get', 'scalerank'], 1], 14, 12],
-            10, ['case', ['<=', ['get', 'scalerank'], 1], 28, 20]
-          ],
-          'text-anchor': 'center',
-          'text-padding': 2,
-          'text-allow-overlap': false,
-          'text-ignore-placement': false
-        },
-        paint: {
-          'text-color': '#666666',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.5,
-          'text-halo-blur': 0.5
-        }
-      }
-    ]
+    sources,
+    layers
   }
 }
 
-// Protected area layer IDs (used for toggling visibility)
-export const PROTECTED_AREA_LAYERS = [
-  'protected-areas-fill',
-  'protected-areas-border'
-]
+/**
+ * Get layer IDs for a vector source (for toggling visibility)
+ */
+export function getVectorLayerIds(manifest, sourceId) {
+  const config = manifest.layers?.vectors?.[sourceId]
+  if (!config?.style) return []
+  return config.style.map(s => s.id)
+}

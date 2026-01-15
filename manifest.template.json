@@ -1,33 +1,33 @@
 {
-  "name": "russian-arctic",
+  "name": "${REGION_ID}",
 
   "about": {
     "title": { "en": "About this map", "ru": "О карте" },
     "description": {
-      "en": "Interactive map of vessel presence based on Global Fishing Watch data. Click anywhere to continue.",
-      "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch. Нажмите в любом месте, чтобы продолжить."
+      "en": "${ABOUT_EN}",
+      "ru": "${ABOUT_RU}"
     }
   },
 
   "map": {
-    "center": [100, 75],
-    "zoom": 2.5,
-    "minZoom": 2.5,
+    "center": [${CENTER_LON}, ${CENTER_LAT}],
+    "zoom": ${INITIAL_ZOOM},
+    "minZoom": ${MIN_ZOOM},
     "maxZoom": 14,
     "pitch": 20,
     "projection": "globe",
     "bounds": {
-      "south": 57,
-      "north": 90,
-      "west": 20,
-      "east": -160
+      "south": ${SOUTH_LAT},
+      "north": ${NORTH_LAT},
+      "west": ${WEST_LON},
+      "east": ${EAST_LON}
     }
   },
 
   "data": {
     "cog": "vessel_heatmap.tif",
     "vesselData": "vessel_data.bin",
-    "cogsByType": {"FISHING":"vessel_heatmap_fishing.tif","CARGO":"vessel_heatmap_cargo.tif","PASSENGER":"vessel_heatmap_passenger.tif","CARRIER":"vessel_heatmap_carrier.tif"}
+    "cogsByType": ${COGS_BY_TYPE}
   },
 
   "layers": {
@@ -64,7 +64,7 @@
             "source-layer": "places",
             "minzoom": 2,
             "layout": {
-              "text-field": ["coalesce", ["get", "name_ru"], ["get", "name_en"]],
+              "text-field": ["coalesce", ["get", "name_${DEFAULT_LANG}"], ["get", "name_en"]],
               "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
               "text-size": ["interpolate", ["linear"], ["zoom"], 2.5, 12, 10, 20],
               "text-anchor": "center",
@@ -83,14 +83,14 @@
   },
 
   "ui": {
-    "title": "Albedo",
-    "favicon": "magenta",
-    "defaultLang": "ru",
-    "availableLangs": ["en", "ru"],
+    "title": "${UI_TITLE}",
+    "favicon": "${UI_FAVICON}",
+    "defaultLang": "${DEFAULT_LANG}",
+    "availableLangs": ${AVAILABLE_LANGS},
     "sourceLink": {
-      "url": "https://globalfishingwatch.org/",
-      "label": { "en": "Global Fishing Watch", "ru": "Global Fishing Watch" },
-      "labelShort": { "en": "GFW", "ru": "GFW" }
+      "url": "${SOURCE_URL}",
+      "label": { "en": "${SOURCE_LABEL}", "ru": "${SOURCE_LABEL}" },
+      "labelShort": { "en": "${SOURCE_LABEL_SHORT}", "ru": "${SOURCE_LABEL_SHORT}" }
     },
     "layerToggles": [
       {
@@ -119,5 +119,5 @@
     }
   },
 
-  "places": [{"id":"overview","name":{"en":"Overview","ru":"Обзор"},"description":{"en":"Full study area","ru":"Вся область исследования"},"center":[100,75],"zoom":2.5},{"id":"kara-sea","name":{"en":"Kara Sea","ru":"Карское море"},"description":{"en":"Gateway to the Northern Sea Route","ru":"Ворота Северного морского пути"},"center":[70,74],"zoom":5}]
+  "places": ${PLACES_JSON}
 }
