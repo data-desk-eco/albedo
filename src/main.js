@@ -6,7 +6,7 @@
 import './style.css'
 import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import { initCOG, renderTile, clearCache as clearCOGCache } from './cog-tiles.js'
+import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize } from './cog-tiles.js'
 import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt } from './data-layer.js'
 import {
   DEBUG_MODE,
@@ -534,6 +534,45 @@ function setupMapHandlers(cogConfig) {
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+
+    // Debug: show the actual COG pixel being rendered
+    // COG is now in EPSG:4326 (geographic) with 0.01° pixels
+    if (DEBUG_MODE) {
+      const cogBBox = getCOGBBox()
+      const pixelSize = getCOGPixelSize()
+      if (cogBBox && pixelSize) {
+        const [cogMinLon, cogMinLat, cogMaxLon, cogMaxLat] = cogBBox
+        const [pixelW, pixelH] = pixelSize  // in degrees
+
+        // Find which COG pixel this falls into
+        const col = Math.floor((lng - cogMinLon) / pixelW)
+        const row = Math.floor((cogMaxLat - lat) / pixelH)
+
+        // Calculate pixel bounds in geographic coordinates
+        const pixelMinLon = cogMinLon + col * pixelW
+        const pixelMaxLon = pixelMinLon + pixelW
+        const pixelMaxLat = cogMaxLat - row * pixelH
+        const pixelMinLat = pixelMaxLat - pixelH
+
+        const feature = {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [pixelMinLon, pixelMinLat],  // bottom-left
+              [pixelMaxLon, pixelMinLat],  // bottom-right
+              [pixelMaxLon, pixelMaxLat],  // top-right
+              [pixelMinLon, pixelMaxLat],  // top-left
+              [pixelMinLon, pixelMinLat]   // close polygon
+            ]]
+          }
+        }
+        map.getSource('debug-tooltip-targets').setData({
+          type: 'FeatureCollection',
+          features: [feature]
+        })
+      }
+    }
 
     try {
       const vessels = await queryVesselsAt(lat, lng, year)

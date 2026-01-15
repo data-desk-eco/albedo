@@ -6,7 +6,7 @@
 import { YEAR_PALETTE } from './cog-tiles.js'
 
 // Debug mode: set to true to visualize tooltip target grid cells
-export const DEBUG_MODE = true
+export const DEBUG_MODE = false
 
 // Manifest URL - can be overridden via environment variable
 export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'
@@ -97,17 +97,6 @@ export function createMapStyle(manifest, dataUrl) {
         paint: { 'raster-opacity': 1 }
       },
       {
-        id: 'debug-tooltip-targets',
-        type: 'fill',
-        source: 'debug-tooltip-targets',
-        minzoom: 5,
-        paint: {
-          'fill-color': '#ff0000',
-          'fill-opacity': 0.5,
-          'fill-outline-color': '#ff0000'
-        }
-      },
-      {
         id: 'vessel-heatmap',
         type: 'raster',
         source: 'vessel-heatmap',
@@ -116,6 +105,17 @@ export function createMapStyle(manifest, dataUrl) {
           'raster-resampling': 'nearest',
           'raster-brightness-max': 1,
           'raster-contrast': 0.3
+        }
+      },
+      {
+        id: 'debug-tooltip-targets',
+        type: 'fill',
+        source: 'debug-tooltip-targets',
+        minzoom: 5,
+        paint: {
+          'fill-color': '#ff0000',
+          'fill-opacity': 0.5,
+          'fill-outline-color': '#ff0000'
         }
       },
       {

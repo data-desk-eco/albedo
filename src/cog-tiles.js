@@ -21,14 +21,9 @@ let cogConfig = null
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
 
-// Latitude cutoffs (in Web Mercator Y coordinates)
-// Formula: y = R * ln(tan(π/4 + lat/2)) where R = 20037508.34 / π
+// Latitude cutoffs (in degrees, since COG is now in EPSG:4326)
 const SOUTH_LAT_DEG = 57
-const SOUTH_LAT_MERCATOR = 20037508.34 * Math.log(Math.tan(Math.PI / 4 + (SOUTH_LAT_DEG * Math.PI / 180) / 2)) / Math.PI
-
-// Northern cutoff to prevent stretching artifacts at the Web Mercator limit on globe projection
 const NORTH_LAT_DEG = 85.0
-const NORTH_LAT_MERCATOR = 20037508.34 * Math.log(Math.tan(Math.PI / 4 + (NORTH_LAT_DEG * Math.PI / 180) / 2)) / Math.PI
 
 let tiff = null
 let pool = null
@@ -126,19 +121,33 @@ async function getImageForZoom(z) {
 }
 
 /**
- * Convert tile coordinates to Web Mercator bbox (EPSG:3857)
- * Returns [minX, minY, maxX, maxY] in meters
+ * Convert Web Mercator Y to latitude
+ */
+function mercatorYToLat(y) {
+  return (Math.atan(Math.exp(y * Math.PI / 20037508.34)) * 360 / Math.PI) - 90
+}
+
+/**
+ * Convert tile coordinates to geographic bbox (EPSG:4326)
+ * Returns [minLon, minLat, maxLon, maxLat] in degrees
  */
 function tileToBBox(z, x, y) {
   const WORLD_SIZE = 20037508.34 * 2  // Web Mercator world extent
   const tileSize = WORLD_SIZE / Math.pow(2, z)
 
-  const minX = x * tileSize - WORLD_SIZE / 2
-  const maxX = (x + 1) * tileSize - WORLD_SIZE / 2
-  const maxY = WORLD_SIZE / 2 - y * tileSize
-  const minY = WORLD_SIZE / 2 - (y + 1) * tileSize
+  // Calculate Web Mercator bounds first
+  const mercMinX = x * tileSize - WORLD_SIZE / 2
+  const mercMaxX = (x + 1) * tileSize - WORLD_SIZE / 2
+  const mercMaxY = WORLD_SIZE / 2 - y * tileSize
+  const mercMinY = WORLD_SIZE / 2 - (y + 1) * tileSize
 
-  return [minX, minY, maxX, maxY]
+  // Convert to geographic coordinates (EPSG:4326)
+  const minLon = mercMinX * 180 / 20037508.34
+  const maxLon = mercMaxX * 180 / 20037508.34
+  const minLat = mercatorYToLat(mercMinY)
+  const maxLat = mercatorYToLat(mercMaxY)
+
+  return [minLon, minLat, maxLon, maxLat]
 }
 
 /**
@@ -163,6 +172,20 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
 
   // Tile bbox in Web Mercator coordinates
   const [tileMinX, tileMinY, tileMaxX, tileMaxY] = tileToBBox(z, x, y)
+
+  // Debug logging for first tile that intersects
+  if (!window._cogDebugLogged) {
+    window._cogDebugLogged = true
+    const pixelW = (cogMaxX - cogMinX) / mainImageSize[0]
+    const pixelH = (cogMaxY - cogMinY) / mainImageSize[1]
+    console.log(`COG Debug: tile z=${z} x=${x} y=${y}`)
+    console.log(`  cogBBox (EPSG:4326): [${cogMinX.toFixed(2)}°, ${cogMinY.toFixed(2)}°, ${cogMaxX.toFixed(2)}°, ${cogMaxY.toFixed(2)}°]`)
+    console.log(`  mainImageSize: ${mainImageSize[0]} x ${mainImageSize[1]}`)
+    console.log(`  currentImageSize: ${imgWidth} x ${imgHeight}`)
+    console.log(`  tileBBox (EPSG:4326): [${tileMinX.toFixed(2)}°, ${tileMinY.toFixed(2)}°, ${tileMaxX.toFixed(2)}°, ${tileMaxY.toFixed(2)}°]`)
+    console.log(`  tileSize: ${(tileMaxX - tileMinX).toFixed(3)}° x ${(tileMaxY - tileMinY).toFixed(3)}°`)
+    console.log(`  pixelSize: ${pixelW.toFixed(4)}° x ${pixelH.toFixed(4)}°`)
+  }
 
   // Check if tile intersects image bounds
   if (tileMaxX < cogMinX || tileMinX > cogMaxX || tileMaxY < cogMinY || tileMinY > cogMaxY) {
@@ -196,6 +219,16 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
   const clampedWidth = Math.min(windowWidth, imgWidth - clampedX)
   const clampedHeight = Math.min(windowHeight, imgHeight - clampedY)
 
+  // Debug logging for window dimensions
+  if (!window._cogWindowLogged) {
+    window._cogWindowLogged = true
+    console.log(`COG Window: tile z=${z} x=${x} y=${y}`)
+    console.log(`  mainWindow: x=${mainWindowX.toFixed(1)} y=${mainWindowY.toFixed(1)} w=${mainWindowWidth.toFixed(1)} h=${mainWindowHeight.toFixed(1)}`)
+    console.log(`  scaledWindow: x=${windowX} y=${windowY} w=${windowWidth} h=${windowHeight}`)
+    console.log(`  clampedWindow: x=${clampedX} y=${clampedY} w=${clampedWidth} h=${clampedHeight}`)
+    console.log(`  aspectRatio: ${(clampedWidth / clampedHeight).toFixed(3)} (should be ~1.0 for square tiles)`)
+  }
+
   if (clampedWidth <= 0 || clampedHeight <= 0) {
     return await createEmptyTile()
   }
@@ -206,9 +239,18 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
       window: [clampedX, clampedY, clampedX + clampedWidth, clampedY + clampedHeight],
       width: TILE_SIZE,
       height: TILE_SIZE,
+      resampleMethod: 'nearest',
       pool,
     })
 
+    // Debug: verify rasters dimensions
+    if (!window._rastersLogged) {
+      window._rastersLogged = true
+      console.log(`Rasters: ${rasters.length} bands, each ${rasters[0].length} values (expected ${TILE_SIZE * TILE_SIZE})`)
+      console.log(`  Band 0 width=${rasters.width}, height=${rasters.height}`)
+    }
+
+    // Pass geographic latitude bounds to colorize (tileMinY/tileMaxY are now in degrees)
     const result = await colorize(rasters, selectedBands, showLand, tileMinY, tileMaxY)
     return result
   } catch (err) {
@@ -222,6 +264,9 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
  */
 async function createEmptyTile() {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
+  // Must get context before convertToBlob works
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE)
   const blob = await canvas.convertToBlob({ type: 'image/png' })
   return await blob.arrayBuffer()
 }
@@ -231,11 +276,11 @@ async function createEmptyTile() {
  * @param {Object} rasters Raster data with bands
  * @param {number[]} selectedBands Band indices to use for coloring (can be empty for land-only)
  * @param {boolean} showLand Whether to render land as white
- * @param {number} tileMinY Tile's minimum Y in Web Mercator (south edge)
- * @param {number} tileMaxY Tile's maximum Y in Web Mercator (north edge)
+ * @param {number} tileMinLat Tile's minimum latitude (south edge) in degrees
+ * @param {number} tileMaxLat Tile's maximum latitude (north edge) in degrees
  * @returns {ArrayBuffer}
  */
-async function colorize(rasters, selectedBands, showLand = true, tileMinY = 0, tileMaxY = 0) {
+async function colorize(rasters, selectedBands, showLand = true, tileMinLat = 0, tileMaxLat = 0) {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
   const ctx = canvas.getContext('2d')
   const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE)
@@ -245,19 +290,19 @@ async function colorize(rasters, selectedBands, showLand = true, tileMinY = 0, t
   const land = rasters[landBandIdx]
   const vesselBands = selectedBands.length > 0 ? selectedBands.map(b => rasters[b]) : []
 
-  // Calculate Y range per pixel for latitude cutoff
-  const yPerPixel = (tileMaxY - tileMinY) / TILE_SIZE
+  // Calculate latitude range per pixel for cutoff
+  const latPerPixel = (tileMaxLat - tileMinLat) / TILE_SIZE
 
   for (let i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
     const px = i * 4
 
-    // Calculate this pixel's Y coordinate in Web Mercator
+    // Calculate this pixel's latitude
     // Pixel row 0 is at the top (north), row 255 is at the bottom (south)
     const row = Math.floor(i / TILE_SIZE)
-    const pixelY = tileMaxY - (row + 0.5) * yPerPixel
+    const pixelLat = tileMaxLat - (row + 0.5) * latPerPixel
 
     // Skip pixels outside latitude cutoffs
-    if (pixelY < SOUTH_LAT_MERCATOR || pixelY > NORTH_LAT_MERCATOR) {
+    if (pixelLat < SOUTH_LAT_DEG || pixelLat > NORTH_LAT_DEG) {
       pixels[px + 3] = 0  // transparent
       continue
     }
@@ -349,6 +394,27 @@ export function isInitialized() {
  */
 export function getCOGConfig() {
   return cogConfig
+}
+
+/**
+ * Get the COG bounding box in Web Mercator coordinates
+ * @returns {number[]|null} [minX, minY, maxX, maxY] or null if not initialized
+ */
+export function getCOGBBox() {
+  return mainImageBBox
+}
+
+/**
+ * Get the COG pixel size in Web Mercator meters
+ * @returns {number[]|null} [pixelWidth, pixelHeight] or null if not initialized
+ */
+export function getCOGPixelSize() {
+  if (!mainImageBBox || !mainImageSize) return null
+  const [minX, minY, maxX, maxY] = mainImageBBox
+  return [
+    (maxX - minX) / mainImageSize[0],
+    (maxY - minY) / mainImageSize[1]
+  ]
 }
 
 /**

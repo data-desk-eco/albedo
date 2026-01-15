@@ -284,9 +284,13 @@ export async function queryVesselsAt(lat, lon, year = null) {
   // Load block
   const cells = await loadBlock(blockId)
 
-  // Snap to grid and lookup
-  const gridLat = (Math.round(lat * 100) / 100).toFixed(2)
-  const gridLon = (Math.round(lon * 100) / 100).toFixed(2)
+  // Snap to grid using same round() logic as raster export (raster_utils.py)
+  // This ensures hover lookup matches the pixel that contains the data
+  const col = Math.round((lon + 180) / 0.01)
+  const row = Math.round((90 - lat) / 0.01)
+  // Use explicit rounding to avoid floating point errors (e.g., 69.50999999999999)
+  const gridLon = (Math.round((-180 + col * 0.01) * 100) / 100).toFixed(2)
+  const gridLat = (Math.round((90 - row * 0.01) * 100) / 100).toFixed(2)
   const cellKey = `${gridLat}_${gridLon}`
 
   let result = cells.get(cellKey) || []
