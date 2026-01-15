@@ -29,7 +29,7 @@ COGS_BY_TYPE+="}"
 echo "Generating manifest.json..."
 
 # Use envsubst for simple substitution
-export COG_URL COGS_BY_TYPE
+export COG_URL COGS_BY_TYPE COG_BASE_URL
 export REGION_ID SOUTH_LAT NORTH_LAT WEST_LON EAST_LON
 export CENTER_LON CENTER_LAT INITIAL_ZOOM MIN_ZOOM
 export UI_TITLE UI_FAVICON DEFAULT_LANG AVAILABLE_LANGS
