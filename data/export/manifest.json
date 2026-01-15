@@ -26,7 +26,7 @@
 
   "data": {
     "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
-    "vesselData": "vessel_data.bin",
+    "vesselData": "https://storage.googleapis.com/albedo-data/vessel_data.bin",
     "cogsByType": {"FISHING":"https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif","CARGO":"https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif","PASSENGER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif","CARRIER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"}
   },
 
