@@ -201,44 +201,62 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
   const pixelHeight = (cogMaxY - cogMinY) / mainImageSize[1]
 
   // Calculate window in main image coordinates, then scale
-  // Note: image Y increases downward, but Web Mercator Y increases upward
+  // Note: image Y increases downward, geo Y increases upward
   const mainWindowX = (tileMinX - cogMinX) / pixelWidth
   const mainWindowY = (cogMaxY - tileMaxY) / pixelHeight
   const mainWindowWidth = (tileMaxX - tileMinX) / pixelWidth
   const mainWindowHeight = (tileMaxY - tileMinY) / pixelHeight
 
-  // Scale to this overview's coordinates
-  const windowX = Math.floor(mainWindowX * scaleX)
-  const windowY = Math.floor(mainWindowY * scaleY)
-  const windowWidth = Math.ceil(mainWindowWidth * scaleX)
-  const windowHeight = Math.ceil(mainWindowHeight * scaleY)
+  // Scale to this overview's coordinates (use floats for accuracy)
+  const windowX = mainWindowX * scaleX
+  const windowY = mainWindowY * scaleY
+  const windowWidth = mainWindowWidth * scaleX
+  const windowHeight = mainWindowHeight * scaleY
 
-  // Clamp to image bounds
-  const clampedX = Math.max(0, Math.min(windowX, imgWidth))
-  const clampedY = Math.max(0, Math.min(windowY, imgHeight))
-  const clampedWidth = Math.min(windowWidth, imgWidth - clampedX)
-  const clampedHeight = Math.min(windowHeight, imgHeight - clampedY)
+  // Calculate the intersection with image bounds
+  // This determines what portion of the source image we can actually read
+  const srcLeft = Math.max(0, windowX)
+  const srcTop = Math.max(0, windowY)
+  const srcRight = Math.min(imgWidth, windowX + windowWidth)
+  const srcBottom = Math.min(imgHeight, windowY + windowHeight)
+
+  const srcWidth = srcRight - srcLeft
+  const srcHeight = srcBottom - srcTop
+
+  if (srcWidth <= 0 || srcHeight <= 0) {
+    return await createEmptyTile()
+  }
+
+  // Calculate what portion of the OUTPUT tile this source region maps to
+  // If the tile extends beyond the COG, we only render the valid portion
+  const dstLeft = Math.round(((srcLeft - windowX) / windowWidth) * TILE_SIZE)
+  const dstTop = Math.round(((srcTop - windowY) / windowHeight) * TILE_SIZE)
+  const dstRight = Math.round(((srcRight - windowX) / windowWidth) * TILE_SIZE)
+  const dstBottom = Math.round(((srcBottom - windowY) / windowHeight) * TILE_SIZE)
+
+  const dstWidth = dstRight - dstLeft
+  const dstHeight = dstBottom - dstTop
 
   // Debug logging for window dimensions
   if (!window._cogWindowLogged) {
     window._cogWindowLogged = true
     console.log(`COG Window: tile z=${z} x=${x} y=${y}`)
     console.log(`  mainWindow: x=${mainWindowX.toFixed(1)} y=${mainWindowY.toFixed(1)} w=${mainWindowWidth.toFixed(1)} h=${mainWindowHeight.toFixed(1)}`)
-    console.log(`  scaledWindow: x=${windowX} y=${windowY} w=${windowWidth} h=${windowHeight}`)
-    console.log(`  clampedWindow: x=${clampedX} y=${clampedY} w=${clampedWidth} h=${clampedHeight}`)
-    console.log(`  aspectRatio: ${(clampedWidth / clampedHeight).toFixed(3)} (should be ~1.0 for square tiles)`)
+    console.log(`  scaledWindow: x=${windowX.toFixed(1)} y=${windowY.toFixed(1)} w=${windowWidth.toFixed(1)} h=${windowHeight.toFixed(1)}`)
+    console.log(`  srcRegion: [${srcLeft.toFixed(1)}, ${srcTop.toFixed(1)}, ${srcRight.toFixed(1)}, ${srcBottom.toFixed(1)}]`)
+    console.log(`  dstRegion: [${dstLeft}, ${dstTop}, ${dstRight}, ${dstBottom}] (${dstWidth}x${dstHeight})`)
   }
 
-  if (clampedWidth <= 0 || clampedHeight <= 0) {
+  if (dstWidth <= 0 || dstHeight <= 0) {
     return await createEmptyTile()
   }
 
   try {
-    // Read all 4 bands for the tile window
+    // Read rasters for the valid source region, resampled to destination size
     const rasters = await image.readRasters({
-      window: [clampedX, clampedY, clampedX + clampedWidth, clampedY + clampedHeight],
-      width: TILE_SIZE,
-      height: TILE_SIZE,
+      window: [Math.floor(srcLeft), Math.floor(srcTop), Math.ceil(srcRight), Math.ceil(srcBottom)],
+      width: dstWidth,
+      height: dstHeight,
       resampleMethod: 'nearest',
       pool,
     })
@@ -246,12 +264,21 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
     // Debug: verify rasters dimensions
     if (!window._rastersLogged) {
       window._rastersLogged = true
-      console.log(`Rasters: ${rasters.length} bands, each ${rasters[0].length} values (expected ${TILE_SIZE * TILE_SIZE})`)
-      console.log(`  Band 0 width=${rasters.width}, height=${rasters.height}`)
+      console.log(`Rasters: ${rasters.length} bands, ${rasters.width}x${rasters.height} (dst: ${dstWidth}x${dstHeight})`)
     }
 
-    // Pass geographic latitude bounds to colorize (tileMinY/tileMaxY are now in degrees)
-    const result = await colorize(rasters, selectedBands, showLand, tileMinY, tileMaxY)
+    // Calculate latitude bounds for the OUTPUT region (for latitude cutoff)
+    // Map destination pixel range back to geographic latitude
+    const latRange = tileMaxY - tileMinY
+    const outputMinLat = tileMaxY - (dstBottom / TILE_SIZE) * latRange
+    const outputMaxLat = tileMaxY - (dstTop / TILE_SIZE) * latRange
+
+    // Colorize to the destination size, then composite onto full tile
+    const result = await colorizePartial(
+      rasters, selectedBands, showLand,
+      dstLeft, dstTop, dstWidth, dstHeight,
+      outputMinLat, outputMaxLat
+    )
     return result
   } catch (err) {
     console.warn(`Tile ${z}/${x}/${y} error:`, err.message)
@@ -272,18 +299,28 @@ async function createEmptyTile() {
 }
 
 /**
- * Colorize raster data into RGBA PNG ArrayBuffer
- * @param {Object} rasters Raster data with bands
- * @param {number[]} selectedBands Band indices to use for coloring (can be empty for land-only)
+ * Colorize raster data and composite onto a full tile at the specified position
+ * Handles partial tiles where only a portion of the tile has valid COG data
+ * @param {Object} rasters Raster data with bands (size: dstWidth x dstHeight)
+ * @param {number[]} selectedBands Band indices to use for coloring
  * @param {boolean} showLand Whether to render land as white
- * @param {number} tileMinLat Tile's minimum latitude (south edge) in degrees
- * @param {number} tileMaxLat Tile's maximum latitude (north edge) in degrees
+ * @param {number} dstLeft X offset in the output tile
+ * @param {number} dstTop Y offset in the output tile
+ * @param {number} dstWidth Width of the raster data
+ * @param {number} dstHeight Height of the raster data
+ * @param {number} outputMinLat Minimum latitude of the output region
+ * @param {number} outputMaxLat Maximum latitude of the output region
  * @returns {ArrayBuffer}
  */
-async function colorize(rasters, selectedBands, showLand = true, tileMinLat = 0, tileMaxLat = 0) {
+async function colorizePartial(rasters, selectedBands, showLand, dstLeft, dstTop, dstWidth, dstHeight, outputMinLat, outputMaxLat) {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
   const ctx = canvas.getContext('2d')
-  const imageData = ctx.createImageData(TILE_SIZE, TILE_SIZE)
+
+  // Start with fully transparent tile
+  ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE)
+
+  // Create image data for just the portion we're filling
+  const imageData = ctx.createImageData(dstWidth, dstHeight)
   const pixels = imageData.data
 
   const landBandIdx = cogConfig?.landBand ?? rasters.length - 1
@@ -291,83 +328,86 @@ async function colorize(rasters, selectedBands, showLand = true, tileMinLat = 0,
   const vesselBands = selectedBands.length > 0 ? selectedBands.map(b => rasters[b]) : []
 
   // Calculate latitude range per pixel for cutoff
-  const latPerPixel = (tileMaxLat - tileMinLat) / TILE_SIZE
+  const latPerPixel = (outputMaxLat - outputMinLat) / dstHeight
 
-  for (let i = 0; i < TILE_SIZE * TILE_SIZE; i++) {
-    const px = i * 4
+  for (let row = 0; row < dstHeight; row++) {
+    for (let col = 0; col < dstWidth; col++) {
+      const i = row * dstWidth + col
+      const px = i * 4
 
-    // Calculate this pixel's latitude
-    // Pixel row 0 is at the top (north), row 255 is at the bottom (south)
-    const row = Math.floor(i / TILE_SIZE)
-    const pixelLat = tileMaxLat - (row + 0.5) * latPerPixel
+      // Calculate this pixel's latitude
+      // Row 0 is at the top (north), last row is at the bottom (south)
+      const pixelLat = outputMaxLat - (row + 0.5) * latPerPixel
 
-    // Skip pixels outside latitude cutoffs
-    if (pixelLat < SOUTH_LAT_DEG || pixelLat > NORTH_LAT_DEG) {
-      pixels[px + 3] = 0  // transparent
-      continue
-    }
-
-    // Land: white (or transparent in satellite mode)
-    if (land && land[i] === 1) {
-      if (showLand) {
-        pixels[px] = 255
-        pixels[px + 1] = 255
-        pixels[px + 2] = 255
-        pixels[px + 3] = 255
-      } else {
+      // Skip pixels outside latitude cutoffs
+      if (pixelLat < SOUTH_LAT_DEG || pixelLat > NORTH_LAT_DEG) {
         pixels[px + 3] = 0  // transparent
+        continue
       }
-      continue
-    }
 
-    // No vessel bands selected = show land only, ocean is transparent
-    if (vesselBands.length === 0) {
-      pixels[px + 3] = 0
-      continue
-    }
-
-    // Get vessel values for selected bands
-    const values = vesselBands.map(band => (band ? band[i] : 0) || 0)
-    const total = values.reduce((a, b) => a + b, 0)
-
-    // No activity: transparent (ocean)
-    if (total === 0) {
-      pixels[px + 3] = 0
-      continue
-    }
-
-    // Find dominant band
-    let maxVal = 0
-    let maxIdx = 0
-    for (let j = 0; j < values.length; j++) {
-      if (values[j] > maxVal) {
-        maxVal = values[j]
-        maxIdx = j
+      // Land: white (or transparent in satellite mode)
+      if (land && land[i] === 1) {
+        if (showLand) {
+          pixels[px] = 255
+          pixels[px + 1] = 255
+          pixels[px + 2] = 255
+          pixels[px + 3] = 255
+        } else {
+          pixels[px + 3] = 0  // transparent
+        }
+        continue
       }
+
+      // No vessel bands selected = show land only, ocean is transparent
+      if (vesselBands.length === 0) {
+        pixels[px + 3] = 0
+        continue
+      }
+
+      // Get vessel values for selected bands
+      const values = vesselBands.map(band => (band ? band[i] : 0) || 0)
+      const total = values.reduce((a, b) => a + b, 0)
+
+      // No activity: transparent (ocean)
+      if (total === 0) {
+        pixels[px + 3] = 0
+        continue
+      }
+
+      // Find dominant band
+      let maxVal = 0
+      let maxIdx = 0
+      for (let j = 0; j < values.length; j++) {
+        if (values[j] > maxVal) {
+          maxVal = values[j]
+          maxIdx = j
+        }
+      }
+
+      const proportion = maxVal / total
+
+      // Brightness (log scale, minimum 0.7 for visibility)
+      const brightness = Math.min(1, Math.max(0.7, Math.log1p(total) / Math.log1p(50)))
+
+      let color
+      if (proportion >= DOMINANCE_THRESHOLD) {
+        // Dominant year color (use band index to get palette color)
+        const bandIdx = selectedBands[maxIdx]
+        color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || [180, 180, 180]
+      } else {
+        // Mixed: gray
+        color = [180, 180, 180]
+      }
+
+      pixels[px] = Math.round(color[0] * brightness)
+      pixels[px + 1] = Math.round(color[1] * brightness)
+      pixels[px + 2] = Math.round(color[2] * brightness)
+      pixels[px + 3] = 255
     }
-
-    const proportion = maxVal / total
-
-    // Brightness (log scale, minimum 0.7 for visibility)
-    const brightness = Math.min(1, Math.max(0.7, Math.log1p(total) / Math.log1p(50)))
-
-    let color
-    if (proportion >= DOMINANCE_THRESHOLD) {
-      // Dominant year color (use band index to get palette color)
-      const bandIdx = selectedBands[maxIdx]
-      color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || [180, 180, 180]
-    } else {
-      // Mixed: gray
-      color = [180, 180, 180]
-    }
-
-    pixels[px] = Math.round(color[0] * brightness)
-    pixels[px + 1] = Math.round(color[1] * brightness)
-    pixels[px + 2] = Math.round(color[2] * brightness)
-    pixels[px + 3] = 255
   }
 
-  ctx.putImageData(imageData, 0, 0)
+  // Place the colored region at the correct position on the tile
+  ctx.putImageData(imageData, dstLeft, dstTop)
 
   // Convert to PNG blob and then ArrayBuffer for MapLibre protocol
   const blob = await canvas.convertToBlob({ type: 'image/png' })
