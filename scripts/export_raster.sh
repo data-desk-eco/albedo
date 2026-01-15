@@ -107,31 +107,19 @@ print(f"  Bands: {band_descriptions}")
 print(f"  Config: {cog_metadata}")
 COMBINE_EOF
 
-# Warp to Web Mercator (EPSG:3857) for MapLibre tile compatibility
-# MapLibre expects tiles in Web Mercator; reprojection must happen here, not client-side
-echo "Warping to Web Mercator (EPSG:3857)..."
-gdalwarp \
-  -s_srs EPSG:4326 \
-  -t_srs EPSG:3857 \
-  -te -20037508.34 7760119 20037508.34 20037508.34 \
-  -tr 1000 1000 \
-  -r near \
-  -co COMPRESS=DEFLATE \
-  data/vessel_combined.tif \
-  data/vessel_warped.tif
-
-# Convert to Cloud-Optimized GeoTIFF
-echo "Creating Cloud-Optimized GeoTIFF..."
+# Keep COG in EPSG:4326 (geographic coordinates) for correct display on globe projection
+# Client-side renderer will convert Web Mercator tile bounds to geographic coords
+echo "Creating Cloud-Optimized GeoTIFF (EPSG:4326)..."
 gdal_translate \
   -of COG \
   -co COMPRESS=DEFLATE \
   -co PREDICTOR=2 \
   -co OVERVIEWS=AUTO \
   -co RESAMPLING=NEAREST \
-  data/vessel_warped.tif \
+  data/vessel_combined.tif \
   data/vessel_heatmap.tif
 
 # Cleanup
-rm -f data/vessel_activity_*.csv data/vessel_activity_*.tif data/vessel_combined.tif data/land_mask.tif data/vessel_warped.tif
+rm -f data/vessel_activity_*.csv data/vessel_activity_*.tif data/vessel_combined.tif data/land_mask.tif
 
 echo "✓ Vessel heatmap with land mask: data/vessel_heatmap.tif ($(du -h data/vessel_heatmap.tif | cut -f1))"
