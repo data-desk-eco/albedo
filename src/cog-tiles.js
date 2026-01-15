@@ -21,10 +21,6 @@ let cogConfig = null
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
 
-// Latitude cutoffs for aesthetic clipping (degrees)
-const SOUTH_LAT_DEG = 57
-const NORTH_LAT_DEG = 85.0
-
 let tiff = null
 let pool = null
 let imageCache = new Map()
@@ -379,15 +375,6 @@ async function colorizeWithReprojection(
 
     // Convert Mercator Y to latitude
     const lat = mercatorYToLat(mercY)
-
-    // Apply latitude cutoffs (aesthetic)
-    if (lat < SOUTH_LAT_DEG || lat > NORTH_LAT_DEG) {
-      for (let col = 0; col < dstWidth; col++) {
-        const px = (dstRow * dstWidth + col) * 4
-        pixels[px + 3] = 0
-      }
-      continue
-    }
 
     // Map latitude to source row index
     // Source row 0 = srcMaxLat, row (srcHeight-1) = srcMinLat

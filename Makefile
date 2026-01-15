@@ -41,11 +41,12 @@ data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
 	@echo "Generated COGs:" && ls -lh data/vessel_heatmap*.tif
 
-# Export client-side data files
+# Export client-side data files (manifest + PMTiles + vessel tooltips)
 export: data/export/.done
 
-data/export/.done: data/data.duckdb
-	./scripts/export_sqlite.sh
+data/export/.done: data/data.duckdb manifest.template.json .env
+	./scripts/export_manifest.sh
+	./scripts/export_pmtiles.sh
 	uv run python scripts/export_tiles.py
 	@touch $@
 
