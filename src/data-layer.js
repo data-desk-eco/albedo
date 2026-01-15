@@ -215,15 +215,16 @@ export async function loadPlaces() {
  * @param {number} lat Latitude
  * @param {number} lon Longitude
  * @param {number|null} year Optional year filter
+ * @param {string|null} vesselType Optional vessel type filter
  * @returns {Array} Array of vessel objects
  */
-export async function queryVesselsAt(lat, lon, year = null) {
+export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
   // Skip queries south of the latitude cutoff
   if (lat < southLatCutoff) {
     return []
   }
 
-  return queryTileVessels(lat, lon, year)
+  return queryTileVessels(lat, lon, year, vesselType)
 }
 
 /**

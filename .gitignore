@@ -28,7 +28,7 @@ data/ne_10m_populated_places/
 data/protected_areas.geojson
 data/*.pmtiles
 data/*.tif
-!data/vessel_heatmap.tif
+!data/vessel_heatmap*.tif
 data/vessel_categories/
 
 # Data - databases are too large

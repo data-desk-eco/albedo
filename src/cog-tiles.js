@@ -422,6 +422,24 @@ export function clearCache() {
 }
 
 /**
+ * Switch to a different COG file
+ * @param {string} url URL of the new COG file
+ * @returns {Object} New COG configuration
+ */
+export async function switchCOG(url) {
+  // Clear caches
+  imageCache.clear()
+  tiff = null
+  pool = null
+  mainImageBBox = null
+  mainImageSize = null
+  cogConfig = null
+
+  // Re-initialize with new COG
+  return await initCOG(url)
+}
+
+/**
  * Check if COG is initialized
  */
 export function isInitialized() {

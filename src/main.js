@@ -6,7 +6,7 @@
 import './style.css'
 import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize } from './cog-tiles.js'
+import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize, switchCOG } from './cog-tiles.js'
 import { initDB, loadProtectedAreas, loadVesselCrossings, loadPlaces, queryVesselsAt } from './data-layer.js'
 import {
   DEBUG_MODE,
@@ -26,6 +26,7 @@ let map = null
 // Map state
 let currentCategory = 'all'
 let categories = []
+let cogUrls = {}  // { 'all': url, 'FISHING': url, ... }
 let activeYears = new Set()
 let knownYears = []
 let satelliteMode = false
@@ -237,18 +238,11 @@ function toggleLayer(layerId) {
 function loadCategories() {
   categories = [{ id: 'all', label: t('allVessels') }]
 
-  if (allCrossings?.features) {
-    const types = new Set()
-    allCrossings.features.forEach(f => {
-      if (f.properties?.vessel_type) {
-        types.add(f.properties.vessel_type)
-      }
-    })
-
-    Array.from(types).sort().forEach(type => {
-      categories.push({ id: type, label: tVesselType(type) })
-    })
-  }
+  // Get vessel types from manifest's cogsByType (these have COGs available)
+  const cogsByType = manifest?.data?.cogsByType || {}
+  Object.keys(cogsByType).sort().forEach(type => {
+    categories.push({ id: type, label: tVesselType(type) })
+  })
 
   populateCategoryDropdown()
 }
@@ -265,21 +259,36 @@ function populateCategoryDropdown() {
   select.value = currentCategory
 }
 
-function selectCategory(categoryId) {
+async function selectCategory(categoryId) {
+  if (categoryId === currentCategory) return
+
+  const previousCategory = currentCategory
   currentCategory = categoryId
 
-  if (allCrossings && map.getSource('vessel-crossings')) {
-    if (categoryId === 'all') {
-      map.getSource('vessel-crossings').setData(allCrossings)
-    } else {
-      const filtered = {
-        type: 'FeatureCollection',
-        features: allCrossings.features.filter(f =>
-          f.properties?.vessel_type === categoryId
-        )
-      }
-      map.getSource('vessel-crossings').setData(filtered)
+  // Switch to the appropriate COG for this vessel type
+  const cogUrl = cogUrls[categoryId]
+  if (!cogUrl) {
+    console.warn(`No COG URL for category: ${categoryId}`)
+    return
+  }
+
+  console.log(`Switching to COG: ${categoryId}`)
+
+  try {
+    // Switch COG source
+    await switchCOG(cogUrl)
+
+    // Clear tile cache and force reload
+    cogTileCache.clear()
+    const source = map.getSource('vessel-heatmap')
+    if (source) {
+      source.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
     }
+  } catch (err) {
+    console.error(`Failed to switch to COG for ${categoryId}:`, err)
+    // Revert to previous category
+    currentCategory = previousCategory
+    document.getElementById('category-select').value = previousCategory
   }
 }
 
@@ -384,9 +393,17 @@ async function init() {
   // 2. Initialize i18n
   await initI18n(manifest, dataUrl)
 
-  // 3. Build COG URL from manifest
+  // 3. Build COG URLs from manifest
   const cogFile = manifest.data?.cog || 'vessel_heatmap.tif'
   const cogUrl = cogFile.startsWith('http') ? cogFile : dataUrl + cogFile
+
+  // Build COG URL map: 'all' + per-vessel-type
+  cogUrls = { all: cogUrl }
+  const cogsByType = manifest.data?.cogsByType || {}
+  for (const [type, url] of Object.entries(cogsByType)) {
+    cogUrls[type] = url.startsWith('http') ? url : dataUrl + url
+  }
+  console.log('COG URLs:', Object.keys(cogUrls))
 
   // 4. Initialize COG and get metadata
   const cogConfig = await initCOG(cogUrl)
@@ -441,6 +458,7 @@ async function init() {
   initYearLegend(knownYears)
   updateMultiYearLegend()
   populatePlacesDropdown()
+  loadCategories()  // Now uses manifest's cogsByType, not crossings data
 
 }
 
@@ -478,7 +496,6 @@ function setupMapHandlers(cogConfig) {
       map.getSource('places').setData(places)
 
       dataInitialized = true
-      loadCategories()
     } catch (err) {
       console.error('Failed to load vector data:', err)
     }
@@ -575,7 +592,8 @@ function setupMapHandlers(cogConfig) {
     }
 
     try {
-      const vessels = await queryVesselsAt(lat, lng, year)
+      const vesselType = currentCategory === 'all' ? null : currentCategory
+      const vessels = await queryVesselsAt(lat, lng, year, vesselType)
       showRasterTooltip(vessels)
     } catch (err) {
       // Silently fail tooltip queries

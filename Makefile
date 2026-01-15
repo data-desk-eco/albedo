@@ -34,11 +34,12 @@ transform: data/data.duckdb
 data/data.duckdb: data/.convert.done etl/transform.sql
 	duckdb $@ < etl/transform.sql
 
-# Generate COG with land mask
+# Generate COGs with land mask (aggregate + per-vessel-type)
 tiles: data/vessel_heatmap.tif
 
 data/vessel_heatmap.tif: data/data.duckdb
 	./scripts/export_raster.sh
+	@echo "Generated COGs:" && ls -lh data/vessel_heatmap*.tif
 
 # Export client-side data files
 export: data/export/.done
@@ -72,7 +73,7 @@ preview: build
 	yarn run preview
 
 clean:
-	rm -rf dist data/data.duckdb data/export data/vessel_heatmap.tif
+	rm -rf dist data/data.duckdb data/export data/vessel_heatmap*.tif
 
 #───────────────────────────────────────────────────────────────────────────────
 # Deployment
@@ -83,11 +84,12 @@ clean:
 GCS_BUCKET := albedo-data
 GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
-# Deploy large data files to GCS (COG + vessel data for range requests)
+# Deploy large data files to GCS (COGs + vessel data for range requests)
 deploy-data: data/vessel_heatmap.tif data/export/.done
-	gcloud storage cp data/vessel_heatmap.tif gs://$(GCS_BUCKET)/
+	gcloud storage cp data/vessel_heatmap*.tif gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
+	@echo "COGs uploaded:" && gcloud storage ls gs://$(GCS_BUCKET)/vessel_heatmap*.tif
 
 # Setup GCS bucket with CORS for range requests (run once)
 setup-gcs:
