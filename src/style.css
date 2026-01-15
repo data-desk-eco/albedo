@@ -1,13 +1,14 @@
-/* Only latin + cyrillic subsets (skip greek, vietnamese, latin-ext) */
-@import '@fontsource/inter/latin-400.css';
-@import '@fontsource/inter/latin-500.css';
-@import '@fontsource/inter/cyrillic-400.css';
-@import '@fontsource/inter/cyrillic-500.css';
+/* JetBrains Mono - modern monospace with Cyrillic support */
+@import '@fontsource/jetbrains-mono/latin-300.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/cyrillic-300.css';
+@import '@fontsource/jetbrains-mono/cyrillic-400.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 :root {
-  --ui-font-size: 16px;
-  --ui-font-family: 'Inter', sans-serif;
+  --ui-font-size: 14px;
+  --ui-font-family: 'JetBrains Mono', monospace;
+  --ui-font-weight: 300;
   --ui-panel-width: 220px;
   --ui-color: #fff;
   --ui-color-muted: rgba(255, 255, 255, 0.7);
@@ -31,6 +32,7 @@ body {
 #lang-toggle,
 #about-content {
   font-family: var(--ui-font-family);
+  font-weight: var(--ui-font-weight);
   color: var(--ui-color);
   background: var(--ui-bg);
   border: var(--ui-border);
@@ -189,6 +191,11 @@ body {
   margin-top: 12px;
 }
 
+.legend-source a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* Language toggle */
 #lang-toggle {
   position: absolute;
@@ -288,7 +295,7 @@ body {
 }
 
 #tooltip .vessel-row.vessel-header {
-  font-weight: 600;
+  font-weight: 400;
   font-size: 14px;
   color: var(--ui-color-muted);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
@@ -306,7 +313,7 @@ body {
 }
 
 #tooltip .vessel-name {
-  font-weight: 500;
+  font-weight: 400;
 }
 
 #tooltip .vessel-hours,
@@ -343,7 +350,7 @@ body {
 #about-content h2 {
   margin: 0 0 16px 0;
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 #about-content p {

@@ -50,14 +50,25 @@ export function createMapStyle(manifest, dataUrl) {
   const satelliteUrl = manifest.layers?.satellite?.url ||
     'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg'
 
+  // Use manifest bounds for satellite layer clipping (same as raster heatmap)
+  const bounds = manifest.map?.bounds || {}
+  const satelliteBounds = [
+    bounds.west ?? -180,
+    bounds.south ?? -90,
+    bounds.east ?? 180,
+    bounds.north ?? 90
+  ]
+
   return {
     version: 8,
+    glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     projection: { type: manifest.map?.projection || 'globe' },
     sources: {
       'sentinel-2': {
         type: 'raster',
         tiles: [satelliteUrl],
         tileSize: 256,
+        bounds: satelliteBounds,
         attribution: manifest.ui?.attribution || ''
       },
       'vessel-heatmap': {
