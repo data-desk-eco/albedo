@@ -268,9 +268,10 @@ async function loadBlock(blockId) {
  * @param {number} lat Latitude
  * @param {number} lon Longitude
  * @param {number|null} year Optional year filter
+ * @param {string|null} vesselType Optional vessel type filter
  * @returns {Promise<Array>} Array of vessel objects
  */
-export async function queryVesselsAt(lat, lon, year = null) {
+export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
   // Convert to Hilbert index
   const [latGrid, lonGrid] = latLonToGrid(lat, lon)
   const hilbert = xyToHilbert(latGrid, lonGrid)
@@ -297,6 +298,10 @@ export async function queryVesselsAt(lat, lon, year = null) {
 
   if (year !== null) {
     result = result.filter(v => v.year === year)
+  }
+
+  if (vesselType !== null) {
+    result = result.filter(v => v.vessel_type === vesselType)
   }
 
   return result
