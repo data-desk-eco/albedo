@@ -5,6 +5,10 @@ data/*.parquet
 !data/export/*.parquet
 !data/export/manifest.json
 !data/export/i18n/
+data/export/tiles/
+data/export/*.sqlite
+data/export/*.bin
+data/export/*.tif
 data/gfw/
 data/gfw_*/
 data/temp/
