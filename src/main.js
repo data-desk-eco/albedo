@@ -554,6 +554,18 @@ function setupMapHandlers() {
   map.on('zoom', () => {
     if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) hideTooltip()
   })
+
+  // Constrain view to Arctic region - bounce back if tilted too far south
+  const minLat = manifest.map?.bounds?.south || 50
+  const centerLat = manifest.map?.center?.[1] || 75
+  map.on('moveend', () => {
+    const center = map.getCenter()
+    const pitch = map.getPitch()
+    const effectiveMinLat = minLat + pitch * 0.5
+    if (center.lat < effectiveMinLat) {
+      map.easeTo({ center: [center.lng, effectiveMinLat], duration: 300 })
+    }
+  })
 }
 
 function setupUIHandlers() {
