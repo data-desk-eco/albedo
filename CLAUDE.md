@@ -2,7 +2,7 @@
 
 - Always use yarn for managing JS dependencies
 
-Map of shipping activity along Russia's Northern Sea Route. Consultancy project for Arctida.
+Generic vessel activity viewer. Template-driven configuration for different regions.
 
 ## Architecture
 
@@ -11,13 +11,14 @@ Fully static, client-side architecture. Zero server compute - all rendering happ
 ```
 Cloud Storage (~100 MB)
 ├── index.html + JS/CSS           ~2 MB    (Vite build)
-├── vessel_heatmap.tif            ~18 MB   (COG: 3 vessel bands + land mask)
-├── vectors.sqlite                ~1 MB    (protected areas, crossings, places)
+├── vessel_heatmap.tif            ~18 MB   (COG: 3 year bands + land mask)
+├── vessel_heatmap_*.tif          ~15 MB each (per-type COGs: fishing, cargo, etc.)
+├── vectors.pmtiles               ~1 MB    (protected areas, places)
 └── vessel_data.bin               ~55 MB   (Hilbert-indexed vessel tooltips)
 
 Browser
 ├── geotiff.js          → reads COG via range requests, renders raster tiles
-├── sql.js-httpvfs      → queries vectors.sqlite via HTTP range requests
+├── pmtiles             → reads vectors.pmtiles via range requests
 ├── vessel-tiles.js     → queries vessel_data.bin via HTTP range requests
 └── MapLibre GL         → composites all layers
 ```
@@ -29,20 +30,47 @@ make install   # Install Python + JS dependencies
 make fetch     # Fetch GFW data + protected areas + basemaps
 make convert   # Convert JSON → Parquet
 make transform # Run SQL transformations → data/data.duckdb
-make tiles     # Generate COG heatmap with land mask
-make export    # Export SQLite files for client
+make tiles     # Generate COG heatmaps (all + per-type)
+make export    # Export PMTiles + manifest for client
 make dev       # Start dev server at http://localhost:5173
 ```
 
-Configuration in `.env` — edit date ranges, study area, tile version, etc.
+## Configuration
+
+All region-specific config is in `.env`:
+
+```bash
+# Data hosting (leave empty for local files)
+COG_BASE_URL=https://storage.googleapis.com/albedo-data/
+
+# Region bounds
+SOUTH_LAT=57
+NORTH_LAT=90
+WEST_LON=20
+EAST_LON=-160
+
+# Initial view
+CENTER_LON=100
+CENTER_LAT=75
+INITIAL_ZOOM=2.5
+
+# Vessel types for per-type COGs
+VESSEL_TYPES=FISHING,CARGO,PASSENGER,CARRIER
+
+# UI
+UI_TITLE=Albedo
+DEFAULT_LANG=ru
+```
+
+The manifest is generated from `manifest.template.json` using `scripts/export_manifest.sh`.
 
 ## Data pipeline
 
 1. **Fetch**: GFW 4Wings API → `data/gfw/*.json` (monthly)
 2. **Convert**: JSON → Parquet with DuckDB
 3. **Transform**: `etl/transform.sql` → `data/data.duckdb` (2.6GB)
-4. **Tiles**: Export COG with land mask (`data/vessel_heatmap.tif`)
-5. **Export**: SQLite files for client (`data/export/*.sqlite`)
+4. **Tiles**: Export COGs with land mask (`scripts/export_raster.sh`)
+5. **Export**: PMTiles + manifest (`scripts/export_pmtiles.sh`, `scripts/export_manifest.sh`)
 
 ## Database (data/data.duckdb)
 
@@ -54,8 +82,9 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 ## Client-side data
 
 Exported to `data/export/`:
-- `vectors.sqlite` — Protected areas, vessel crossings, and places (small, loaded at startup)
-- `vessel_data.bin` — Hilbert-curve indexed vessel data for tooltips (HTTP range requests)
+- `manifest.json` — Generated config (map bounds, COG URLs, UI settings)
+- `vectors.pmtiles` — Protected areas and places (PMTiles format)
+- `vessel_data.bin` — Hilbert-curve indexed vessel data for tooltips
 
 ### Grid coordinate convention
 
@@ -75,36 +104,35 @@ This convention is used consistently in:
 Vite-based build with:
 - MapLibre GL JS for rendering
 - geotiff.js for client-side COG tile rendering
-- sql.js-httpvfs for client-side SQLite queries via HTTP range requests
+- pmtiles for vector tile loading
 - Globe projection with raster heatmap visualization
-- Arctic-focused navigation (pitch + zoom limits, latitude constraint)
 
 ## Structure
 
 ```
 .
 ├── index.html              # HTML entry point
+├── manifest.template.json  # Manifest template with ${VAR} placeholders
+├── .env                    # Region configuration
 ├── src/
 │   ├── main.js             # App logic + map
 │   ├── config.js           # Map style and constants
 │   ├── cog-tiles.js        # COG tile renderer (EPSG:4326 → Web Mercator)
 │   ├── vessel-tiles.js     # Hilbert-indexed vessel data queries
-│   ├── data-layer.js       # sql.js-httpvfs queries (vectors)
+│   ├── data-layer.js       # PMTiles protocol + vessel tooltip queries
 │   ├── i18n.js             # Internationalization
 │   └── style.css           # Styles
-├── vite.config.js          # Vite configuration
-├── package.json            # Frontend dependencies
-├── Makefile                # Pipeline orchestration
-├── scripts/                # Data fetching & processing
-│   ├── export_raster.sh    # Generate COG with land mask
-│   └── export_sqlite.py    # Export SQLite for client
+├── scripts/
+│   ├── export_raster.sh    # Generate COGs with land mask
+│   ├── export_pmtiles.sh   # Generate PMTiles from DuckDB
+│   ├── export_manifest.sh  # Generate manifest.json from template
+│   └── export_tiles.py     # Export vessel_data.bin
 ├── etl/
-│   └── transform.sql       # SQL transformations (replaces dbt)
+│   └── transform.sql       # SQL transformations
 └── data/                   # Generated data (gitignored)
     ├── gfw/                # Raw GFW API responses
     ├── data.duckdb         # Transformed data (2.6GB)
-    ├── vessel_heatmap.tif  # COG raster heatmap with land mask
-    └── export/             # SQLite files for client
+    └── export/             # Client files (manifest, PMTiles, etc.)
 ```
 
 ## Sources
@@ -115,6 +143,6 @@ Vite-based build with:
 ## Stack
 
 - **Data**: DuckDB + plain SQL
-- **Tiles**: GDAL (COG generation)
-- **Frontend**: Vite + MapLibre GL JS + geotiff.js + sql.js-httpvfs
+- **Tiles**: GDAL (COG generation), tippecanoe (PMTiles)
+- **Frontend**: Vite + MapLibre GL JS + geotiff.js + pmtiles
 - **Hosting**: Google Cloud Storage (static files)

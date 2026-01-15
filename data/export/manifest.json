@@ -25,9 +25,9 @@
   },
 
   "data": {
-    "cog": "vessel_heatmap.tif",
+    "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vesselData": "vessel_data.bin",
-    "cogsByType": {"FISHING":"vessel_heatmap_fishing.tif","CARGO":"vessel_heatmap_cargo.tif","PASSENGER":"vessel_heatmap_passenger.tif","CARRIER":"vessel_heatmap_carrier.tif"}
+    "cogsByType": {"FISHING":"https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif","CARGO":"https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif","PASSENGER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif","CARRIER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"}
   },
 
   "layers": {
@@ -37,7 +37,7 @@
     },
     "vectors": {
       "protected-areas": {
-        "url": "vectors.pmtiles",
+        "url": "data/export/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -55,7 +55,7 @@
         ]
       },
       "places": {
-        "url": "vectors.pmtiles",
+        "url": "data/export/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {

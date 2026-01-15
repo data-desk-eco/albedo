@@ -44,6 +44,10 @@ export function createMapStyle(manifest) {
       tiles: ['cog://{z}/{x}/{y}'],
       tileSize: 256,
       attribution: manifest.ui?.attribution || ''
+    },
+    'debug-tooltip-targets': {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] }
     }
   }
 
@@ -110,7 +114,7 @@ export function createMapStyle(manifest) {
   layers.push({
     id: 'debug-tooltip-targets',
     type: 'fill',
-    source: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+    source: 'debug-tooltip-targets',
     minzoom: 5,
     paint: {
       'fill-color': '#ff0000',
