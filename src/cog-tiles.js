@@ -21,7 +21,7 @@ let cogConfig = null
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
 
-// Latitude cutoffs (in degrees, since COG is now in EPSG:4326)
+// Latitude cutoffs for aesthetic clipping (degrees)
 const SOUTH_LAT_DEG = 57
 const NORTH_LAT_DEG = 85.0
 
@@ -128,6 +128,14 @@ function mercatorYToLat(y) {
 }
 
 /**
+ * Convert latitude to Web Mercator Y
+ */
+function latToMercatorY(lat) {
+  const latRad = lat * Math.PI / 180
+  return 20037508.34 * Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / Math.PI
+}
+
+/**
  * Convert tile coordinates to geographic bbox (EPSG:4326)
  * Returns [minLon, minLat, maxLon, maxLat] in degrees
  */
@@ -151,7 +159,7 @@ function tileToBBox(z, x, y) {
 }
 
 /**
- * Render a single tile
+ * Render a single tile with proper EPSG:4326 to Web Mercator reprojection
  * @param {number} z Zoom level
  * @param {number} x Tile x coordinate
  * @param {number} y Tile y coordinate
@@ -167,58 +175,51 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
   const image = await getImageForZoom(z)
   const [imgWidth, imgHeight] = [image.getWidth(), image.getHeight()]
 
-  // Use main image bbox (overviews don't have geotransform) - in Web Mercator
-  const [cogMinX, cogMinY, cogMaxX, cogMaxY] = mainImageBBox
+  // COG bbox in EPSG:4326 (degrees)
+  const [cogMinLon, cogMinLat, cogMaxLon, cogMaxLat] = mainImageBBox
 
-  // Tile bbox in Web Mercator coordinates
-  const [tileMinX, tileMinY, tileMaxX, tileMaxY] = tileToBBox(z, x, y)
+  // Tile bbox in EPSG:4326 (degrees)
+  const [tileMinLon, tileMinLat, tileMaxLon, tileMaxLat] = tileToBBox(z, x, y)
 
-  // Debug logging for first tile that intersects
-  if (!window._cogDebugLogged) {
-    window._cogDebugLogged = true
-    const pixelW = (cogMaxX - cogMinX) / mainImageSize[0]
-    const pixelH = (cogMaxY - cogMinY) / mainImageSize[1]
-    console.log(`COG Debug: tile z=${z} x=${x} y=${y}`)
-    console.log(`  cogBBox (EPSG:4326): [${cogMinX.toFixed(2)}°, ${cogMinY.toFixed(2)}°, ${cogMaxX.toFixed(2)}°, ${cogMaxY.toFixed(2)}°]`)
-    console.log(`  mainImageSize: ${mainImageSize[0]} x ${mainImageSize[1]}`)
-    console.log(`  currentImageSize: ${imgWidth} x ${imgHeight}`)
-    console.log(`  tileBBox (EPSG:4326): [${tileMinX.toFixed(2)}°, ${tileMinY.toFixed(2)}°, ${tileMaxX.toFixed(2)}°, ${tileMaxY.toFixed(2)}°]`)
-    console.log(`  tileSize: ${(tileMaxX - tileMinX).toFixed(3)}° x ${(tileMaxY - tileMinY).toFixed(3)}°`)
-    console.log(`  pixelSize: ${pixelW.toFixed(4)}° x ${pixelH.toFixed(4)}°`)
-  }
-
-  // Check if tile intersects image bounds
-  if (tileMaxX < cogMinX || tileMinX > cogMaxX || tileMaxY < cogMinY || tileMinY > cogMaxY) {
+  // Check if tile intersects COG bounds
+  if (tileMaxLon < cogMinLon || tileMinLon > cogMaxLon || tileMaxLat < cogMinLat || tileMinLat > cogMaxLat) {
     return await createEmptyTile()
   }
 
-  // Calculate pixel window relative to THIS image's resolution
   // Scale factor from main image to current overview
   const scaleX = imgWidth / mainImageSize[0]
   const scaleY = imgHeight / mainImageSize[1]
 
-  const pixelWidth = (cogMaxX - cogMinX) / mainImageSize[0]
-  const pixelHeight = (cogMaxY - cogMinY) / mainImageSize[1]
+  // Pixel size in degrees (main image)
+  const pixelWidthDeg = (cogMaxLon - cogMinLon) / mainImageSize[0]
+  const pixelHeightDeg = (cogMaxLat - cogMinLat) / mainImageSize[1]
 
-  // Calculate window in main image coordinates, then scale
-  // Note: image Y increases downward, geo Y increases upward
-  const mainWindowX = (tileMinX - cogMinX) / pixelWidth
-  const mainWindowY = (cogMaxY - tileMaxY) / pixelHeight
-  const mainWindowWidth = (tileMaxX - tileMinX) / pixelWidth
-  const mainWindowHeight = (tileMaxY - tileMinY) / pixelHeight
+  // Calculate X (longitude) window - this is still linear
+  const mainWindowX = (tileMinLon - cogMinLon) / pixelWidthDeg
+  const mainWindowWidth = (tileMaxLon - tileMinLon) / pixelWidthDeg
 
-  // Scale to this overview's coordinates (use floats for accuracy)
+  // For Y, we need to find the latitude range we actually need to read from the COG
+  // Clamp the tile's lat range to the COG's lat range
+  const readMinLat = Math.max(tileMinLat, cogMinLat)
+  const readMaxLat = Math.min(tileMaxLat, cogMaxLat)
+
+  // Convert to source Y coordinates (image row 0 = cogMaxLat, row increases = lat decreases)
+  const mainWindowYTop = (cogMaxLat - readMaxLat) / pixelHeightDeg
+  const mainWindowYBottom = (cogMaxLat - readMinLat) / pixelHeightDeg
+  const mainWindowHeight = mainWindowYBottom - mainWindowYTop
+
+  // Scale to this overview's coordinates
   const windowX = mainWindowX * scaleX
-  const windowY = mainWindowY * scaleY
   const windowWidth = mainWindowWidth * scaleX
-  const windowHeight = mainWindowHeight * scaleY
+  const windowYTop = mainWindowYTop * scaleY
+  const windowYBottom = mainWindowYBottom * scaleY
+  const windowHeight = windowYBottom - windowYTop
 
-  // Calculate the intersection with image bounds
-  // This determines what portion of the source image we can actually read
+  // Calculate source region (clamped to image bounds)
   const srcLeft = Math.max(0, windowX)
-  const srcTop = Math.max(0, windowY)
   const srcRight = Math.min(imgWidth, windowX + windowWidth)
-  const srcBottom = Math.min(imgHeight, windowY + windowHeight)
+  const srcTop = Math.max(0, windowYTop)
+  const srcBottom = Math.min(imgHeight, windowYBottom)
 
   const srcWidth = srcRight - srcLeft
   const srcHeight = srcBottom - srcTop
@@ -227,57 +228,66 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
     return await createEmptyTile()
   }
 
-  // Calculate what portion of the OUTPUT tile this source region maps to
-  // If the tile extends beyond the COG, we only render the valid portion
+  // Calculate destination region in the output tile
+  // X is linear: dst pixels map linearly to longitude
   const dstLeft = Math.round(((srcLeft - windowX) / windowWidth) * TILE_SIZE)
-  const dstTop = Math.round(((srcTop - windowY) / windowHeight) * TILE_SIZE)
   const dstRight = Math.round(((srcRight - windowX) / windowWidth) * TILE_SIZE)
-  const dstBottom = Math.round(((srcBottom - windowY) / windowHeight) * TILE_SIZE)
-
   const dstWidth = dstRight - dstLeft
-  const dstHeight = dstBottom - dstTop
 
-  // Debug logging for window dimensions
-  if (!window._cogWindowLogged) {
-    window._cogWindowLogged = true
-    console.log(`COG Window: tile z=${z} x=${x} y=${y}`)
-    console.log(`  mainWindow: x=${mainWindowX.toFixed(1)} y=${mainWindowY.toFixed(1)} w=${mainWindowWidth.toFixed(1)} h=${mainWindowHeight.toFixed(1)}`)
-    console.log(`  scaledWindow: x=${windowX.toFixed(1)} y=${windowY.toFixed(1)} w=${windowWidth.toFixed(1)} h=${windowHeight.toFixed(1)}`)
-    console.log(`  srcRegion: [${srcLeft.toFixed(1)}, ${srcTop.toFixed(1)}, ${srcRight.toFixed(1)}, ${srcBottom.toFixed(1)}]`)
-    console.log(`  dstRegion: [${dstLeft}, ${dstTop}, ${dstRight}, ${dstBottom}] (${dstWidth}x${dstHeight})`)
-  }
+  // For Y, we need to calculate based on Mercator projection
+  // Convert latitude range to Mercator Y, then to tile pixel coordinates
+  const tileMercMinY = latToMercatorY(tileMinLat)
+  const tileMercMaxY = latToMercatorY(tileMaxLat)
+  const tileMercHeight = tileMercMaxY - tileMercMinY
+
+  // The actual lat range we're reading
+  const actualMinLat = cogMaxLat - (srcBottom / scaleY) * pixelHeightDeg
+  const actualMaxLat = cogMaxLat - (srcTop / scaleY) * pixelHeightDeg
+
+  const actualMercMinY = latToMercatorY(actualMinLat)
+  const actualMercMaxY = latToMercatorY(actualMaxLat)
+
+  // Map to tile pixel coordinates (tile top = maxY, tile bottom = minY in Mercator)
+  const dstTop = Math.round(((tileMercMaxY - actualMercMaxY) / tileMercHeight) * TILE_SIZE)
+  const dstBottom = Math.round(((tileMercMaxY - actualMercMinY) / tileMercHeight) * TILE_SIZE)
+  const dstHeight = dstBottom - dstTop
 
   if (dstWidth <= 0 || dstHeight <= 0) {
     return await createEmptyTile()
   }
 
   try {
-    // Read rasters for the valid source region, resampled to destination size
+    // Calculate source dimensions (integer pixel bounds)
+    const srcLeftInt = Math.floor(srcLeft)
+    const srcTopInt = Math.floor(srcTop)
+    const srcRightInt = Math.ceil(srcRight)
+    const srcBottomInt = Math.ceil(srcBottom)
+    const srcWidthInt = srcRightInt - srcLeftInt
+    const srcHeightInt = srcBottomInt - srcTopInt
+
+    // Read rasters at SOURCE resolution - no resampling by geotiff.js
+    // This ensures we never skip any source pixels due to downsampling
     const rasters = await image.readRasters({
-      window: [Math.floor(srcLeft), Math.floor(srcTop), Math.ceil(srcRight), Math.ceil(srcBottom)],
-      width: dstWidth,
-      height: dstHeight,
+      window: [srcLeftInt, srcTopInt, srcRightInt, srcBottomInt],
+      // No width/height specified = read at native resolution
       resampleMethod: 'nearest',
       pool,
     })
 
-    // Debug: verify rasters dimensions
-    if (!window._rastersLogged) {
-      window._rastersLogged = true
-      console.log(`Rasters: ${rasters.length} bands, ${rasters.width}x${rasters.height} (dst: ${dstWidth}x${dstHeight})`)
-    }
+    // Calculate the precise latitude bounds of what we actually read
+    // (accounting for integer pixel snapping)
+    const readMinLat = cogMaxLat - (srcBottomInt / scaleY) * pixelHeightDeg
+    const readMaxLat = cogMaxLat - (srcTopInt / scaleY) * pixelHeightDeg
 
-    // Calculate latitude bounds for the OUTPUT region (for latitude cutoff)
-    // Map destination pixel range back to geographic latitude
-    const latRange = tileMaxY - tileMinY
-    const outputMinLat = tileMaxY - (dstBottom / TILE_SIZE) * latRange
-    const outputMaxLat = tileMaxY - (dstTop / TILE_SIZE) * latRange
-
-    // Colorize to the destination size, then composite onto full tile
-    const result = await colorizePartial(
+    // Colorize with per-scanline reprojection (handles both X and Y resampling)
+    const result = await colorizeWithReprojection(
       rasters, selectedBands, showLand,
       dstLeft, dstTop, dstWidth, dstHeight,
-      outputMinLat, outputMaxLat
+      readMinLat, readMaxLat,
+      tileMinLon, tileMaxLon,
+      tileMinLat, tileMaxLat,
+      cogMinLon, cogMaxLon,
+      srcLeftInt, srcRightInt, scaleX, pixelWidthDeg
     )
     return result
   } catch (err) {
@@ -299,61 +309,115 @@ async function createEmptyTile() {
 }
 
 /**
- * Colorize raster data and composite onto a full tile at the specified position
- * Handles partial tiles where only a portion of the tile has valid COG data
- * @param {Object} rasters Raster data with bands (size: dstWidth x dstHeight)
+ * Colorize raster data with proper EPSG:4326 to Web Mercator reprojection
+ * Does per-pixel sampling to handle non-linear latitude transformation
+ * and ensure no source data is lost during resampling.
+ *
+ * @param {Object} rasters Source raster data at native resolution
  * @param {number[]} selectedBands Band indices to use for coloring
  * @param {boolean} showLand Whether to render land as white
- * @param {number} dstLeft X offset in the output tile
- * @param {number} dstTop Y offset in the output tile
- * @param {number} dstWidth Width of the raster data
- * @param {number} dstHeight Height of the raster data
- * @param {number} outputMinLat Minimum latitude of the output region
- * @param {number} outputMaxLat Maximum latitude of the output region
- * @returns {ArrayBuffer}
+ * @param {number} dstLeft X offset in output tile
+ * @param {number} dstTop Y offset in output tile
+ * @param {number} dstWidth Width of output region
+ * @param {number} dstHeight Height of output region
+ * @param {number} srcMinLat Minimum latitude of source data
+ * @param {number} srcMaxLat Maximum latitude of source data
+ * @param {number} tileMinLon Minimum longitude of the tile
+ * @param {number} tileMaxLon Maximum longitude of the tile
+ * @param {number} tileMinLat Minimum latitude of the tile
+ * @param {number} tileMaxLat Maximum latitude of the tile
+ * @param {number} cogMinLon COG minimum longitude
+ * @param {number} cogMaxLon COG maximum longitude
+ * @param {number} srcLeftPx Source left pixel coordinate (in overview space)
+ * @param {number} srcRightPx Source right pixel coordinate (in overview space)
+ * @param {number} scaleX Scale factor from main image to overview
+ * @param {number} pixelWidthDeg Pixel width in degrees (main image)
  */
-async function colorizePartial(rasters, selectedBands, showLand, dstLeft, dstTop, dstWidth, dstHeight, outputMinLat, outputMaxLat) {
+async function colorizeWithReprojection(
+  rasters, selectedBands, showLand,
+  dstLeft, dstTop, dstWidth, dstHeight,
+  srcMinLat, srcMaxLat,
+  tileMinLon, tileMaxLon,
+  tileMinLat, tileMaxLat,
+  cogMinLon, cogMaxLon,
+  srcLeftPx, srcRightPx, scaleX, pixelWidthDeg
+) {
   const canvas = new OffscreenCanvas(TILE_SIZE, TILE_SIZE)
   const ctx = canvas.getContext('2d')
-
-  // Start with fully transparent tile
   ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE)
 
-  // Create image data for just the portion we're filling
   const imageData = ctx.createImageData(dstWidth, dstHeight)
   const pixels = imageData.data
+
+  const srcHeight = rasters.height
+  const srcWidth = rasters.width
 
   const landBandIdx = cogConfig?.landBand ?? rasters.length - 1
   const land = rasters[landBandIdx]
   const vesselBands = selectedBands.length > 0 ? selectedBands.map(b => rasters[b]) : []
 
-  // Calculate latitude range per pixel for cutoff
-  const latPerPixel = (outputMaxLat - outputMinLat) / dstHeight
+  // Mercator Y range for the tile
+  const tileMercMinY = latToMercatorY(tileMinLat)
+  const tileMercMaxY = latToMercatorY(tileMaxLat)
+  const tileMercHeight = tileMercMaxY - tileMercMinY
 
-  for (let row = 0; row < dstHeight; row++) {
-    for (let col = 0; col < dstWidth; col++) {
-      const i = row * dstWidth + col
-      const px = i * 4
+  // Longitude range for the tile
+  const tileLonWidth = tileMaxLon - tileMinLon
 
-      // Calculate this pixel's latitude
-      // Row 0 is at the top (north), last row is at the bottom (south)
-      const pixelLat = outputMaxLat - (row + 0.5) * latPerPixel
+  // Source longitude range (derived from pixel coordinates)
+  const srcMinLon = cogMinLon + (srcLeftPx / scaleX) * pixelWidthDeg
+  const srcMaxLon = cogMinLon + (srcRightPx / scaleX) * pixelWidthDeg
+  const srcLonWidth = srcMaxLon - srcMinLon
 
-      // Skip pixels outside latitude cutoffs
-      if (pixelLat < SOUTH_LAT_DEG || pixelLat > NORTH_LAT_DEG) {
-        pixels[px + 3] = 0  // transparent
-        continue
+  // For each output pixel, calculate exact source coordinates
+  for (let dstRow = 0; dstRow < dstHeight; dstRow++) {
+    // Output row's position in the tile (0 = top, TILE_SIZE = bottom)
+    const tileY = dstTop + dstRow
+
+    // Convert tile Y to Mercator Y (tile top = tileMercMaxY, bottom = tileMercMinY)
+    const mercY = tileMercMaxY - ((tileY + 0.5) / TILE_SIZE) * tileMercHeight
+
+    // Convert Mercator Y to latitude
+    const lat = mercatorYToLat(mercY)
+
+    // Apply latitude cutoffs (aesthetic)
+    if (lat < SOUTH_LAT_DEG || lat > NORTH_LAT_DEG) {
+      for (let col = 0; col < dstWidth; col++) {
+        const px = (dstRow * dstWidth + col) * 4
+        pixels[px + 3] = 0
       }
+      continue
+    }
+
+    // Map latitude to source row index
+    // Source row 0 = srcMaxLat, row (srcHeight-1) = srcMinLat
+    // Use floor for consistent pixel selection (always pick the pixel whose center is just north)
+    const srcRowFrac = ((srcMaxLat - lat) / (srcMaxLat - srcMinLat)) * srcHeight
+    const srcRow = Math.floor(Math.max(0, Math.min(srcHeight - 1, srcRowFrac)))
+
+    // Process each column in this row
+    for (let col = 0; col < dstWidth; col++) {
+      const px = (dstRow * dstWidth + col) * 4
+
+      // Calculate longitude for this output pixel
+      const tileX = dstLeft + col
+      const lon = tileMinLon + ((tileX + 0.5) / TILE_SIZE) * tileLonWidth
+
+      // Map longitude to source column
+      const srcColFrac = ((lon - srcMinLon) / srcLonWidth) * srcWidth
+      const srcCol = Math.floor(Math.max(0, Math.min(srcWidth - 1, srcColFrac)))
+
+      const srcIdx = srcRow * srcWidth + srcCol
 
       // Land: white (or transparent in satellite mode)
-      if (land && land[i] === 1) {
+      if (land && land[srcIdx] === 1) {
         if (showLand) {
           pixels[px] = 255
           pixels[px + 1] = 255
           pixels[px + 2] = 255
           pixels[px + 3] = 255
         } else {
-          pixels[px + 3] = 0  // transparent
+          pixels[px + 3] = 0
         }
         continue
       }
@@ -365,7 +429,7 @@ async function colorizePartial(rasters, selectedBands, showLand, dstLeft, dstTop
       }
 
       // Get vessel values for selected bands
-      const values = vesselBands.map(band => (band ? band[i] : 0) || 0)
+      const values = vesselBands.map(band => (band ? band[srcIdx] : 0) || 0)
       const total = values.reduce((a, b) => a + b, 0)
 
       // No activity: transparent (ocean)
@@ -391,11 +455,9 @@ async function colorizePartial(rasters, selectedBands, showLand, dstLeft, dstTop
 
       let color
       if (proportion >= DOMINANCE_THRESHOLD) {
-        // Dominant year color (use band index to get palette color)
         const bandIdx = selectedBands[maxIdx]
         color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || [180, 180, 180]
       } else {
-        // Mixed: gray
         color = [180, 180, 180]
       }
 
@@ -406,10 +468,7 @@ async function colorizePartial(rasters, selectedBands, showLand, dstLeft, dstTop
     }
   }
 
-  // Place the colored region at the correct position on the tile
   ctx.putImageData(imageData, dstLeft, dstTop)
-
-  // Convert to PNG blob and then ArrayBuffer for MapLibre protocol
   const blob = await canvas.convertToBlob({ type: 'image/png' })
   return await blob.arrayBuffer()
 }

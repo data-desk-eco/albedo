@@ -77,6 +77,39 @@ function debounce(fn, delay) {
   }
 }
 
+/**
+ * Throttle with leading edge - fires immediately on first call,
+ * then ignores calls until delay passes, then fires trailing call if any
+ */
+function throttle(fn, delay) {
+  let lastCall = 0
+  let pendingArgs = null
+  let timeoutId = null
+
+  return (...args) => {
+    const now = Date.now()
+
+    if (now - lastCall >= delay) {
+      // Enough time passed, fire immediately
+      lastCall = now
+      fn(...args)
+    } else {
+      // Too soon, queue for later
+      pendingArgs = args
+      if (!timeoutId) {
+        timeoutId = setTimeout(() => {
+          lastCall = Date.now()
+          timeoutId = null
+          if (pendingArgs) {
+            fn(...pendingArgs)
+            pendingArgs = null
+          }
+        }, delay - (now - lastCall))
+      }
+    }
+  }
+}
+
 // ============================================================================
 // UI Functions
 // ============================================================================
@@ -507,6 +540,13 @@ function setupMapHandlers(cogConfig) {
       map.getSource('places').setData(places)
 
       dataInitialized = true
+
+      // Hide loading screen
+      const loading = document.getElementById('loading')
+      if (loading) {
+        loading.classList.add('fade')
+        setTimeout(() => loading.remove(), 300)
+      }
     } catch (err) {
       console.error('Failed to load vector data:', err)
     }
@@ -556,12 +596,24 @@ function setupMapHandlers(cogConfig) {
     hideTooltip()
   })
 
-  // Raster hover tooltip
-  const handleRasterHover = debounce(async (e) => {
+  // Raster hover tooltip - use throttle for immediate response
+  // Track last queried cell to avoid redundant queries
+  let lastQueryCell = null
+
+  const handleRasterHover = throttle(async (e) => {
     if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+
+    // Calculate which grid cell this falls into (0.01° grid)
+    const cellLat = Math.floor(lat * 100) / 100
+    const cellLon = Math.floor(lng * 100) / 100
+    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}`
+
+    // Skip if we already queried this exact cell
+    if (cellKey === lastQueryCell) return
+    lastQueryCell = cellKey
 
     // Debug: show the actual COG pixel being rendered
     // COG is now in EPSG:4326 (geographic) with 0.01° pixels
@@ -609,7 +661,7 @@ function setupMapHandlers(cogConfig) {
     } catch (err) {
       // Silently fail tooltip queries
     }
-  }, 50)
+  }, 16)  // ~60fps throttle - fires immediately, then rate-limits
 
   map.on('mousemove', (e) => {
     if (hoveringCrossing) return

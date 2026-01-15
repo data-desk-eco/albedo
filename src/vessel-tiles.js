@@ -265,6 +265,22 @@ async function loadBlock(blockId) {
 
 /**
  * Query vessels at a grid cell
+ *
+ * IMPORTANT: Grid cell coordinate convention
+ * ------------------------------------------
+ * Grid cells are identified by their LOWER-LEFT corner (pixel-is-area convention).
+ * A cell labeled "72.51" covers the area [72.51, 72.52).
+ *
+ * We use floor() to map query coordinates to cell keys:
+ *   floor(72.517 * 100) / 100 = 72.51 → cell "72.51" ✓
+ *   floor(72.520 * 100) / 100 = 72.52 → cell "72.52" ✓
+ *
+ * This matches how the COG raster renderer samples pixels, ensuring the tooltip
+ * queries the same cell that is visually displayed under the cursor.
+ *
+ * DO NOT use round() here - it would split cells at x.xx5, creating a mismatch
+ * between the rendered pixel and the queried data.
+ *
  * @param {number} lat Latitude
  * @param {number} lon Longitude
  * @param {number|null} year Optional year filter
@@ -285,13 +301,12 @@ export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
   // Load block
   const cells = await loadBlock(blockId)
 
-  // Snap to grid using same round() logic as raster export (raster_utils.py)
-  // This ensures hover lookup matches the pixel that contains the data
-  const col = Math.round((lon + 180) / 0.01)
-  const row = Math.round((90 - lat) / 0.01)
-  // Use explicit rounding to avoid floating point errors (e.g., 69.50999999999999)
-  const gridLon = (Math.round((-180 + col * 0.01) * 100) / 100).toFixed(2)
-  const gridLat = (Math.round((90 - row * 0.01) * 100) / 100).toFixed(2)
+  // Snap to grid using floor() to match COG renderer pixel boundaries
+  // Pixel at col covers longitude range [min_lon + col*0.01, min_lon + (col+1)*0.01)
+  const col = Math.floor((lon + 180) / 0.01)
+  const row = Math.floor((90 - lat) / 0.01)
+  const gridLon = (-180 + col * 0.01).toFixed(2)
+  const gridLat = (90 - row * 0.01).toFixed(2)
   const cellKey = `${gridLat}_${gridLon}`
 
   let result = cells.get(cellKey) || []

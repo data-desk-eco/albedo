@@ -12,11 +12,13 @@ Fully static, client-side architecture. Zero server compute - all rendering happ
 Cloud Storage (~100 MB)
 ├── index.html + JS/CSS           ~2 MB    (Vite build)
 ├── vessel_heatmap.tif            ~18 MB   (COG: 3 vessel bands + land mask)
-└── data/export/*.sqlite          ~80 MB   (vectors + tooltips)
+├── vectors.sqlite                ~1 MB    (protected areas, crossings, places)
+└── vessel_data.bin               ~55 MB   (Hilbert-indexed vessel tooltips)
 
 Browser
 ├── geotiff.js          → reads COG via range requests, renders raster tiles
-├── sql.js-httpvfs      → queries SQLite via HTTP range requests
+├── sql.js-httpvfs      → queries vectors.sqlite via HTTP range requests
+├── vessel-tiles.js     → queries vessel_data.bin via HTTP range requests
 └── MapLibre GL         → composites all layers
 ```
 
@@ -53,7 +55,20 @@ Configuration in `.env` — edit date ranges, study area, tile version, etc.
 
 Exported to `data/export/`:
 - `vectors.sqlite` — Protected areas, vessel crossings, and places (small, loaded at startup)
-- `vessel_lookup.sqlite` — Pre-aggregated vessel data for tooltips (large, HTTP range requests)
+- `vessel_data.bin` — Hilbert-curve indexed vessel data for tooltips (HTTP range requests)
+
+### Grid coordinate convention
+
+**IMPORTANT:** The 0.01° grid uses pixel-is-area convention where cells are identified by their lower-left corner.
+
+- Cell "72.51" covers the area [72.51, 72.52)
+- Use `floor()` to map coordinates to cells: `floor(72.517 * 100) / 100 = 72.51`
+- **DO NOT use `round()`** — it would split cells at x.xx5, causing mismatch between rendered pixels and tooltip queries
+
+This convention is used consistently in:
+- `cog-tiles.js` — COG raster renderer (per-pixel sampling)
+- `vessel-tiles.js` — Tooltip data queries
+- `export_tiles.py` — Binary data export
 
 ## Frontend
 
@@ -72,8 +87,9 @@ Vite-based build with:
 ├── src/
 │   ├── main.js             # App logic + map
 │   ├── config.js           # Map style and constants
-│   ├── cog-tiles.js        # Client-side COG tile renderer
-│   ├── data-layer.js       # sql.js-httpvfs queries
+│   ├── cog-tiles.js        # COG tile renderer (EPSG:4326 → Web Mercator)
+│   ├── vessel-tiles.js     # Hilbert-indexed vessel data queries
+│   ├── data-layer.js       # sql.js-httpvfs queries (vectors)
 │   ├── i18n.js             # Internationalization
 │   └── style.css           # Styles
 ├── vite.config.js          # Vite configuration
