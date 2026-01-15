@@ -124,14 +124,19 @@ function updateUI() {
     document.getElementById('about-description').textContent = localize(manifest.about.description)
   }
 
-  // Legend labels
+  // Legend labels (use short versions on narrow screens)
   document.getElementById('legend-protected').textContent = t(isNarrow ? 'protectedAreasShort' : 'protectedAreas')
   document.getElementById('legend-crossings').textContent = t(isNarrow ? 'vesselCrossingsShort' : 'vesselCrossings')
   document.getElementById('legend-satellite').textContent = t(isNarrow ? 'satelliteShort' : 'satellite')
-  document.getElementById('legend-source').textContent = t(isNarrow ? 'dataSourceShort' : 'dataSource')
   document.getElementById('legend-multi-year').textContent = t(isNarrow ? 'multiYearShort' : 'multiYear')
-  document.getElementById('legend-section-vessel').textContent = t('sectionVessel')
-  document.getElementById('legend-section-layers').textContent = t('sectionLayers')
+  document.getElementById('legend-section-vessel').textContent = t(isNarrow ? 'sectionVesselShort' : 'sectionVessel')
+  document.getElementById('legend-section-layers').textContent = t(isNarrow ? 'sectionLayersShort' : 'sectionLayers')
+
+  // Data source with link
+  const sourceText = t(isNarrow ? 'dataSourceShort' : 'dataSource')
+  const gfwLink = '<a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>'
+  const gfwLinkShort = '<a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">GFW</a>'
+  document.getElementById('legend-source').innerHTML = sourceText.replace('Global Fishing Watch', gfwLink).replace('GFW', gfwLinkShort)
 
   // Update place labels language if map is loaded
   if (map && map.getLayer('place-labels')) {
