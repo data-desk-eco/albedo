@@ -45,6 +45,7 @@ GCS                              Browser
 ├── vessel_heatmap.tif (COG)     geotiff.js → raster tiles
 ├── vectors.pmtiles              pmtiles → vector layers
 ├── vessel_data.bin              vessel-tiles.js → tooltips
+├── manifest.json                config + layer definitions
 └── index.html + JS              MapLibre GL → composites
 ```
 

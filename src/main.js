@@ -474,6 +474,9 @@ async function init() {
   populatePlacesDropdown()
   loadCategories()
   updateUI()
+
+  // Show UI now that content is loaded
+  document.body.classList.add('app-ready')
 }
 
 function setupMapHandlers() {
