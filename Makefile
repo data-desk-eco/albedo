@@ -90,6 +90,7 @@ deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vectors.pmtiles gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/
+	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)
