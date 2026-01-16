@@ -218,6 +218,16 @@ function updateMultiYearLegend() {
   if (multiYearItem) multiYearItem.classList.toggle('disabled', activeYears.size < 2)
 }
 
+function updateMapLabels() {
+  if (!map || !map.getLayer('place-labels')) return
+  const lang = getLang()
+  map.setLayoutProperty('place-labels', 'text-field', [
+    'coalesce',
+    ['get', `name_${lang}`],
+    ['get', 'name_en']
+  ])
+}
+
 // ============================================================================
 // Hatch Patterns
 // ============================================================================
@@ -487,6 +497,7 @@ function setupMapHandlers() {
   map.on('load', () => {
     map.triggerRepaint()
     dataInitialized = true
+    updateMapLabels()
     document.getElementById('map').classList.add('ready')
   })
 
@@ -564,6 +575,7 @@ function setupUIHandlers() {
     const newLang = await toggleLang()
     document.getElementById('lang-toggle').textContent = newLang === 'ru' ? 'en' : 'ру'
     updateUI()
+    updateMapLabels()
     loadCategories()
   })
 

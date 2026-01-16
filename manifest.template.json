@@ -64,7 +64,7 @@
             "source-layer": "places",
             "minzoom": 2,
             "layout": {
-              "text-field": ["coalesce", ["get", "name_${DEFAULT_LANG}"], ["get", "name_en"]],
+              "text-field": ["coalesce", ["get", "name_en"], ["get", "name_en"]],
               "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
               "text-size": ["interpolate", ["linear"], ["zoom"], 2.5, 12, 10, 20],
               "text-anchor": "center",
