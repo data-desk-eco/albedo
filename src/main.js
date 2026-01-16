@@ -1,19 +1,18 @@
 /**
  * Vessel Activity Viewer
- * Generic viewer for vessel raster data with COG + PMTiles
+ * Interactive map of vessel presence using Cloud-Optimized GeoTIFFs
  */
 
 import './style.css'
 import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize, switchCOG } from './cog-tiles.js'
-import { initData, queryVesselsAt } from './data-layer.js'
+import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize, switchCOG } from './cog.js'
+import { initData, queryVesselsAt } from './data.js'
 import {
   DEBUG_MODE,
   RASTER_TOOLTIP_MIN_ZOOM,
   MANIFEST_URL,
   createMapStyle,
-  getVectorLayerIds,
   getYearColor
 } from './config.js'
 
@@ -55,7 +54,6 @@ function hideTooltip() {
 
 /**
  * RAF-based throttle - coalesces calls to next animation frame
- * More efficient than setTimeout for UI updates
  */
 function rafThrottle(fn) {
   let pending = null
@@ -100,7 +98,6 @@ function applyManifestUI(manifest) {
 
 function updateUI() {
   const isNarrow = window.innerWidth <= 768
-  const lang = getLang()
 
   // About modal
   if (manifest?.about) {
@@ -258,8 +255,8 @@ const hatchPatterns = {
 
 function updateHeatmapSource() {
   const years = Array.from(activeYears).sort()
-  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
   activeYearBands = years.map(y => knownYears.indexOf(y)).filter(i => i >= 0)
+  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
   cogTileCache.clear()
   clearCOGCache()
   map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
@@ -286,7 +283,6 @@ function loadCategories() {
 
 function populateCategoryDropdown() {
   const select = document.getElementById('category-select')
-  // Hide dropdown if only "all" category (no type-specific COGs)
   if (categories.length <= 1) {
     select.classList.add('hidden')
     return
@@ -404,11 +400,9 @@ function showRasterTooltip(vessels) {
 
 async function init() {
   // 1. Load manifest
-  console.log('Loading manifest from:', MANIFEST_URL)
   const resp = await fetch(MANIFEST_URL)
   if (!resp.ok) throw new Error(`Failed to load manifest: ${resp.status}`)
   manifest = await resp.json()
-  console.log('Manifest loaded:', manifest.name || 'unnamed')
 
   applyManifestUI(manifest)
 
@@ -604,7 +598,6 @@ function setupUIHandlers() {
     }
   })
 
-  // Update perf stats periodically
   setInterval(() => {
     if (!perfVisible || !map) return
     const zoom = map.getZoom().toFixed(1)

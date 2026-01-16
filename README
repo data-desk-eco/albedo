@@ -18,5 +18,5 @@ make export    PMTiles + manifest
 
 Configuration
 -------------
-Define region bounds, center, and zoom in .env file.
+Copy .env.example to .env and edit for your region.
 Manifest template: manifest.template.json

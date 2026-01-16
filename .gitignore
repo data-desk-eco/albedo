@@ -49,6 +49,9 @@ map_*.png
 # Debug files
 progress.txt
 
+# Environment (contains API tokens)
+.env
+
 # System
 .DS_Store
 
