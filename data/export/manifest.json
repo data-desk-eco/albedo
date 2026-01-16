@@ -2,7 +2,7 @@
   "name": "russian-arctic",
 
   "about": {
-    "title": { "en": "About this map", "ru": "О карте" },
+    "title": { "en": "about this map", "ru": "о карте" },
     "description": {
       "en": "Interactive map of vessel presence based on Global Fishing Watch data. Click anywhere to continue.",
       "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch. Нажмите в любом месте, чтобы продолжить."

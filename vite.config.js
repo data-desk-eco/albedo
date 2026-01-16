@@ -66,23 +66,6 @@ export default defineConfig(({ mode }) => {
           const outDir = resolve(process.cwd(), 'dist')
           const dataDir = resolve(process.cwd(), 'data')
 
-          const exportDir = join(dataDir, 'export')
-          const outExportDir = join(outDir, 'data', 'export')
-          mkdirSync(outExportDir, { recursive: true })
-
-          // Copy i18n directory
-          const i18nDir = join(exportDir, 'i18n')
-          if (existsSync(i18nDir)) {
-            const outI18nDir = join(outExportDir, 'i18n')
-            mkdirSync(outI18nDir, { recursive: true })
-            for (const file of readdirSync(i18nDir)) {
-              const src = join(i18nDir, file)
-              if (statSync(src).isFile()) {
-                copyFileSync(src, join(outI18nDir, file))
-              }
-            }
-          }
-
           // Places
           const placesDir = join(dataDir, 'places')
           const outPlacesDir = join(outDir, 'data', 'places')

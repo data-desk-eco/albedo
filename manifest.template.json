@@ -2,7 +2,7 @@
   "name": "${REGION_ID}",
 
   "about": {
-    "title": { "en": "About this map", "ru": "О карте" },
+    "title": { "en": "about this map", "ru": "о карте" },
     "description": {
       "en": "${ABOUT_EN}",
       "ru": "${ABOUT_RU}"

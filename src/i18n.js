@@ -37,7 +37,7 @@ export async function initI18n(manifest, baseUrl) {
  */
 async function loadLanguage(lang) {
   try {
-    const response = await fetch(`${dataUrl}/i18n/${lang}.json`)
+    const response = await fetch(`${dataUrl}i18n/${lang}.json`)
     if (!response.ok) throw new Error(`Failed to load ${lang}.json`)
     translations[lang] = await response.json()
   } catch (err) {
@@ -45,7 +45,7 @@ async function loadLanguage(lang) {
     // Fallback: try to load English
     if (lang !== 'en' && !translations['en']) {
       try {
-        const response = await fetch(`${dataUrl}/i18n/en.json`)
+        const response = await fetch(`${dataUrl}i18n/en.json`)
         translations['en'] = await response.json()
         currentLang = 'en'
       } catch {
