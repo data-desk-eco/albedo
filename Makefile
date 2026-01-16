@@ -78,19 +78,19 @@ clean:
 
 #───────────────────────────────────────────────────────────────────────────────
 # Deployment
-# - GitHub Pages (via Actions): HTML/JS/CSS + small parquets
-# - GCS: Large files (COG + vessel_lookup) with range request support
+# All data files served from GCS (COGs, PMTiles, manifest, vessel data)
 #───────────────────────────────────────────────────────────────────────────────
 
 GCS_BUCKET := albedo-data
 GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
-# Deploy large data files to GCS (COGs + vessel data for range requests)
+# Deploy data files to GCS
 deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/vessel_heatmap*.tif gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/vectors.pmtiles gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
-	@echo "COGs uploaded:" && gcloud storage ls gs://$(GCS_BUCKET)/vessel_heatmap*.tif
 
 # Setup GCS bucket with CORS for range requests (run once)
 setup-gcs:

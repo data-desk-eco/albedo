@@ -9,6 +9,8 @@
   <style>
     #map{opacity:0;transition:opacity 0.8s ease-out}
     #map.ready{opacity:1}
+    #controls,#legend,#about-modal,#lang-toggle,#logo-container{opacity:0;pointer-events:none}
+    body.app-ready #controls,body.app-ready #legend,body.app-ready #about-modal,body.app-ready #lang-toggle,body.app-ready #logo-container{opacity:1;pointer-events:auto;transition:opacity 0.3s ease-out}
   </style>
 </head>
 <body>

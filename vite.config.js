@@ -62,25 +62,13 @@ export default defineConfig(({ mode }) => {
       {
         name: 'copy-data-files',
         closeBundle() {
-          // Copy small data files to dist (large files served from GCS)
+          // Copy local data files to dist (main data files served from GCS)
           const outDir = resolve(process.cwd(), 'dist')
           const dataDir = resolve(process.cwd(), 'data')
 
           const exportDir = join(dataDir, 'export')
           const outExportDir = join(outDir, 'data', 'export')
           mkdirSync(outExportDir, { recursive: true })
-
-          // Copy vectors.pmtiles
-          const vectorsSrc = join(exportDir, 'vectors.pmtiles')
-          if (existsSync(vectorsSrc)) {
-            copyFileSync(vectorsSrc, join(outExportDir, 'vectors.pmtiles'))
-          }
-
-          // Copy manifest.json
-          const manifestSrc = join(exportDir, 'manifest.json')
-          if (existsSync(manifestSrc)) {
-            copyFileSync(manifestSrc, join(outExportDir, 'manifest.json'))
-          }
 
           // Copy i18n directory
           const i18nDir = join(exportDir, 'i18n')
