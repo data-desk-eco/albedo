@@ -45,7 +45,7 @@ data/vessel_heatmap.tif: data/data.duckdb
 export: data/export/.done
 
 data/export/.done: data/data.duckdb manifest.template.json .env
-	./scripts/export_manifest.sh
+	node scripts/export_manifest.js
 	./scripts/export_pmtiles.sh
 	uv run python scripts/export_tiles.py
 	@touch $@

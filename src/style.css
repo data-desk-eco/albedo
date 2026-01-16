@@ -210,6 +210,25 @@ html, body {
   cursor: pointer;
 }
 
+/* Performance overlay */
+#perf-overlay {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  font-family: var(--ui-font-family);
+  font-size: 11px;
+  padding: 6px 10px;
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  color: #0ff;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+#perf-overlay.hidden {
+  display: none;
+}
+
 #lang-toggle:hover {
   background: var(--ui-bg-hover);
 }

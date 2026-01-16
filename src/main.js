@@ -53,28 +53,24 @@ function hideTooltip() {
   tooltip.classList.remove('visible')
 }
 
-function throttle(fn, delay) {
-  let lastCall = 0
-  let pendingArgs = null
-  let timeoutId = null
+/**
+ * RAF-based throttle - coalesces calls to next animation frame
+ * More efficient than setTimeout for UI updates
+ */
+function rafThrottle(fn) {
+  let pending = null
+  let rafId = null
 
   return (...args) => {
-    const now = Date.now()
-    if (now - lastCall >= delay) {
-      lastCall = now
-      fn(...args)
-    } else {
-      pendingArgs = args
-      if (!timeoutId) {
-        timeoutId = setTimeout(() => {
-          lastCall = Date.now()
-          timeoutId = null
-          if (pendingArgs) {
-            fn(...pendingArgs)
-            pendingArgs = null
-          }
-        }, delay - (now - lastCall))
-      }
+    pending = args
+    if (rafId === null) {
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        if (pending) {
+          fn(...pending)
+          pending = null
+        }
+      })
     }
   }
 }
@@ -503,7 +499,7 @@ function setupMapHandlers() {
 
   // Vessel tooltips
   let lastQueryCell = null
-  const handleRasterHover = throttle(async (e) => {
+  const handleRasterHover = rafThrottle(async (e) => {
     if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
 
     const { lat, lng } = e.lngLat
@@ -597,6 +593,24 @@ function setupUIHandlers() {
   })
 
   window.addEventListener('resize', updateUI)
+
+  // Performance overlay (press 'p' to toggle)
+  const perfOverlay = document.getElementById('perf-overlay')
+  let perfVisible = false
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'p' && !e.ctrlKey && !e.metaKey) {
+      perfVisible = !perfVisible
+      perfOverlay.classList.toggle('hidden', !perfVisible)
+    }
+  })
+
+  // Update perf stats periodically
+  setInterval(() => {
+    if (!perfVisible || !map) return
+    const zoom = map.getZoom().toFixed(1)
+    const center = map.getCenter()
+    perfOverlay.innerHTML = `z${zoom} | ${center.lat.toFixed(2)},${center.lng.toFixed(2)} | tiles:${cogTileCache.size}`
+  }, 500)
 }
 
 // ============================================================================
