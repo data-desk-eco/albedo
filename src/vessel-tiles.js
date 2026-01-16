@@ -1,50 +1,39 @@
 /**
  * Hilbert-curve ordered, block-compressed vessel data (v2)
- * Single file with range requests - ~200 lines, zero dependencies
+ * Single file with range requests - ~200 lines, one dependency
  */
 
-// Hilbert curve order (must match Python export)
-const HILBERT_ORDER = 16
+import { latLonToHilbert, snapToGrid } from './geo.js'
 
 let flags = []
 let vesselTypes = []
 let vessels = []
 let blockIndex = []  // [{hilbertStart, hilbertEnd, offset, compressedLen}]
 let dataUrl = ''
-let blockCache = new Map()  // blockId -> Map(cellKey -> vessels[])
 let dataVersion = 2  // Track format version for parsing
 
-/**
- * Convert lat/lon to grid coordinates for Hilbert curve
- */
-function latLonToGrid(lat, lon) {
-  const latGrid = Math.floor((lat + 90) * 100)
-  const lonGrid = Math.floor((lon + 180) * 100)
-  return [latGrid, lonGrid]
+// LRU cache for blocks (limits memory on long sessions)
+const CACHE_MAX_SIZE = 64
+let blockCache = new Map()  // blockId -> Map(cellKey -> vessels[])
+let cacheOrder = []  // LRU order tracking
+
+function cacheGet(blockId) {
+  if (!blockCache.has(blockId)) return null
+  // Move to end (most recently used)
+  const idx = cacheOrder.indexOf(blockId)
+  if (idx > -1) cacheOrder.splice(idx, 1)
+  cacheOrder.push(blockId)
+  return blockCache.get(blockId)
 }
 
-/**
- * Convert 2D coordinates to Hilbert curve index
- * Order n maps a 2^n x 2^n grid to a 1D index
- */
-function xyToHilbert(x, y, order = HILBERT_ORDER) {
-  let d = 0
-  let s = 1 << (order - 1)  // Start at 2^(order-1)
-  while (s > 0) {
-    const rx = (x & s) > 0 ? 1 : 0
-    const ry = (y & s) > 0 ? 1 : 0
-    d += s * s * ((3 * rx) ^ ry)
-    // Rotate
-    if (ry === 0) {
-      if (rx === 1) {
-        x = s - 1 - x
-        y = s - 1 - y
-      }
-      ;[x, y] = [y, x]
-    }
-    s >>= 1
+function cacheSet(blockId, data) {
+  // Evict oldest if at capacity
+  while (cacheOrder.length >= CACHE_MAX_SIZE) {
+    const oldest = cacheOrder.shift()
+    blockCache.delete(oldest)
   }
-  return d
+  blockCache.set(blockId, data)
+  cacheOrder.push(blockId)
 }
 
 /**
@@ -204,9 +193,8 @@ export async function initVesselTiles(url) {
  * Fetch and parse a block
  */
 async function loadBlock(blockId) {
-  if (blockCache.has(blockId)) {
-    return blockCache.get(blockId)
-  }
+  const cached = cacheGet(blockId)
+  if (cached) return cached
 
   const block = blockIndex[blockId]
   const resp = await fetch(dataUrl, {
@@ -275,27 +263,13 @@ async function loadBlock(blockId) {
     cells.set(cellKey, cellVessels)
   }
 
-  blockCache.set(blockId, cells)
+  cacheSet(blockId, cells)
   return cells
 }
 
 /**
  * Query vessels at a grid cell
- *
- * IMPORTANT: Grid cell coordinate convention
- * ------------------------------------------
- * Grid cells are identified by their LOWER-LEFT corner (pixel-is-area convention).
- * A cell labeled "72.51" covers the area [72.51, 72.52).
- *
- * We use floor() to map query coordinates to cell keys:
- *   floor(72.517 * 100) / 100 = 72.51 → cell "72.51" ✓
- *   floor(72.520 * 100) / 100 = 72.52 → cell "72.52" ✓
- *
- * This matches how the COG raster renderer samples pixels, ensuring the tooltip
- * queries the same cell that is visually displayed under the cursor.
- *
- * DO NOT use round() here - it would split cells at x.xx5, creating a mismatch
- * between the rendered pixel and the queried data.
+ * Uses geo.js for coordinate math - see snapToGrid() for pixel-is-area convention
  *
  * @param {number} lat Latitude
  * @param {number} lon Longitude
@@ -304,26 +278,12 @@ async function loadBlock(blockId) {
  * @returns {Promise<Array>} Array of vessel objects
  */
 export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
-  // Convert to Hilbert index
-  const [latGrid, lonGrid] = latLonToGrid(lat, lon)
-  const hilbert = xyToHilbert(latGrid, lonGrid)
-
-  // Find block
+  const hilbert = latLonToHilbert(lat, lon)
   const blockId = findBlock(hilbert)
-  if (blockId === -1) {
-    return []
-  }
+  if (blockId === -1) return []
 
-  // Load block
   const cells = await loadBlock(blockId)
-
-  // Snap to grid using floor() to match COG renderer pixel boundaries
-  // Pixel at col covers longitude range [min_lon + col*0.01, min_lon + (col+1)*0.01)
-  const col = Math.floor((lon + 180) / 0.01)
-  const row = Math.floor((90 - lat) / 0.01)
-  const gridLon = (-180 + col * 0.01).toFixed(2)
-  const gridLat = (90 - row * 0.01).toFixed(2)
-  const cellKey = `${gridLat}_${gridLon}`
+  const { key: cellKey } = snapToGrid(lat, lon)
 
   let result = cells.get(cellKey) || []
 

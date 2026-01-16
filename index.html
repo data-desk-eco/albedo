@@ -32,12 +32,16 @@
   <div id="places-info" class="hidden"></div>
 </div>
 <button id="lang-toggle">en</button>
+<div id="perf-overlay" class="hidden">
+  <div>render: <span id="perf-render">-</span>ms</div>
+  <div>load: <span id="perf-load">-</span>ms</div>
+</div>
 <div id="legend">
   <div id="legend-section-vessel" class="legend-section-title"></div>
   <div id="legend-years"></div>
   <div class="legend-item legend-multi-year">
     <div class="legend-symbol">
-      <div class="legend-square" style="background: rgb(180, 180, 180);"></div>
+      <div class="legend-square" style="background: var(--multi-year, rgb(180,180,180));"></div>
     </div>
     <span id="legend-multi-year" class="legend-text"></span>
   </div>
