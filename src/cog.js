@@ -15,6 +15,9 @@ const YEAR_PALETTE = [
   [128, 0, 255],    // Purple
 ]
 
+// Color for mixed cells where no single year dominates
+const MULTI_YEAR_COLOR = [180, 180, 180]
+
 // COG configuration - populated from metadata on init
 let cogConfig = null
 
@@ -443,9 +446,9 @@ async function colorizeWithReprojection(
       let color
       if (proportion >= DOMINANCE_THRESHOLD) {
         const bandIdx = selectedBands[maxIdx]
-        color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || [180, 180, 180]
+        color = YEAR_PALETTE[bandIdx % YEAR_PALETTE.length] || MULTI_YEAR_COLOR
       } else {
-        color = [180, 180, 180]
+        color = MULTI_YEAR_COLOR
       }
 
       pixels[px] = Math.round(color[0] * brightness)

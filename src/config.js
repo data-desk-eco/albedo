@@ -1,23 +1,23 @@
 /**
  * Vessel Activity Viewer - Configuration
- * Generic viewer that loads config from manifest.json and COG metadata
+ * Loads settings from manifest.json and COG metadata
  */
 
-import { YEAR_PALETTE } from './cog-tiles.js'
+import { YEAR_PALETTE } from './cog.js'
 
-// Debug mode: set to true to visualize tooltip target grid cells
+// Debug mode: visualize tooltip target grid cells
 export const DEBUG_MODE = false
 
-// Manifest URL - can be overridden via environment variable
+// Manifest URL - override via VITE_MANIFEST_URL environment variable
 export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'
 
-// Raster tooltip minimum zoom level
+// Minimum zoom level for vessel tooltips
 export const RASTER_TOOLTIP_MIN_ZOOM = 8
 
 /**
  * Convert RGB array to CSS rgb() string
  */
-export function rgbToCss(rgb) {
+function rgbToCss(rgb) {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
@@ -25,20 +25,18 @@ export function rgbToCss(rgb) {
  * Get CSS color for a year based on its band index
  */
 export function getYearColor(bandIndex) {
-  const rgb = YEAR_PALETTE[bandIndex % YEAR_PALETTE.length]
-  return rgbToCss(rgb)
+  return rgbToCss(YEAR_PALETTE[bandIndex % YEAR_PALETTE.length])
 }
 
 /**
- * Create map style configuration from manifest
- * @param {Object} manifest - The loaded manifest
+ * Create MapLibre style from manifest configuration
  */
 export function createMapStyle(manifest) {
   const theme = manifest.ui?.theme || {}
   const bounds = manifest.map?.bounds || {}
-
-  // Build sources from manifest
   const southBound = bounds.south ?? -90
+
+  // Sources
   const sources = {
     'vessel-heatmap': {
       type: 'raster',
@@ -68,12 +66,11 @@ export function createMapStyle(manifest) {
       type: 'raster',
       tiles: [manifest.layers.satellite.url],
       tileSize: 256,
-      // Clip at south bound (use -180/180 for lon to avoid antimeridian issues)
       bounds: [-180, bounds.south ?? -90, 180, bounds.north ?? 90]
     }
   }
 
-  // Add PMTiles vector sources from manifest
+  // Add PMTiles vector sources
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
     if (config.url) {
@@ -84,7 +81,7 @@ export function createMapStyle(manifest) {
     }
   }
 
-  // Build layers
+  // Layers
   const layers = [
     {
       id: 'background',
@@ -102,7 +99,6 @@ export function createMapStyle(manifest) {
       layout: { visibility: manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
       paint: { 'raster-opacity': 1 }
     })
-    // Mask to hide satellite below south bound
     layers.push({
       id: 'south-mask',
       type: 'fill',
@@ -111,7 +107,7 @@ export function createMapStyle(manifest) {
     })
   }
 
-  // Vessel heatmap (always present)
+  // Vessel heatmap
   layers.push({
     id: 'vessel-heatmap',
     type: 'raster',
@@ -124,7 +120,7 @@ export function createMapStyle(manifest) {
     }
   })
 
-  // Debug layer for tooltip targets
+  // Debug layer
   layers.push({
     id: 'debug-tooltip-targets',
     type: 'fill',
@@ -137,10 +133,9 @@ export function createMapStyle(manifest) {
     }
   })
 
-  // Add vector layers from manifest
+  // Vector layers from manifest
   for (const [sourceId, config] of Object.entries(vectorLayers)) {
     if (!config.style) continue
-
     for (const layerStyle of config.style) {
       layers.push({
         ...layerStyle,
@@ -160,13 +155,4 @@ export function createMapStyle(manifest) {
     sources,
     layers
   }
-}
-
-/**
- * Get layer IDs for a vector source (for toggling visibility)
- */
-export function getVectorLayerIds(manifest, sourceId) {
-  const config = manifest.layers?.vectors?.[sourceId]
-  if (!config?.style) return []
-  return config.style.map(s => s.id)
 }
