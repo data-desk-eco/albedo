@@ -121,7 +121,7 @@ const manifest = {
             id: 'place-labels',
             type: 'symbol',
             'source-layer': 'places',
-            minzoom: 2,
+            minzoom: 0,
             layout: {
               'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name_en']],
               'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
