@@ -23,6 +23,7 @@ let cogConfig = null
 
 const DOMINANCE_THRESHOLD = 0.6
 const TILE_SIZE = 256
+const MAX_MERCATOR_LAT = 85  // Web Mercator practical limit
 
 let tiff = null
 let pool = null
@@ -180,8 +181,11 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
   // Tile bbox in EPSG:4326 (degrees)
   const [tileMinLon, tileMinLat, tileMaxLon, tileMaxLat] = tileToBBox(z, x, y)
 
-  // Check if tile intersects COG bounds
+  // Check if tile intersects COG bounds (and is within Web Mercator limits)
   if (tileMaxLon < cogMinLon || tileMinLon > cogMaxLon || tileMaxLat < cogMinLat || tileMinLat > cogMaxLat) {
+    return await createEmptyTile()
+  }
+  if (tileMinLat > MAX_MERCATOR_LAT) {
     return await createEmptyTile()
   }
 
@@ -198,9 +202,9 @@ export async function renderTile(z, x, y, selectedBands = [0, 1, 2], showLand = 
   const mainWindowWidth = (tileMaxLon - tileMinLon) / pixelWidthDeg
 
   // For Y, we need to find the latitude range we actually need to read from the COG
-  // Clamp the tile's lat range to the COG's lat range
+  // Clamp the tile's lat range to the COG's lat range AND Web Mercator limit
   const readMinLat = Math.max(tileMinLat, cogMinLat)
-  const readMaxLat = Math.min(tileMaxLat, cogMaxLat)
+  const readMaxLat = Math.min(tileMaxLat, cogMaxLat, MAX_MERCATOR_LAT)
 
   // Convert to source Y coordinates (image row 0 = cogMaxLat, row increases = lat decreases)
   const mainWindowYTop = (cogMaxLat - readMaxLat) / pixelHeightDeg
@@ -378,6 +382,9 @@ async function colorizeWithReprojection(
 
     // Convert Mercator Y to latitude
     const lat = mercatorYToLat(mercY)
+
+    // Skip rows beyond Web Mercator limit (pixels already transparent)
+    if (lat > MAX_MERCATOR_LAT) continue
 
     // Map latitude to source row index
     // Source row 0 = srcMaxLat, row (srcHeight-1) = srcMinLat
