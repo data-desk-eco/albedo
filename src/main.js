@@ -368,8 +368,31 @@ function showRasterTooltip(vessels) {
     return
   }
 
-  const displayVessels = vessels.slice(0, 3)
-  const totalCount = vessels[0]?.cell_count || vessels.length
+  // Group entries by mmsi to consolidate multiple dates for same vessel
+  const byMmsi = new Map()
+  for (const v of vessels) {
+    const key = v.mmsi || v.ship_name || 'unknown'
+    if (!byMmsi.has(key)) {
+      byMmsi.set(key, {
+        mmsi: v.mmsi,
+        ship_name: v.ship_name,
+        vessel_type: v.vessel_type,
+        flag: v.flag,
+        total_hours: 0,
+        dates: []
+      })
+    }
+    const entry = byMmsi.get(key)
+    entry.total_hours += v.total_hours || 0
+    const dateStr = v.last_seen ? formatDateShort(v.last_seen) : v.year
+    if (!entry.dates.includes(dateStr)) {
+      entry.dates.push(dateStr)
+    }
+  }
+
+  const grouped = Array.from(byMmsi.values())
+  const displayVessels = grouped.slice(0, 3)
+  const totalCount = vessels[0]?.cell_count || grouped.length
   const moreCount = totalCount > 3 ? totalCount - 3 : 0
 
   const rows = [
@@ -378,7 +401,7 @@ function showRasterTooltip(vessels) {
     { key: t('type'), values: displayVessels.map(v => tVesselType(v.vessel_type)) },
     { key: t('flag'), values: displayVessels.map(v => v.flag || '?') },
     { key: t('hours'), values: displayVessels.map(v => Math.round(v.total_hours) + t('hoursShort')) },
-    { key: t('date'), values: displayVessels.map(v => v.last_seen ? formatDateShort(v.last_seen) : v.year) }
+    { key: t('date'), values: displayVessels.map(v => v.dates.join('<br>')) }
   ]
 
   let html = '<table>'
