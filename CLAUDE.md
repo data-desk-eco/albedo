@@ -1,7 +1,5 @@
 # Albedo
 
-- Use yarn for JS dependencies
-
 Template-driven vessel activity viewer. Fully static, client-side architecture.
 
 ## Quick Start
@@ -55,7 +53,3 @@ GCS                              Browser
 - `src/main.js` — App initialization, UI handlers
 - `src/cog-tiles.js` — COG tile renderer with EPSG:4326→Web Mercator reprojection
 - `scripts/export_pmtiles.sh` — PMTiles generation (clips to SOUTH_LAT)
-
-## Grid Convention
-
-0.01° grid uses pixel-is-area: cells identified by lower-left corner. Use `floor()` not `round()`.
