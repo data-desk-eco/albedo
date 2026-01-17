@@ -299,6 +299,7 @@ html, body {
 
 #tooltip td {
   padding: 2px 12px 2px 0;
+  vertical-align: top;
 }
 
 #tooltip td:first-child {
