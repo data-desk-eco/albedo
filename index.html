@@ -17,7 +17,10 @@
     #about-modal{opacity:0;pointer-events:none}
     body.about-visible #about-modal{opacity:1}
     body.about-visible.app-ready #about-modal{pointer-events:auto}
-    #about-continue{opacity:0;transition:opacity 0.3s}
+    #about-status{position:relative;margin-top:20px;height:1.5em}
+    #about-progress,#about-continue{position:absolute;top:0;left:0;margin:0;transition:opacity 0.3s}
+    #about-continue{opacity:0}
+    body.map-ready #about-progress{opacity:0}
     body.map-ready #about-continue{opacity:1}
   </style>
 </head>
@@ -27,7 +30,10 @@
   <div id="about-content">
     <h2 id="about-title"></h2>
     <p id="about-description"></p>
-    <p id="about-continue">click anywhere to continue</p>
+    <div id="about-status">
+      <p id="about-progress">loading [....................] 0%</p>
+      <p id="about-continue">click anywhere to continue</p>
+    </div>
   </div>
 </div>
 <div id="tooltip"></div>
