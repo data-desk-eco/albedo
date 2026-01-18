@@ -8,10 +8,6 @@
     "description": {
       "en": "Interactive map of vessel presence based on Global Fishing Watch data.",
       "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch."
-    },
-    "continue": {
-      "en": "click anywhere to continue",
-      "ru": "нажмите в любом месте, чтобы продолжить"
     }
   },
   "map": {

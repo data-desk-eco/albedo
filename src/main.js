@@ -105,9 +105,7 @@ function updateUI() {
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
     document.getElementById('about-description').textContent = localize(manifest.about.description)
-    if (manifest.about.continue) {
-      document.getElementById('about-continue').textContent = localize(manifest.about.continue)
-    }
+    document.getElementById('about-continue').textContent = t('continue')
   }
 
   // Legend labels
@@ -450,9 +448,7 @@ async function initPhase1() {
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
     document.getElementById('about-description').textContent = localize(manifest.about.description)
-    if (manifest.about.continue) {
-      document.getElementById('about-continue').textContent = localize(manifest.about.continue)
-    }
+    document.getElementById('about-continue').textContent = t('continue')
   }
 
   // Show the about modal now (before map loads)
