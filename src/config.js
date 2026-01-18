@@ -3,7 +3,15 @@
  * Loads settings from manifest.json and COG metadata
  */
 
-import { YEAR_PALETTE } from './cog.js'
+// Color palette for years (must match cog.js)
+const YEAR_PALETTE = [
+  [0, 255, 255],    // Cyan
+  [0, 255, 0],      // Green
+  [255, 0, 255],    // Magenta
+  [255, 255, 0],    // Yellow
+  [255, 128, 0],    // Orange
+  [128, 0, 255],    // Purple
+]
 
 // Debug mode: visualize tooltip target grid cells
 export const DEBUG_MODE = false

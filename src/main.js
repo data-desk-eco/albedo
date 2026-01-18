@@ -4,10 +4,7 @@
  */
 
 import './style.css'
-import maplibregl from 'maplibre-gl'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import { initCOG, renderTile, clearCache as clearCOGCache, getCOGBBox, getCOGPixelSize, switchCOG } from './cog.js'
-import { initData, queryVesselsAt } from './data.js'
 import {
   DEBUG_MODE,
   RASTER_TOOLTIP_MIN_ZOOM,
@@ -15,6 +12,11 @@ import {
   createMapStyle,
   getYearColor
 } from './config.js'
+
+// Lazy-loaded modules
+let maplibregl = null
+let cogModule = null
+let dataModule = null
 
 // App state
 let manifest = null
@@ -103,6 +105,9 @@ function updateUI() {
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
     document.getElementById('about-description').textContent = localize(manifest.about.description)
+    if (manifest.about.continue) {
+      document.getElementById('about-continue').textContent = localize(manifest.about.continue)
+    }
   }
 
   // Legend labels
@@ -199,7 +204,7 @@ function initLayerToggles() {
       if (toggle.isSatellite) {
         satelliteVisible = !isVisible
         cogTileCache.clear()
-        clearCOGCache()
+        cogModule?.clearCache()
         map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
       }
     })
@@ -258,7 +263,7 @@ function updateHeatmapSource() {
   activeYearBands = years.map(y => knownYears.indexOf(y)).filter(i => i >= 0)
   map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
   cogTileCache.clear()
-  clearCOGCache()
+  cogModule?.clearCache()
   map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
 }
 
@@ -306,7 +311,7 @@ async function selectCategory(categoryId) {
   if (!cogUrl) return
 
   try {
-    await switchCOG(cogUrl)
+    await cogModule.switchCOG(cogUrl)
     cogTileCache.clear()
     map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
   } catch (err) {
@@ -421,22 +426,57 @@ function showRasterTooltip(vessels) {
 // Application Initialization
 // ============================================================================
 
-async function init() {
-  // 1. Load manifest
+/**
+ * Phase 1: Load manifest and show about modal immediately
+ * This runs before any heavy libraries are loaded
+ */
+async function initPhase1() {
+  // Load manifest (tiny JSON file)
   const resp = await fetch(MANIFEST_URL)
   if (!resp.ok) throw new Error(`Failed to load manifest: ${resp.status}`)
   manifest = await resp.json()
 
-  applyManifestUI(manifest)
-
   // Determine base URL for data files
   const manifestDir = MANIFEST_URL.substring(0, MANIFEST_URL.lastIndexOf('/') + 1) || './'
 
-  // 2. Initialize i18n
+  // Initialize i18n (small module, already imported)
   await initI18n(manifest, manifestDir)
   document.getElementById('lang-toggle').textContent = getLang() === 'ru' ? 'en' : 'ру'
 
-  // 3. Build COG URLs
+  // Apply UI theme immediately
+  applyManifestUI(manifest)
+
+  // Show about modal content immediately
+  if (manifest?.about) {
+    document.getElementById('about-title').textContent = localize(manifest.about.title)
+    document.getElementById('about-description').textContent = localize(manifest.about.description)
+    if (manifest.about.continue) {
+      document.getElementById('about-continue').textContent = localize(manifest.about.continue)
+    }
+  }
+
+  // Show the about modal now (before map loads)
+  document.body.classList.add('about-visible')
+
+  return manifestDir
+}
+
+/**
+ * Phase 2: Load heavy libraries and initialize map (runs in background)
+ */
+async function initPhase2(manifestDir) {
+  // Lazy-load MapLibre GL and COG module in parallel
+  const [maplibreModule, cog, data] = await Promise.all([
+    import('maplibre-gl'),
+    import('./cog.js'),
+    import('./data.js')
+  ])
+
+  maplibregl = maplibreModule.default
+  cogModule = cog
+  dataModule = data
+
+  // Build COG URLs
   const cogUrl = manifest.data?.cog?.startsWith('http')
     ? manifest.data.cog
     : manifestDir + (manifest.data?.cog || 'vessel_heatmap.tif')
@@ -447,28 +487,28 @@ async function init() {
     cogUrls[type] = url.startsWith('http') ? url : manifestDir + url
   }
 
-  // 4. Initialize COG
-  const cogConfig = await initCOG(cogUrl)
+  // Initialize COG
+  const cogConfig = await cogModule.initCOG(cogUrl)
   knownYears = cogConfig.years
   activeYears = new Set(knownYears)
   activeYearBands = knownYears.map((_, idx) => idx)
 
-  // 5. Initialize data layer (PMTiles protocol + vessel tooltips)
-  await initData(manifestDir, manifest)
+  // Initialize data layer (PMTiles protocol + vessel tooltips)
+  await dataModule.initData(manifestDir, manifest)
 
-  // 6. Register COG tile protocol
+  // Register COG tile protocol
   maplibregl.addProtocol('cog', async (params) => {
     const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
     if (!match) throw new Error('Invalid COG tile URL')
     const [, z, x, y] = match.map(Number)
     const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}/${satelliteVisible}`
     if (cogTileCache.has(cacheKey)) return { data: cogTileCache.get(cacheKey) }
-    const buffer = await renderTile(z, x, y, activeYearBands, !satelliteVisible)
+    const buffer = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(cacheKey, buffer)
     return { data: buffer }
   })
 
-  // 7. Create map
+  // Create map
   const mapConfig = manifest.map || {}
   map = window.map = new maplibregl.Map({
     container: 'map',
@@ -486,11 +526,11 @@ async function init() {
     localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
 
-  // 8. Set up handlers
+  // Set up handlers
   setupMapHandlers()
   setupUIHandlers()
 
-  // 9. Initial UI
+  // Initial UI
   initYearLegend(knownYears)
   initLayerToggles()
   updateMultiYearLegend()
@@ -498,8 +538,13 @@ async function init() {
   loadCategories()
   updateUI()
 
-  // Show UI now that content is loaded
+  // Show full UI now that map is ready
   document.body.classList.add('app-ready')
+}
+
+async function init() {
+  const manifestDir = await initPhase1()
+  await initPhase2(manifestDir)
 }
 
 function setupMapHandlers() {
@@ -512,6 +557,7 @@ function setupMapHandlers() {
     dataInitialized = true
     updateMapLabels()
     document.getElementById('map').classList.add('ready')
+    document.body.classList.add('map-ready')
   })
 
   // Vessel tooltips
@@ -559,7 +605,7 @@ function setupMapHandlers() {
 
     try {
       const vesselType = currentCategory === 'all' ? null : currentCategory
-      const vessels = await queryVesselsAt(lat, lng, year, vesselType)
+      const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
       showRasterTooltip(vessels)
     } catch (err) { /* ignore */ }
   }, 16)
@@ -574,7 +620,7 @@ function setupMapHandlers() {
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
     const vesselType = currentCategory === 'all' ? null : currentCategory
     try {
-      const vessels = await queryVesselsAt(lat, lng, year, vesselType)
+      const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
       showRasterTooltip(vessels)
     } catch (err) { /* ignore */ }
   })
@@ -593,7 +639,7 @@ function setupUIHandlers() {
   })
 
   document.getElementById('about-modal').addEventListener('click', () => {
-    document.getElementById('about-modal').classList.add('hidden')
+    document.body.classList.remove('about-visible')
   })
 
   document.getElementById('category-select').addEventListener('change', (e) => {

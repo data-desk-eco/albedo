@@ -7,10 +7,18 @@
   <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin>
   <link rel="dns-prefetch" href="https://tiles.maps.eox.at">
   <style>
+    /* Map fades in when ready */
     #map{opacity:0;transition:opacity 0.4s ease-out}
     #map.ready{opacity:1}
-    #controls,#legend,#about-modal,#lang-toggle,#logo-container{opacity:0;pointer-events:none}
-    body.app-ready #controls,body.app-ready #legend,body.app-ready #about-modal,body.app-ready #lang-toggle,body.app-ready #logo-container{opacity:1;pointer-events:auto;transition:opacity 0.15s ease-out}
+    /* UI hidden until app ready */
+    #controls,#legend,#lang-toggle,#logo-container{opacity:0;pointer-events:none}
+    body.app-ready #controls,body.app-ready #legend,body.app-ready #lang-toggle,body.app-ready #logo-container{opacity:1;pointer-events:auto;transition:opacity 0.15s ease-out}
+    /* About modal: visible during load, dismissable after ready */
+    #about-modal{opacity:0;pointer-events:none}
+    body.about-visible #about-modal{opacity:1}
+    body.about-visible.app-ready #about-modal{pointer-events:auto}
+    #about-continue{opacity:0;transition:opacity 0.3s}
+    body.map-ready #about-continue{opacity:1}
   </style>
 </head>
 <body>
@@ -19,6 +27,7 @@
   <div id="about-content">
     <h2 id="about-title"></h2>
     <p id="about-description"></p>
+    <p id="about-continue">click anywhere to continue</p>
   </div>
 </div>
 <div id="tooltip"></div>
