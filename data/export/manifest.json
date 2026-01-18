@@ -1,16 +1,24 @@
 {
-  "name": "russian-arctic",
-
+  "name": "arctic",
   "about": {
-    "title": { "en": "about this map", "ru": "о карте" },
+    "title": {
+      "en": "about this map",
+      "ru": "о карте"
+    },
     "description": {
-      "en": "Interactive map of vessel presence based on Global Fishing Watch data. Click anywhere to continue.",
-      "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch. Нажмите в любом месте, чтобы продолжить."
+      "en": "Interactive map of vessel presence based on Global Fishing Watch data.",
+      "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch."
+    },
+    "continue": {
+      "en": "click anywhere to continue",
+      "ru": "нажмите в любом месте, чтобы продолжить"
     }
   },
-
   "map": {
-    "center": [100, 75],
+    "center": [
+      100,
+      75
+    ],
     "zoom": 2.5,
     "minZoom": 2.5,
     "maxZoom": 14,
@@ -19,17 +27,20 @@
     "bounds": {
       "south": 57,
       "north": 90,
-      "west": 20,
-      "east": -160
+      "west": -180,
+      "east": 180
     }
   },
-
   "data": {
     "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vesselData": "https://storage.googleapis.com/albedo-data/vessel_data.bin",
-    "cogsByType": {"FISHING":"https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif","CARGO":"https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif","PASSENGER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif","CARRIER":"https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"}
+    "cogsByType": {
+      "FISHING": "https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif",
+      "CARGO": "https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif",
+      "PASSENGER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif",
+      "CARRIER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"
+    }
   },
-
   "layers": {
     "satellite": {
       "url": "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg",
@@ -44,13 +55,20 @@
             "id": "protected-areas-fill",
             "type": "fill",
             "source-layer": "protected_areas",
-            "paint": { "fill-pattern": "hatch-white-md", "fill-opacity": 1 }
+            "paint": {
+              "fill-pattern": "hatch-white-md",
+              "fill-opacity": 1
+            }
           },
           {
             "id": "protected-areas-border",
             "type": "line",
             "source-layer": "protected_areas",
-            "paint": { "line-color": "#ffffff", "line-width": 2, "line-opacity": 1 }
+            "paint": {
+              "line-color": "#ffffff",
+              "line-width": 2,
+              "line-opacity": 1
+            }
           }
         ]
       },
@@ -62,11 +80,36 @@
             "id": "place-labels",
             "type": "symbol",
             "source-layer": "places",
-            "minzoom": 2,
+            "minzoom": 0,
             "layout": {
-              "text-field": ["coalesce", ["get", "name_ru"], ["get", "name_en"]],
-              "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
-              "text-size": ["interpolate", ["linear"], ["zoom"], 2.5, 12, 10, 20],
+              "text-field": [
+                "coalesce",
+                [
+                  "get",
+                  "name_en"
+                ],
+                [
+                  "get",
+                  "name_en"
+                ]
+              ],
+              "text-font": [
+                "Open Sans Regular",
+                "Arial Unicode MS Regular"
+              ],
+              "text-size": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                2.5,
+                12,
+                10,
+                20
+              ],
               "text-anchor": "center",
               "text-padding": 2,
               "text-allow-overlap": false
@@ -81,29 +124,54 @@
       }
     }
   },
-
   "ui": {
     "title": "Albedo",
     "favicon": "magenta",
     "defaultLang": "ru",
-    "availableLangs": ["en", "ru"],
+    "availableLangs": [
+      "en",
+      "ru"
+    ],
     "sourceLink": {
       "url": "https://globalfishingwatch.org/",
-      "label": { "en": "Global Fishing Watch", "ru": "Global Fishing Watch" },
-      "labelShort": { "en": "GFW", "ru": "GFW" }
+      "label": {
+        "en": "Global Fishing Watch",
+        "ru": "Global Fishing Watch"
+      },
+      "labelShort": {
+        "en": "GFW",
+        "ru": "GFW"
+      }
     },
     "layerToggles": [
       {
-        "layers": ["protected-areas-fill", "protected-areas-border"],
-        "label": { "en": "Protected areas", "ru": "ООПТ" },
-        "labelShort": { "en": "Protected", "ru": "ООПТ" },
+        "layers": [
+          "protected-areas-fill",
+          "protected-areas-border"
+        ],
+        "label": {
+          "en": "Protected areas",
+          "ru": "ООПТ"
+        },
+        "labelShort": {
+          "en": "Protected",
+          "ru": "ООПТ"
+        },
         "symbol": "hatch",
         "defaultVisible": true
       },
       {
-        "layers": ["satellite"],
-        "label": { "en": "Satellite imagery", "ru": "Спутник" },
-        "labelShort": { "en": "Satellite", "ru": "Спутник" },
+        "layers": [
+          "satellite"
+        ],
+        "label": {
+          "en": "Satellite imagery",
+          "ru": "Спутник"
+        },
+        "labelShort": {
+          "en": "Satellite",
+          "ru": "Спутник"
+        },
         "symbol": "satellite",
         "defaultVisible": false,
         "isSatellite": true
@@ -118,6 +186,38 @@
       "panelHover": "rgba(255, 255, 255, 0.1)"
     }
   },
-
-  "places": [{"id":"overview","name":{"en":"Overview","ru":"Обзор"},"description":{"en":"Full study area","ru":"Вся область исследования"},"center":[100,75],"zoom":2.5},{"id":"kara-sea","name":{"en":"Kara Sea","ru":"Карское море"},"description":{"en":"Gateway to the Northern Sea Route","ru":"Ворота Северного морского пути"},"center":[70,74],"zoom":5}]
+  "places": [
+    {
+      "id": "overview",
+      "name": {
+        "en": "Overview",
+        "ru": "Обзор"
+      },
+      "description": {
+        "en": "Full study area",
+        "ru": "Вся область исследования"
+      },
+      "center": [
+        100,
+        75
+      ],
+      "zoom": 2.5
+    },
+    {
+      "id": "kara-sea",
+      "name": {
+        "en": "Kara Sea",
+        "ru": "Карское море"
+      },
+      "description": {
+        "en": "Gateway to the Northern Sea Route",
+        "ru": "Ворота Северного морского пути"
+      },
+      "center": [
+        70,
+        74
+      ],
+      "zoom": 5
+    }
+  ]
 }

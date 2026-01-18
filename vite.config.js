@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
+      target: 'esnext',
+      modulePreload: {
+        resolveDependencies: (filename, deps) => {
+          // Don't preload geotiff - it's lazy-loaded after map init
+          return deps.filter(dep => !dep.includes('geotiff'))
+        }
+      },
       rollupOptions: {
         output: {
           manualChunks: {

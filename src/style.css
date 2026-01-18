@@ -1,15 +1,10 @@
-/* JetBrains Mono - modern monospace with Cyrillic support */
-@import '@fontsource/jetbrains-mono/latin-300.css';
-@import '@fontsource/jetbrains-mono/latin-400.css';
-@import '@fontsource/jetbrains-mono/cyrillic-300.css';
-@import '@fontsource/jetbrains-mono/cyrillic-400.css';
 @import 'maplibre-gl/dist/maplibre-gl.css';
 
 :root {
   /* Font settings */
-  --ui-font-size: 14px;
-  --ui-font-family: 'JetBrains Mono', monospace;
-  --ui-font-weight: 300;
+  --ui-font-size: 13px;
+  --ui-font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', Menlo, Monaco, Consolas, monospace;
+  --ui-font-weight: 400;
   --ui-panel-width: 220px;
   --ui-blur: blur(6px);
 
@@ -319,18 +314,15 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  transition: opacity 0.3s ease-out;
   cursor: pointer;
-}
-
-#about-modal.hidden {
-  display: none;
 }
 
 #about-content {
@@ -352,8 +344,14 @@ html, body {
   line-height: 1.6;
 }
 
-#about-content p:last-child {
+#about-content p:last-of-type {
   margin-bottom: 0;
+}
+
+#about-continue {
+  font-size: 12px;
+  color: var(--ui-color-muted);
+  margin-top: 20px;
 }
 
 #about-content .about-en {
