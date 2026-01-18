@@ -18,6 +18,16 @@ let maplibregl = null
 let cogModule = null
 let dataModule = null
 
+// Progress bar
+const PROGRESS_WIDTH = 20
+function updateProgress(percent) {
+  const filled = Math.round((percent / 100) * PROGRESS_WIDTH)
+  const empty = PROGRESS_WIDTH - filled
+  const bar = '#'.repeat(filled) + '.'.repeat(empty)
+  const el = document.getElementById('about-progress')
+  if (el) el.textContent = `loading [${bar}] ${percent}%`
+}
+
 // App state
 let manifest = null
 let map = null
@@ -448,7 +458,6 @@ async function initPhase1() {
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
     document.getElementById('about-description').textContent = localize(manifest.about.description)
-    document.getElementById('about-continue').textContent = t('continue')
   }
 
   // Show the about modal now (before map loads)
@@ -461,6 +470,8 @@ async function initPhase1() {
  * Phase 2: Load heavy libraries and initialize map (runs in background)
  */
 async function initPhase2(manifestDir) {
+  updateProgress(10)
+
   // Lazy-load MapLibre GL and COG module in parallel
   const [maplibreModule, cog, data] = await Promise.all([
     import('maplibre-gl'),
@@ -471,6 +482,7 @@ async function initPhase2(manifestDir) {
   maplibregl = maplibreModule.default
   cogModule = cog
   dataModule = data
+  updateProgress(40)
 
   // Build COG URLs
   const cogUrl = manifest.data?.cog?.startsWith('http')
@@ -488,9 +500,11 @@ async function initPhase2(manifestDir) {
   knownYears = cogConfig.years
   activeYears = new Set(knownYears)
   activeYearBands = knownYears.map((_, idx) => idx)
+  updateProgress(60)
 
   // Initialize data layer (PMTiles protocol + vessel tooltips)
   await dataModule.initData(manifestDir, manifest)
+  updateProgress(80)
 
   // Register COG tile protocol
   maplibregl.addProtocol('cog', async (params) => {
@@ -552,6 +566,7 @@ function setupMapHandlers() {
     map.triggerRepaint()
     dataInitialized = true
     updateMapLabels()
+    updateProgress(100)
     document.getElementById('map').classList.add('ready')
     document.body.classList.add('map-ready')
   })
