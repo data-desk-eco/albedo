@@ -1,0 +1,32 @@
+{
+  "name": "cog-tiles",
+  "version": "0.1.0",
+  "description": "Client-side COG tile renderer for MapLibre GL",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./geo": "./src/geo.js",
+    "./colorizers": "./src/colorizers.js"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "cog",
+    "geotiff",
+    "maplibre",
+    "tiles",
+    "raster",
+    "gis"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/data-desk-eco/albedo.git",
+    "directory": "tools/cog-tiles"
+  },
+  "peerDependencies": {
+    "geotiff": "^2.0.0"
+  }
+}
