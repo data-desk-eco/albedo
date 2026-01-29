@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Albedo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin>
   <link rel="dns-prefetch" href="https://tiles.maps.eox.at">
   <style>
@@ -29,7 +32,7 @@
 <div id="about-modal">
   <div id="about-content">
     <h2 id="about-title"></h2>
-    <p id="about-description"></p>
+    <div id="about-description"></div>
     <div id="about-status">
       <p id="about-progress">loading [....................] 0%</p>
       <p id="about-continue">click anywhere to continue</p>
@@ -37,6 +40,11 @@
   </div>
 </div>
 <div id="tooltip"></div>
+<div id="pa-info">
+  <span id="pa-info-close">&times;</span>
+  <div id="pa-info-name"></div>
+  <div id="pa-info-details"></div>
+</div>
 <div id="controls">
   <select id="category-select">
     <option value="all">vessel types</option>
@@ -56,7 +64,7 @@
   <div id="legend-years"></div>
   <div class="legend-item legend-multi-year">
     <div class="legend-symbol">
-      <div class="legend-square" style="background: var(--multi-year, rgb(180,180,180));"></div>
+      <div class="legend-square" style="background: rgb(61,147,255);"></div>
     </div>
     <span id="legend-multi-year" class="legend-text"></span>
   </div>

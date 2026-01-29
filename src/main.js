@@ -114,7 +114,9 @@ function updateUI() {
   // About modal
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
-    document.getElementById('about-description').textContent = localize(manifest.about.description)
+    const descText = localize(manifest.about.description)
+    const descEl = document.getElementById('about-description')
+    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
     document.getElementById('about-continue').textContent = t('continue')
   }
 
@@ -259,7 +261,10 @@ function createHatchPattern(color, size = 6) {
 const hatchPatterns = {
   'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
   'hatch-white-md': () => createHatchPattern('#ffffff', 10),
-  'hatch-white-lg': () => createHatchPattern('#ffffff', 16)
+  'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
+  'hatch-blue-sm': () => createHatchPattern('#1E6AFF', 6),
+  'hatch-blue-md': () => createHatchPattern('#1E6AFF', 10),
+  'hatch-blue-lg': () => createHatchPattern('#1E6AFF', 16)
 }
 
 // ============================================================================
@@ -431,6 +436,30 @@ function showRasterTooltip(vessels) {
 }
 
 // ============================================================================
+// Protected Area Info Panel
+// ============================================================================
+
+function showProtectedAreaInfo(feature) {
+  const props = feature.properties || {}
+  const lang = getLang()
+  const name = props[`name_${lang}`] || props.name_en || props.name || t('protectedArea')
+  const nameEl = document.getElementById('pa-info-name')
+  const detailsEl = document.getElementById('pa-info-details')
+  nameEl.textContent = name
+
+  const details = []
+  if (props.category) details.push(`${t('category')}: ${props.category}`)
+  if (props.iucn_cat) details.push(`${t('iucnCategory')}: ${props.iucn_cat}`)
+  detailsEl.innerHTML = details.join('<br>')
+
+  document.getElementById('pa-info').classList.add('visible')
+}
+
+function hideProtectedAreaInfo() {
+  document.getElementById('pa-info').classList.remove('visible')
+}
+
+// ============================================================================
 // Application Initialization
 // ============================================================================
 
@@ -457,7 +486,9 @@ async function initPhase1() {
   // Show about modal content immediately
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
-    document.getElementById('about-description').textContent = localize(manifest.about.description)
+    const descText = localize(manifest.about.description)
+    const descEl = document.getElementById('about-description')
+    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
   }
 
   // Show the about modal now (before map loads)
@@ -535,6 +566,9 @@ async function initPhase2(manifestDir) {
     renderWorldCopies: false,
     localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
+
+  // Add zoom controls
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
   // Set up handlers
   setupMapHandlers()
@@ -622,10 +656,28 @@ function setupMapHandlers() {
   }, 16)
 
   map.on('mousemove', (e) => {
+    // Cursor for protected areas
+    const paFeatures = map.queryRenderedFeatures(e.point, {
+      layers: ['protected-areas-fill']
+    })
+    map.getCanvas().style.cursor = paFeatures?.length > 0 ? 'pointer' : ''
+
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
   })
   map.on('mouseout', hideTooltip)
   map.on('click', async (e) => {
+    // Check for protected area click first
+    const paFeatures = map.queryRenderedFeatures(e.point, {
+      layers: ['protected-areas-fill']
+    })
+    if (paFeatures && paFeatures.length > 0) {
+      showProtectedAreaInfo(paFeatures[0])
+      return
+    }
+
+    // Hide PA info on click elsewhere
+    hideProtectedAreaInfo()
+
     if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
@@ -651,6 +703,10 @@ function setupUIHandlers() {
 
   document.getElementById('about-modal').addEventListener('click', () => {
     document.body.classList.remove('about-visible')
+  })
+
+  document.getElementById('pa-info-close').addEventListener('click', () => {
+    hideProtectedAreaInfo()
   })
 
   document.getElementById('category-select').addEventListener('change', (e) => {
