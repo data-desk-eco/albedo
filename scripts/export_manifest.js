@@ -4,7 +4,7 @@
  * Proper JSON handling with validation - replaces shell envsubst approach
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { config } from 'dotenv'
@@ -33,14 +33,17 @@ for (const type of vesselTypes) {
   cogsByType[type] = `${cogBase}vessel_heatmap_${suffix}.tif`
 }
 
-// Parse PLACES_JSON (already JSON string) or default to empty array
+// Load places from data/places.json or fall back to PLACES_JSON env var
 let places = []
+const placesFile = join(ROOT, 'data', 'places.json')
 try {
-  if (env.PLACES_JSON) {
+  if (existsSync(placesFile)) {
+    places = JSON.parse(readFileSync(placesFile, 'utf8'))
+  } else if (env.PLACES_JSON) {
     places = JSON.parse(env.PLACES_JSON)
   }
 } catch (e) {
-  console.warn('Warning: Could not parse PLACES_JSON:', e.message)
+  console.warn('Warning: Could not load places:', e.message)
 }
 
 // Parse AVAILABLE_LANGS
@@ -86,6 +89,7 @@ const manifest = {
   data: {
     cog: cogUrl,
     vesselData: `${cogBase}vessel_data.bin`,
+    sanctionedMmsi: 'sanctioned_mmsi.json',
     cogsByType: Object.keys(cogsByType).length > 0 ? cogsByType : undefined
   },
 
@@ -103,13 +107,34 @@ const manifest = {
             id: 'protected-areas-fill',
             type: 'fill',
             'source-layer': 'protected_areas',
-            paint: { 'fill-pattern': 'hatch-white-md', 'fill-opacity': 1 }
+            paint: { 'fill-pattern': 'hatch-blue-md', 'fill-opacity': 1 }
           },
           {
             id: 'protected-areas-border',
             type: 'line',
             'source-layer': 'protected_areas',
-            paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 1 }
+            paint: { 'line-color': '#1E6AFF', 'line-width': 2, 'line-opacity': 1 }
+          }
+        ]
+      },
+      'buffer-zones': {
+        geojson: 'buffer_zones.geojson',
+        defaultVisible: true,
+        style: [
+          {
+            id: 'buffer-zones-fill',
+            type: 'fill',
+            paint: { 'fill-color': '#1E6AFF', 'fill-opacity': 0.05 }
+          },
+          {
+            id: 'buffer-zones-border',
+            type: 'line',
+            paint: {
+              'line-color': '#1E6AFF',
+              'line-width': 1.5,
+              'line-opacity': 0.6,
+              'line-dasharray': [4, 3]
+            }
           }
         ]
       },
@@ -157,6 +182,13 @@ const manifest = {
         label: { en: 'Protected areas', ru: 'ООПТ' },
         labelShort: { en: 'Protected', ru: 'ООПТ' },
         symbol: 'hatch',
+        defaultVisible: true
+      },
+      {
+        layers: ['buffer-zones-fill', 'buffer-zones-border'],
+        label: { en: 'Buffer zones', ru: 'Охранные зоны' },
+        labelShort: { en: 'Buffers', ru: 'Охр. зоны' },
+        symbol: 'dashed',
         defaultVisible: true
       },
       {
