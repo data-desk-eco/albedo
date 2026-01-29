@@ -579,34 +579,30 @@ function showRasterTooltip(vessels, isRefilter = false) {
 }
 
 // ============================================================================
-// Protected Area Info Panel
+// Protected Area Tooltip
 // ============================================================================
 
-function showProtectedAreaInfo(feature, isBuffer = false) {
+function showProtectedAreaTooltip(feature, isBuffer = false) {
   const props = feature.properties || {}
   const lang = getLang()
   const name = props[`name_${lang}`] || props.name_en || props.name || t('protectedArea')
-  const nameEl = document.getElementById('pa-info-name')
-  const detailsEl = document.getElementById('pa-info-details')
+  const prefix = isBuffer ? t('bufferZone') : t('protectedArea')
 
-  const prefix = isBuffer ? `[${t('bufferZone')}] ` : ''
-  nameEl.textContent = prefix + name
-
-  const details = []
-  if (props.category) details.push(`${t('category')}: ${props.category}`)
-  if (props.significance) details.push(`${t('significance')}: ${props.significance}`)
+  const rows = [
+    { key: prefix, value: name }
+  ]
+  if (props.category) rows.push({ key: t('category'), value: props.category })
+  if (props.significance) rows.push({ key: t('significance'), value: props.significance })
   if (props.area_ha) {
     const areaKm2 = Math.round(props.area_ha / 100)
-    details.push(`${t('area')}: ${areaKm2.toLocaleString()} km²`)
+    rows.push({ key: t('area'), value: `${areaKm2.toLocaleString()} km²` })
   }
-  if (props.status) details.push(`${t('status')}: ${props.status}`)
-  detailsEl.innerHTML = details.join('<br>')
+  if (props.status) rows.push({ key: t('status'), value: props.status })
 
-  document.getElementById('pa-info').classList.add('visible')
-}
-
-function hideProtectedAreaInfo() {
-  document.getElementById('pa-info').classList.remove('visible')
+  const html = '<table>' +
+    rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') +
+    '</table>'
+  showTooltip(html)
 }
 
 // ============================================================================
@@ -840,31 +836,22 @@ function setupMapHandlers() {
   }, 16)
 
   map.on('mousemove', (e) => {
-    // Cursor for protected areas and buffer zones
-    const clickableLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
-    const paFeatures = clickableLayers.length > 0
-      ? map.queryRenderedFeatures(e.point, { layers: clickableLayers })
+    // Check for protected area or buffer zone hover
+    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    const paFeatures = paLayers.length > 0
+      ? map.queryRenderedFeatures(e.point, { layers: paLayers })
       : []
-    map.getCanvas().style.cursor = paFeatures?.length > 0 ? 'pointer' : ''
+
+    if (paFeatures?.length > 0) {
+      const isBuffer = paFeatures[0].layer?.id === 'buffer-zones-fill'
+      showProtectedAreaTooltip(paFeatures[0], isBuffer)
+      return
+    }
 
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
   })
   map.on('mouseout', hideTooltip)
   map.on('click', async (e) => {
-    // Check for protected area or buffer zone click first
-    const clickableLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
-    const paFeatures = clickableLayers.length > 0
-      ? map.queryRenderedFeatures(e.point, { layers: clickableLayers })
-      : []
-    if (paFeatures && paFeatures.length > 0) {
-      const isBuffer = paFeatures[0].layer?.id === 'buffer-zones-fill'
-      showProtectedAreaInfo(paFeatures[0], isBuffer)
-      return
-    }
-
-    // Hide PA info on click elsewhere
-    hideProtectedAreaInfo()
-
     if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
@@ -892,10 +879,6 @@ function setupUIHandlers() {
     document.body.classList.remove('about-visible')
   })
 
-  document.getElementById('pa-info-close').addEventListener('click', () => {
-    hideProtectedAreaInfo()
-  })
-
   document.getElementById('category-select').addEventListener('change', (e) => {
     selectCategory(e.target.value)
   })
@@ -909,8 +892,8 @@ function setupUIHandlers() {
   document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
     showSanctionedOnly = e.target.checked
     // Toggle sanctioned vessels layer visibility
-    if (map.getLayer('sanctioned-vessels-circle')) {
-      map.setLayoutProperty('sanctioned-vessels-circle', 'visibility', showSanctionedOnly ? 'visible' : 'none')
+    if (map.getLayer('sanctioned-vessels-fill')) {
+      map.setLayoutProperty('sanctioned-vessels-fill', 'visibility', showSanctionedOnly ? 'visible' : 'none')
     }
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
