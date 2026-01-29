@@ -17,6 +17,9 @@
   "sectionLayers": "слои карты",
   "sectionLayersShort": "слои",
   "continue": "нажмите в любом месте, чтобы продолжить",
+  "protectedArea": "охраняемая территория",
+  "category": "категория",
+  "iucnCategory": "категория МСОП",
   "vesselTypes": {
     "FISHING": "рыболовные",
     "CARGO": "грузовые",

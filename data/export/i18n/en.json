@@ -17,6 +17,9 @@
   "sectionLayers": "map layers",
   "sectionLayersShort": "layers",
   "continue": "click anywhere to continue",
+  "protectedArea": "protected area",
+  "category": "category",
+  "iucnCategory": "IUCN category",
   "vesselTypes": {
     "FISHING": "fishing",
     "CARGO": "cargo",
