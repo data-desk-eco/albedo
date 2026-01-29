@@ -1,0 +1,43 @@
+  Outstanding Tasks for Albedo                                                                                                                                                                                 
+                                                                                                                                                                                                               
+  1. Per-filter COG exports or server-side raster filtering                                                                                                                                                    
+                                                                                                                                                                                                               
+  Currently, vessel type and flag filters only affect the tooltip data shown on hover at high zoom. The heatmap raster itself is a pre-rendered Cloud-Optimized GeoTIFF that displays all vessels regardless of
+   filter state. This means a user selecting "fishing" or "RUS" sees the same heatmap — only the tooltip changes. We already have per-type COGs (vessel_heatmap_fishing.tif, etc.) and the type filter swaps   
+  between them, so that one works visually. The flag filter has no equivalent. Explore whether we can pre-render per-flag COGs (may be combinatorial), implement a lightweight COG tile server that filters on 
+  the fly, or do client-side rendering from the binary vessel grid data with a canvas layer instead of COG tiles.                                                                                              
+                                                                                                                                                                                                               
+  2. Sanctioned vessel PMTiles layer                                                                                                                                                                           
+                                                                                                                                                                                                               
+  When the "sanctioned" checkbox is toggled, we want to visually highlight sanctioned vessel positions on the map — not just filter tooltips. The approach is to pre-compute a vector dataset of all positions 
+  where sanctioned vessels were detected, and serve it as a PMTiles file (either a new sanctions.pmtiles or as an additional source layer in the existing vectors.pmtiles). The pipeline step: filter the      
+  vessel presence data in DuckDB for MMSIs in the sanctioned list → export as point features with properties (MMSI, vessel name, date, sanctions program) → run through tippecanoe → PMTiles. On the frontend, 
+  add this as a toggleable map layer (e.g., red dots) that appears when the sanctions checkbox is active. This replaces the earlier idea of encoding sanctions status in the binary vessel tile format.        
+                                                                                                                                                                                                               
+  3. Vessel build year and additional metadata in pipeline                                                                                                                                                     
+                                                                                                                                                                                                               
+  The current data pipeline only captures basic vessel attributes from GFW (MMSI, name, type, flag, hours). We want to enrich this with additional fields — particularly vessel build year, but also deadweight
+   tonnage and potentially IMO number. This would enable more expressive filtering (e.g., "vessels built before 2000", which is relevant for Arctic environmental risk) and richer tooltips. Check what's      
+  available from the GFW API vessel endpoint, and whether supplementary data from external registries is needed. The binary vessel tile format (vessel_data.bin) and the tooltip rendering in showRasterTooltip
+   will both need updating to accommodate new fields.
+
+  USER NOTE: We'll probably actually source this from the London Stock Exchange Group's Workspace product. Please implement a working version that ingests a dummy xlsx into the database with the relevant fields and operates on that, and I'll provide the data for these fields later.                                                                                                                                                          
+                                                                                                                                                                                                              
+  4. Protected area metadata in PMTiles                                                                                                                                                                        
+                                                                                                                                                                                                               
+  During testing, we found that protected area features in vectors.pmtiles only contain id and name (in Russian). The click-to-inspect info panel therefore shows very sparse information. We need name_en,    
+  category, iucn_cat, and area_ha at minimum. This is a pipeline issue — the source data likely has these attributes but they're being dropped during the tippecanoe export step or weren't present in the     
+  input GeoJSON/Parquet. Check the export_pmtiles.sh script and the source protected areas data to ensure all relevant attributes are carried through to the vector tiles.                                     
+                                                                                                                                                                                                               
+  5. Reproducible sanctions and buffer zone pipeline                                                                                                                                                           
+                                                                                                                                                                                                               
+  The files sanctioned_mmsi.json, sanctions_details.json, and buffer_zones.geojson were manually committed with no generation scripts. Source the sanctions data from OpenSanctions (https://opensanctions.org)
+   — they provide structured datasets of sanctioned entities including vessels with MMSI/IMO identifiers. Write a script that fetches the latest OpenSanctions data, cross-references it with vessel           
+  identifiers in our dataset, and outputs sanctioned_mmsi.json and sanctions_details.json. For buffer zones, determine the original source (likely buffered protected area boundaries) and script their        
+  generation. Add Makefile targets so make fetch or a dedicated make sanctions step keeps these files current.                                                                                                 
+                                                                                                                                                                                                               
+  6. Track data/places.json in git                                                                                                                                                                             
+                                                                                                                                                                                                               
+  The 23 places of interest are stored in data/places.json, which is read by scripts/export_manifest.js and baked into the exported manifest. However, the entire data/ directory is gitignored, so a fresh    
+  clone won't have this file and make export will produce a manifest with no places. Either move it to a tracked location (e.g., config/places.json), add a gitignore exception for it, or commit it directly. 
+  It's only ~6KB so there's no reason not to track it. 
