@@ -3,7 +3,7 @@
 Export sanctioned vessel positions as GeoJSON for PMTiles generation.
 
 Filters vessel presence data for MMSIs in the sanctioned list,
-then exports as point features for visualization on the map.
+then exports as 0.01° grid cell polygons that overlay the heatmap.
 
 Usage:
     uv run python scripts/export_sanctions_layer.py
@@ -16,6 +16,8 @@ import json
 from pathlib import Path
 
 import duckdb
+
+CELL_SIZE = 0.01  # Must match the raster grid cell size
 
 ROOT = Path(__file__).resolve().parent.parent
 DB_PATH = ROOT / "data" / "data.duckdb"
@@ -44,49 +46,45 @@ def main():
     for mmsi in mmsi_list:
         con.execute("INSERT INTO sanctioned_mmsi VALUES (?)", [str(mmsi)])
 
-    # Query sanctioned vessel positions - aggregate by grid cell per vessel
+    # Aggregate by grid cell across all sanctioned vessels
     rows = con.execute("""
         SELECT
             vp.lat, vp.lon,
-            vp.mmsi,
-            vp.ship_name,
-            vp.vessel_type,
-            vp.flag,
             SUM(vp.hours) as total_hours,
-            MIN(vp.entry_timestamp) as first_seen,
-            MAX(vp.exit_timestamp) as last_seen
+            COUNT(DISTINCT vp.mmsi) as vessel_count
         FROM vessel_positions vp
         JOIN sanctioned_mmsi sm ON vp.mmsi = sm.mmsi
-        GROUP BY vp.lat, vp.lon, vp.mmsi, vp.ship_name, vp.vessel_type, vp.flag
+        GROUP BY vp.lat, vp.lon
         HAVING SUM(vp.hours) >= 1
     """).fetchall()
 
     con.close()
 
-    print(f"Found {len(rows)} sanctioned vessel position records")
+    print(f"Found {len(rows)} grid cells with sanctioned vessel activity")
 
-    # Build GeoJSON features
+    # Build GeoJSON polygon features (one per grid cell)
     features = []
-    for lat, lon, mmsi, ship_name, vessel_type, flag, total_hours, first_seen, last_seen in rows:
-        props = {
-            "mmsi": mmsi,
-            "name": ship_name or "",
-            "type": vessel_type or "",
-            "flag": flag or "",
-            "hours": round(total_hours, 1),
-        }
-        if first_seen:
-            props["first_seen"] = first_seen.isoformat()
-        if last_seen:
-            props["last_seen"] = last_seen.isoformat()
+    for lat, lon, total_hours, vessel_count in rows:
+        min_lat, min_lon = lat, lon
+        max_lat = lat + CELL_SIZE
+        max_lon = lon + CELL_SIZE
 
         features.append({
             "type": "Feature",
             "geometry": {
-                "type": "Point",
-                "coordinates": [lon, lat],
+                "type": "Polygon",
+                "coordinates": [[
+                    [min_lon, min_lat],
+                    [max_lon, min_lat],
+                    [max_lon, max_lat],
+                    [min_lon, max_lat],
+                    [min_lon, min_lat],
+                ]],
             },
-            "properties": props,
+            "properties": {
+                "hours": round(total_hours, 1),
+                "vessels": vessel_count,
+            },
         })
 
     geojson = {
@@ -96,7 +94,7 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(geojson))
-    print(f"Wrote {OUTPUT_PATH} ({len(features)} features)")
+    print(f"Wrote {OUTPUT_PATH} ({len(features)} polygon features)")
 
 
 if __name__ == "__main__":

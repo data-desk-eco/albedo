@@ -234,52 +234,6 @@ html, body {
   filter: invert(1);
 }
 
-/* Protected area info panel */
-#pa-info {
-  position: absolute;
-  bottom: 40px;
-  right: 10px;
-  max-width: 280px;
-  padding: 10px 14px;
-  font-family: var(--ui-font-family);
-  font-size: var(--ui-font-size);
-  color: var(--ui-color);
-  background: var(--ui-bg);
-  border: var(--ui-border);
-  backdrop-filter: var(--ui-blur);
-  -webkit-backdrop-filter: var(--ui-blur);
-  line-height: 1.5;
-  display: none;
-  z-index: 10;
-}
-
-#pa-info.visible {
-  display: block;
-}
-
-#pa-info-close {
-  float: right;
-  cursor: pointer;
-  color: var(--ui-color-muted);
-  margin-left: 8px;
-  font-size: 16px;
-  line-height: 1;
-}
-
-#pa-info-close:hover {
-  color: var(--ui-color);
-}
-
-#pa-info-name {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-#pa-info-details {
-  color: var(--ui-color-muted);
-  font-size: 12px;
-}
-
 /* Language toggle */
 #lang-toggle {
   position: absolute;

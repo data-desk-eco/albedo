@@ -15,8 +15,8 @@ const YEAR_PALETTE = [
   [70, 213, 217],   // Turquoise Second #46D5D9
 ]
 
-// Color for mixed cells where no single year dominates - Arctida blue-gray
-const MULTI_YEAR_COLOR = [61, 147, 255]
+// Color for mixed cells where no single year dominates - neutral grey
+const MULTI_YEAR_COLOR = [160, 170, 180]
 
 const DOMINANCE_THRESHOLD = 0.6
 
