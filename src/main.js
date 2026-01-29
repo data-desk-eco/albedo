@@ -533,10 +533,7 @@ function showRasterTooltip(vessels, isRefilter = false) {
   const moreCount = totalCount > 3 ? totalCount - 3 : 0
 
   const rows = [
-    { key: t('vessel'), values: displayVessels.map(v => {
-      const name = v.ship_name || t('unknown')
-      return v.sanctioned ? `${name} <span class="sanction-badge">⚠ ${t('sanctioned')}</span>` : name
-    })},
+    { key: t('vessel'), values: displayVessels.map(v => v.ship_name || t('unknown')) },
     { key: t('mmsi'), values: displayVessels.map(v => v.mmsi) },
     { key: t('type'), values: displayVessels.map(v => tVesselType(v.vessel_type)) },
     { key: t('flag'), values: displayVessels.map(v => v.flag || '?') },
@@ -558,6 +555,14 @@ function showRasterTooltip(vessels, isRefilter = false) {
     if (dwts.some(d => d !== '–')) {
       rows.push({ key: t('dwt'), values: dwts })
     }
+  }
+
+  // Add sanctions status row at the bottom if any vessel is sanctioned
+  const hasSanctioned = displayVessels.some(v => v.sanctioned)
+  if (hasSanctioned) {
+    rows.push({ key: t('status'), values: displayVessels.map(v =>
+      v.sanctioned ? `<span class="sanction-badge">${t('sanctioned')}</span>` : '–'
+    )})
   }
 
   let html = '<table>'
