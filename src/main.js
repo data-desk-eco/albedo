@@ -705,7 +705,7 @@ async function initPhase2(manifestDir) {
   map = window.map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
-    style: createMapStyle(manifest),
+    style: createMapStyle(manifest, manifestDir),
     center: mapConfig.center || [0, 0],
     zoom: mapConfig.zoom || 2,
     pitch: mapConfig.pitch || 0,

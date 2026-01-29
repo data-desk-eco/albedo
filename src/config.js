@@ -39,7 +39,7 @@ export function getYearColor(bandIndex) {
 /**
  * Create MapLibre style from manifest configuration
  */
-export function createMapStyle(manifest) {
+export function createMapStyle(manifest, manifestDir = '') {
   const theme = manifest.ui?.theme || {}
   const bounds = manifest.map?.bounds || {}
   const southBound = bounds.south ?? -90
@@ -82,9 +82,10 @@ export function createMapStyle(manifest) {
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
     if (config.url) {
+      const resolvedUrl = config.url.startsWith('http') ? config.url : manifestDir + config.url
       sources[id] = {
         type: 'vector',
-        url: `pmtiles://${config.url}`
+        url: `pmtiles://${resolvedUrl}`
       }
     } else if (config.geojson) {
       // GeoJSON sources loaded via manifest-relative URL
