@@ -237,7 +237,7 @@ html, body {
 /* Protected area info panel */
 #pa-info {
   position: absolute;
-  bottom: 10px;
+  bottom: 40px;
   right: 10px;
   max-width: 280px;
   padding: 10px 14px;
