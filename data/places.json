@@ -1,0 +1,370 @@
+[
+  {
+    "id": "overview",
+    "name": {
+      "en": "Overview",
+      "ru": "Обзор"
+    },
+    "description": {
+      "en": "Full study area",
+      "ru": "Вся область исследования"
+    },
+    "center": [
+      100,
+      75
+    ],
+    "zoom": 2.5
+  },
+  {
+    "id": "barents-sea",
+    "name": {
+      "en": "Barents Sea Gateway",
+      "ru": "Баренцево море"
+    },
+    "description": {
+      "en": "Western entrance to the Northern Sea Route",
+      "ru": "Западный вход на Северный морской путь"
+    },
+    "center": [
+      40,
+      74
+    ],
+    "zoom": 4.5
+  },
+  {
+    "id": "kola-bay",
+    "name": {
+      "en": "Kola Bay",
+      "ru": "Кольский залив"
+    },
+    "description": {
+      "en": "Major naval and commercial port area",
+      "ru": "Крупный военно-морской и коммерческий портовый район"
+    },
+    "center": [
+      33.1,
+      69
+    ],
+    "zoom": 9
+  },
+  {
+    "id": "murmansk",
+    "name": {
+      "en": "Murmansk Port",
+      "ru": "Порт Мурманск"
+    },
+    "description": {
+      "en": "Largest city above the Arctic Circle",
+      "ru": "Крупнейший город за Полярным кругом"
+    },
+    "center": [
+      33.08,
+      68.97
+    ],
+    "zoom": 11
+  },
+  {
+    "id": "lavna",
+    "name": {
+      "en": "Lavna Port",
+      "ru": "Порт Лавна"
+    },
+    "description": {
+      "en": "New deep-water coal terminal on the Kola Peninsula",
+      "ru": "Новый глубоководный угольный терминал на Кольском полуострове"
+    },
+    "center": [
+      33.05,
+      68.88
+    ],
+    "zoom": 12
+  },
+  {
+    "id": "arkhangelsk",
+    "name": {
+      "en": "Arkhangelsk Port",
+      "ru": "Порт Архангельск"
+    },
+    "description": {
+      "en": "Historic Arctic port on the White Sea",
+      "ru": "Исторический арктический порт на Белом море"
+    },
+    "center": [
+      40.5,
+      64.55
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "kandalaksha",
+    "name": {
+      "en": "Kandalaksha Port",
+      "ru": "Порт Кандалакша"
+    },
+    "description": {
+      "en": "White Sea port at the head of Kandalaksha Bay",
+      "ru": "Порт Белого моря в вершине Кандалакшского залива"
+    },
+    "center": [
+      32.4,
+      67.15
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "kara-gate",
+    "name": {
+      "en": "Kara Gate Strait",
+      "ru": "Карские Ворота"
+    },
+    "description": {
+      "en": "Strait between Novaya Zemlya and Vaygach Island",
+      "ru": "Пролив между Новой Землёй и островом Вайгач"
+    },
+    "center": [
+      58.5,
+      70.5
+    ],
+    "zoom": 7
+  },
+  {
+    "id": "kara-sea",
+    "name": {
+      "en": "Kara Sea",
+      "ru": "Карское море"
+    },
+    "description": {
+      "en": "Gateway to the Northern Sea Route",
+      "ru": "Ворота Северного морского пути"
+    },
+    "center": [
+      70,
+      74
+    ],
+    "zoom": 5
+  },
+  {
+    "id": "ob-gulf",
+    "name": {
+      "en": "Ob Gulf",
+      "ru": "Обская губа"
+    },
+    "description": {
+      "en": "Estuary of the Ob River, major LNG shipping area",
+      "ru": "Устье реки Обь, крупный район транспортировки СПГ"
+    },
+    "center": [
+      72.5,
+      70
+    ],
+    "zoom": 6
+  },
+  {
+    "id": "sabetta",
+    "name": {
+      "en": "Sabetta Port",
+      "ru": "Порт Сабетта"
+    },
+    "description": {
+      "en": "Yamal LNG terminal on the Ob Gulf",
+      "ru": "Терминал Ямал СПГ на Обской губе"
+    },
+    "center": [
+      72.07,
+      71.27
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "utrenny",
+    "name": {
+      "en": "Utrenny Port",
+      "ru": "Порт Утренний"
+    },
+    "description": {
+      "en": "Arctic LNG 2 terminal on the Gydan Peninsula",
+      "ru": "Терминал Арктик СПГ 2 на Гыданском полуострове"
+    },
+    "center": [
+      73,
+      71.2
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "novy-port",
+    "name": {
+      "en": "Novy Port Oil Terminal",
+      "ru": "Нефтяной терминал Новый Порт"
+    },
+    "description": {
+      "en": "Arctic Gate oil terminal in the Ob Gulf",
+      "ru": "Нефтяной терминал «Ворота Арктики» в Обской губе"
+    },
+    "center": [
+      72.8,
+      70.2
+    ],
+    "zoom": 9
+  },
+  {
+    "id": "franz-josef-land",
+    "name": {
+      "en": "Franz Josef Land",
+      "ru": "Земля Франца-Иосифа"
+    },
+    "description": {
+      "en": "Remote archipelago and nature reserve",
+      "ru": "Удалённый архипелаг и природный заповедник"
+    },
+    "center": [
+      55,
+      80.5
+    ],
+    "zoom": 5.5
+  },
+  {
+    "id": "severnaya-zemlya",
+    "name": {
+      "en": "Severnaya Zemlya",
+      "ru": "Северная Земля"
+    },
+    "description": {
+      "en": "Archipelago separating the Kara and Laptev Seas",
+      "ru": "Архипелаг, разделяющий Карское море и море Лаптевых"
+    },
+    "center": [
+      97,
+      79.5
+    ],
+    "zoom": 5.5
+  },
+  {
+    "id": "laptev-sea",
+    "name": {
+      "en": "Laptev Sea",
+      "ru": "Море Лаптевых"
+    },
+    "description": {
+      "en": "Central section of the Northern Sea Route",
+      "ru": "Центральный участок Северного морского пути"
+    },
+    "center": [
+      125,
+      76
+    ],
+    "zoom": 5
+  },
+  {
+    "id": "dudinka",
+    "name": {
+      "en": "Dudinka Port",
+      "ru": "Порт Дудинка"
+    },
+    "description": {
+      "en": "River port serving the Norilsk industrial area",
+      "ru": "Речной порт, обслуживающий Норильский промышленный район"
+    },
+    "center": [
+      86.18,
+      69.4
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "tiksi",
+    "name": {
+      "en": "Tiksi Port",
+      "ru": "Порт Тикси"
+    },
+    "description": {
+      "en": "Key port on the Laptev Sea coast",
+      "ru": "Ключевой порт на побережье моря Лаптевых"
+    },
+    "center": [
+      128.87,
+      71.64
+    ],
+    "zoom": 9
+  },
+  {
+    "id": "east-siberian-sea",
+    "name": {
+      "en": "East Siberian Sea",
+      "ru": "Восточно-Сибирское море"
+    },
+    "description": {
+      "en": "Eastern section of the Northern Sea Route",
+      "ru": "Восточный участок Северного морского пути"
+    },
+    "center": [
+      160,
+      73
+    ],
+    "zoom": 4.5
+  },
+  {
+    "id": "chaun-bay",
+    "name": {
+      "en": "Chaun Bay",
+      "ru": "Чаунская губа"
+    },
+    "description": {
+      "en": "Bay in the East Siberian Sea near Pevek",
+      "ru": "Залив Восточно-Сибирского моря близ Певека"
+    },
+    "center": [
+      170,
+      68.8
+    ],
+    "zoom": 7
+  },
+  {
+    "id": "pevek",
+    "name": {
+      "en": "Pevek Port",
+      "ru": "Порт Певек"
+    },
+    "description": {
+      "en": "Northernmost city in Russia, floating nuclear power plant",
+      "ru": "Самый северный город России, плавучая АЭС"
+    },
+    "center": [
+      170.3,
+      69.7
+    ],
+    "zoom": 10
+  },
+  {
+    "id": "provideniya",
+    "name": {
+      "en": "Provideniya Port",
+      "ru": "Порт Провидения"
+    },
+    "description": {
+      "en": "Eastern gateway to the Northern Sea Route",
+      "ru": "Восточные ворота Северного морского пути"
+    },
+    "center": [
+      -173.2,
+      64.4
+    ],
+    "zoom": 9
+  },
+  {
+    "id": "bering-strait",
+    "name": {
+      "en": "Bering Strait",
+      "ru": "Берингов пролив"
+    },
+    "description": {
+      "en": "Strait between Russia and Alaska, eastern terminus of the NSR",
+      "ru": "Пролив между Россией и Аляской, восточная оконечность СМП"
+    },
+    "center": [
+      -169,
+      65.8
+    ],
+    "zoom": 6
+  }
+]

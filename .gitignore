@@ -15,6 +15,7 @@ data/temp/
 data/backups/
 data/tiles/
 data/*.json
+!data/places.json
 data/*.geojson
 data/*.csv
 data/*.vrt

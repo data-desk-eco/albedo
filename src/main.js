@@ -37,11 +37,13 @@ let currentCategory = 'all'
 let currentFlagFilter = 'all'
 let categories = []
 let cogUrls = {}
+let flagCogUrls = {}
 let activeYears = new Set()
 let knownYears = []
 let satelliteVisible = false
 let dataInitialized = false
 let sanctionedMmsi = new Set()
+let vesselMeta = {}  // mmsi -> {imo, y: buildYear, d: dwt}
 let showSanctionedOnly = false
 let lastTooltipVesselsRaw = null // unfiltered vessel results for re-filtering
 
@@ -340,6 +342,20 @@ function populateFlagDropdown() {
 // Sanctions
 // ============================================================================
 
+async function loadVesselMetadata(manifestDir) {
+  const url = manifest?.data?.vesselMetadata
+  if (!url) return
+  try {
+    const fullUrl = url.startsWith('http') ? url : manifestDir + url
+    const resp = await fetch(fullUrl)
+    if (!resp.ok) return
+    vesselMeta = await resp.json()
+    console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels`)
+  } catch (err) {
+    console.warn('Failed to load vessel metadata:', err)
+  }
+}
+
 async function loadSanctions(manifestDir) {
   const sanctionsUrl = manifest?.data?.sanctionedMmsi
   if (!sanctionsUrl) return
@@ -377,17 +393,36 @@ function populateCategoryDropdown() {
   select.value = currentCategory
 }
 
+/**
+ * Get the appropriate COG URL based on current filter state.
+ * Flag filter takes precedence over type filter when both are set.
+ */
+function getActiveCogUrl() {
+  if (currentFlagFilter !== 'all' && flagCogUrls[currentFlagFilter]) {
+    return flagCogUrls[currentFlagFilter]
+  }
+  return cogUrls[currentCategory] || cogUrls.all
+}
+
+async function switchActiveCOG() {
+  const url = getActiveCogUrl()
+  if (!url || !cogModule) return
+  try {
+    await cogModule.switchCOG(url)
+    cogTileCache.clear()
+    map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+  } catch (err) {
+    console.warn('Failed to switch COG:', err)
+  }
+}
+
 async function selectCategory(categoryId) {
   if (categoryId === currentCategory) return
   const previousCategory = currentCategory
   currentCategory = categoryId
-  const cogUrl = cogUrls[categoryId]
-  if (!cogUrl) return
 
   try {
-    await cogModule.switchCOG(cogUrl)
-    cogTileCache.clear()
-    map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+    await switchActiveCOG()
   } catch (err) {
     console.error(`Failed to switch COG:`, err)
     currentCategory = previousCategory
@@ -509,6 +544,22 @@ function showRasterTooltip(vessels, isRefilter = false) {
     { key: t('date'), values: displayVessels.map(v => v.dates.join('<br>')) }
   ]
 
+  // Add enriched metadata rows if available
+  const hasMeta = displayVessels.some(v => vesselMeta[v.mmsi])
+  if (hasMeta) {
+    const buildYears = displayVessels.map(v => vesselMeta[v.mmsi]?.y || '–')
+    if (buildYears.some(y => y !== '–')) {
+      rows.push({ key: t('buildYear'), values: buildYears })
+    }
+    const dwts = displayVessels.map(v => {
+      const d = vesselMeta[v.mmsi]?.d
+      return d ? d.toLocaleString() + ' t' : '–'
+    })
+    if (dwts.some(d => d !== '–')) {
+      rows.push({ key: t('dwt'), values: dwts })
+    }
+  }
+
   let html = '<table>'
   html += rows.map(row =>
     `<tr><td>${row.key}</td>${row.values.map(v => `<td>${v}</td>`).join('')}</tr>`
@@ -538,11 +589,12 @@ function showProtectedAreaInfo(feature, isBuffer = false) {
 
   const details = []
   if (props.category) details.push(`${t('category')}: ${props.category}`)
-  if (props.iucn_cat) details.push(`${t('iucnCategory')}: ${props.iucn_cat}`)
+  if (props.significance) details.push(`${t('significance')}: ${props.significance}`)
   if (props.area_ha) {
     const areaKm2 = Math.round(props.area_ha / 100)
     details.push(`${t('area')}: ${areaKm2.toLocaleString()} km²`)
   }
+  if (props.status) details.push(`${t('status')}: ${props.status}`)
   detailsEl.innerHTML = details.join('<br>')
 
   document.getElementById('pa-info').classList.add('visible')
@@ -619,6 +671,12 @@ async function initPhase2(manifestDir) {
     cogUrls[type] = url.startsWith('http') ? url : manifestDir + url
   }
 
+  flagCogUrls = { all: cogUrl }
+  const cogsByFlag = manifest.data?.cogsByFlag || {}
+  for (const [flag, url] of Object.entries(cogsByFlag)) {
+    flagCogUrls[flag] = url.startsWith('http') ? url : manifestDir + url
+  }
+
   // Initialize COG
   const cogConfig = await cogModule.initCOG(cogUrl)
   knownYears = cogConfig.years
@@ -682,8 +740,9 @@ async function initPhase2(manifestDir) {
   // Load GeoJSON layers after map is ready
   loadGeoJSONLayers(manifestDir)
 
-  // Load sanctions data (non-blocking)
+  // Load supplementary data (non-blocking)
   loadSanctions(manifestDir)
+  loadVesselMetadata(manifestDir)
 }
 
 async function loadGeoJSONLayers(manifestDir) {
@@ -836,13 +895,18 @@ function setupUIHandlers() {
     selectCategory(e.target.value)
   })
 
-  document.getElementById('flag-select').addEventListener('change', (e) => {
+  document.getElementById('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
+    await switchActiveCOG()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
     showSanctionedOnly = e.target.checked
+    // Toggle sanctioned vessels layer visibility
+    if (map.getLayer('sanctioned-vessels-circle')) {
+      map.setLayoutProperty('sanctioned-vessels-circle', 'visibility', showSanctionedOnly ? 'visible' : 'none')
+    }
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 

@@ -174,6 +174,32 @@ for vessel_type in "${TYPE_ARRAY[@]}"; do
   cleanup "$suffix"
 done
 
+# 3. Generate per-flag COGs (foreign + key flags)
+FLAG_PRESETS="${FLAG_PRESETS:-foreign,RUS,NOR,PAN,LBR,MHL,MLT,CHN,GBR}"
+IFS=',' read -ra FLAG_ARRAY <<< "$FLAG_PRESETS"
+
+for flag_filter in "${FLAG_ARRAY[@]}"; do
+  suffix="_flag_$(echo "$flag_filter" | tr '[:upper:]' '[:lower:]')"
+
+  if [ "$flag_filter" = "foreign" ]; then
+    sql_filter="AND flag != 'RUS'"
+    label="foreign-flagged vessels"
+  else
+    sql_filter="AND flag = '${flag_filter}'"
+    label="flag: ${flag_filter}"
+  fi
+
+  echo ""
+  echo "═══════════════════════════════════════════════════════════════════════════"
+  echo "Generating COG for ${label}..."
+  echo "═══════════════════════════════════════════════════════════════════════════"
+
+  export_vessel_activity "$suffix" "$sql_filter" "$label"
+  create_rasters "$suffix"
+  create_cog "$suffix" ""
+  cleanup "$suffix"
+done
+
 # Final cleanup
 rm -f data/land_mask.tif
 
