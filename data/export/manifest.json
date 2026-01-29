@@ -36,7 +36,19 @@
       "CARGO": "https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif",
       "PASSENGER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif",
       "CARRIER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"
-    }
+    },
+    "cogsByFlag": {
+      "foreign": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_foreign.tif",
+      "RUS": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_rus.tif",
+      "NOR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_nor.tif",
+      "PAN": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_pan.tif",
+      "LBR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_lbr.tif",
+      "MHL": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_mhl.tif",
+      "MLT": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_mlt.tif",
+      "CHN": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_chn.tif",
+      "GBR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_gbr.tif"
+    },
+    "vesselMetadata": "https://storage.googleapis.com/albedo-data/vessel_metadata.json"
   },
   "layers": {
     "satellite": {
@@ -92,6 +104,39 @@
                 4,
                 3
               ]
+            }
+          }
+        ]
+      },
+      "sanctioned-vessels": {
+        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
+        "defaultVisible": false,
+        "style": [
+          {
+            "id": "sanctioned-vessels-circle",
+            "type": "circle",
+            "source-layer": "sanctioned_vessels",
+            "paint": {
+              "circle-radius": [
+                "interpolate",
+                [
+                  "linear"
+                ],
+                [
+                  "zoom"
+                ],
+                2,
+                1.5,
+                8,
+                4,
+                12,
+                6
+              ],
+              "circle-color": "#FF3B30",
+              "circle-opacity": 0.8,
+              "circle-stroke-width": 0.5,
+              "circle-stroke-color": "#FF3B30",
+              "circle-stroke-opacity": 0.4
             }
           }
         ]

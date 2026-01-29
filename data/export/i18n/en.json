@@ -22,9 +22,13 @@
   "category": "category",
   "iucnCategory": "IUCN category",
   "area": "area",
+  "significance": "significance",
+  "status": "status",
   "allFlags": "all flags",
   "foreignFlag": "foreign-flagged",
   "sanctioned": "sanctioned",
+  "buildYear": "built",
+  "dwt": "DWT",
   "vesselTypes": {
     "FISHING": "fishing",
     "CARGO": "cargo",

@@ -22,9 +22,13 @@
   "category": "категория",
   "iucnCategory": "категория МСОП",
   "area": "площадь",
+  "significance": "значение",
+  "status": "статус",
   "allFlags": "все флаги",
   "foreignFlag": "иностранный флаг",
   "sanctioned": "под санкциями",
+  "buildYear": "год постройки",
+  "dwt": "дедвейт",
   "vesselTypes": {
     "FISHING": "рыболовные",
     "CARGO": "грузовые",

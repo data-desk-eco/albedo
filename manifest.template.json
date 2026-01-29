@@ -28,7 +28,9 @@
     "cog": "${COG_URL}",
     "vesselData": "${COG_BASE_URL}vessel_data.bin",
     "sanctionedMmsi": "sanctioned_mmsi.json",
-    "cogsByType": ${COGS_BY_TYPE}
+    "cogsByType": ${COGS_BY_TYPE},
+    "cogsByFlag": ${COGS_BY_FLAG},
+    "vesselMetadata": "${COG_BASE_URL}vessel_metadata.json"
   },
 
   "layers": {

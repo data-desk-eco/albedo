@@ -33,6 +33,14 @@ for (const type of vesselTypes) {
   cogsByType[type] = `${cogBase}vessel_heatmap_${suffix}.tif`
 }
 
+// Build cogsByFlag from FLAG_PRESETS
+const flagPresets = (env.FLAG_PRESETS || 'foreign,RUS,NOR,PAN,LBR,MHL,MLT,CHN,GBR').split(',').filter(Boolean)
+const cogsByFlag = {}
+for (const flag of flagPresets) {
+  const suffix = flag.toLowerCase()
+  cogsByFlag[flag] = `${cogBase}vessel_heatmap_flag_${suffix}.tif`
+}
+
 // Load places from data/places.json or fall back to PLACES_JSON env var
 let places = []
 const placesFile = join(ROOT, 'data', 'places.json')
@@ -90,7 +98,9 @@ const manifest = {
     cog: cogUrl,
     vesselData: `${cogBase}vessel_data.bin`,
     sanctionedMmsi: 'sanctioned_mmsi.json',
-    cogsByType: Object.keys(cogsByType).length > 0 ? cogsByType : undefined
+    cogsByType: Object.keys(cogsByType).length > 0 ? cogsByType : undefined,
+    cogsByFlag: Object.keys(cogsByFlag).length > 0 ? cogsByFlag : undefined,
+    vesselMetadata: `${cogBase}vessel_metadata.json`
   },
 
   layers: {
@@ -134,6 +144,25 @@ const manifest = {
               'line-width': 1.5,
               'line-opacity': 0.6,
               'line-dasharray': [4, 3]
+            }
+          }
+        ]
+      },
+      'sanctioned-vessels': {
+        url: `${cogBase}vectors.pmtiles`,
+        defaultVisible: false,
+        style: [
+          {
+            id: 'sanctioned-vessels-circle',
+            type: 'circle',
+            'source-layer': 'sanctioned_vessels',
+            paint: {
+              'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 1.5, 8, 4, 12, 6],
+              'circle-color': '#FF3B30',
+              'circle-opacity': 0.8,
+              'circle-stroke-width': 0.5,
+              'circle-stroke-color': '#FF3B30',
+              'circle-stroke-opacity': 0.4
             }
           }
         ]
