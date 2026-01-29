@@ -30,6 +30,8 @@ data/*.pmtiles
 data/*.tif
 !data/vessel_heatmap*.tif
 data/vessel_categories/
+data/buffer_zones/
+data/sanctions/
 
 # Data - databases are too large
 data/*.duckdb
