@@ -43,6 +43,7 @@ let satelliteVisible = false
 let dataInitialized = false
 let sanctionedMmsi = new Set()
 let showSanctionedOnly = false
+let lastTooltipVesselsRaw = null // unfiltered vessel results for re-filtering
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -65,6 +66,7 @@ function showTooltip(html) {
 
 function hideTooltip() {
   tooltip.classList.remove('visible')
+  lastTooltipVesselsRaw = null
 }
 
 /**
@@ -453,7 +455,8 @@ function filterVesselsByFlags(vessels) {
   return filtered
 }
 
-function showRasterTooltip(vessels) {
+function showRasterTooltip(vessels, isRefilter = false) {
+  if (!isRefilter) lastTooltipVesselsRaw = vessels
   if (!vessels || vessels.length === 0) {
     hideTooltip()
     return
@@ -731,7 +734,7 @@ function setupMapHandlers() {
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
     const cellLat = Math.floor(lat * 100) / 100
     const cellLon = Math.floor(lng * 100) / 100
-    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}`
+    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}_${currentFlagFilter}_${showSanctionedOnly}`
 
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
@@ -835,10 +838,12 @@ function setupUIHandlers() {
 
   document.getElementById('flag-select').addEventListener('change', (e) => {
     currentFlagFilter = e.target.value
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
     showSanctionedOnly = e.target.checked
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   document.getElementById('places-select').addEventListener('change', (e) => {
