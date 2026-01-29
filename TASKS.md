@@ -22,7 +22,19 @@ Outstanding Tasks for Albedo
    This affects MULTI_YEAR_COLOR in src/cog.js and the corresponding
    legend swatch in the UI.
 
-3. Upload flag COGs to GCS for production
+3. Unify protected area tooltip with vessel tooltip
+
+   The protected area info panel is currently a separate click-triggered
+   panel positioned in the bottom-right corner (#pa-info). It should
+   instead appear in the same location as the vessel tooltip (top-left,
+   below controls), be triggered on hover rather than click, and use the
+   same table-based styling as the vessel tooltip. Remove the separate
+   #pa-info panel and its close button. On hover over a protected area
+   or buffer zone, show the area's name, category, significance, area,
+   and status in the existing #tooltip element using the same format as
+   vessel data. This keeps a single consistent tooltip pattern.
+
+4. Upload flag COGs to GCS for production
 
    Per-flag COG heatmaps (vessel_heatmap_flag_*.tif) have been generated
    locally but are not yet uploaded to the GCS bucket
