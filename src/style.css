@@ -32,6 +32,7 @@ html, body {
 #legend,
 #places-info,
 #category-select,
+#flag-select,
 #places-select,
 #lang-toggle,
 #about-content {
@@ -168,6 +169,14 @@ html, body {
   background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #1E6AFF 2px, #1E6AFF 3px);
   border: 2px solid #1E6AFF;
   box-sizing: border-box;
+}
+
+.legend-dashed {
+  width: 18px;
+  height: 18px;
+  border: 2px dashed rgba(30, 106, 255, 0.6);
+  box-sizing: border-box;
+  background: rgba(30, 106, 255, 0.05);
 }
 
 .legend-satellite {
@@ -318,6 +327,7 @@ html, body {
 }
 
 #category-select,
+#flag-select,
 #places-select {
   font-size: 14px;
   padding: 8px 12px;
@@ -328,14 +338,46 @@ html, body {
 }
 
 #category-select:hover,
+#flag-select:hover,
 #places-select:hover {
   background: var(--ui-bg-hover);
 }
 
 #category-select option,
+#flag-select option,
 #places-select option {
   background: #1a1a1a;
   color: var(--ui-color);
+}
+
+#sanctions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+  width: var(--ui-panel-width);
+  box-sizing: border-box;
+  color: var(--ui-color);
+  background: var(--ui-bg);
+  border: var(--ui-border);
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
+}
+
+#sanctions-toggle:hover {
+  background: var(--ui-bg-hover);
+}
+
+#sanctions-toggle input {
+  accent-color: #ff4444;
+}
+
+.sanction-badge {
+  color: #ff4444;
+  font-weight: 600;
+  font-size: 11px;
 }
 
 #places-info {
@@ -475,7 +517,12 @@ html, body {
   }
 
   #places-select,
+  #flag-select,
   #places-info {
+    max-width: 200px;
+  }
+
+  #sanctions-toggle {
     max-width: 200px;
   }
 }

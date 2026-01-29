@@ -18,8 +18,13 @@
   "sectionLayersShort": "layers",
   "continue": "click anywhere to continue",
   "protectedArea": "protected area",
+  "bufferZone": "buffer zone",
   "category": "category",
   "iucnCategory": "IUCN category",
+  "area": "area",
+  "allFlags": "all flags",
+  "foreignFlag": "foreign-flagged",
+  "sanctioned": "sanctioned",
   "vesselTypes": {
     "FISHING": "fishing",
     "CARGO": "cargo",

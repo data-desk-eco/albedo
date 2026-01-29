@@ -18,8 +18,13 @@
   "sectionLayersShort": "слои",
   "continue": "нажмите в любом месте, чтобы продолжить",
   "protectedArea": "охраняемая территория",
+  "bufferZone": "охранная зона",
   "category": "категория",
   "iucnCategory": "категория МСОП",
+  "area": "площадь",
+  "allFlags": "все флаги",
+  "foreignFlag": "иностранный флаг",
+  "sanctioned": "под санкциями",
   "vesselTypes": {
     "FISHING": "рыболовные",
     "CARGO": "грузовые",

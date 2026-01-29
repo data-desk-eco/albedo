@@ -30,6 +30,7 @@
   "data": {
     "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
     "vesselData": "https://storage.googleapis.com/albedo-data/vessel_data.bin",
+    "sanctionedMmsi": "sanctioned_mmsi.json",
     "cogsByType": {
       "FISHING": "https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif",
       "CARGO": "https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif",
@@ -64,6 +65,30 @@
               "line-color": "#1E6AFF",
               "line-width": 2,
               "line-opacity": 1
+            }
+          }
+        ]
+      },
+      "buffer-zones": {
+        "geojson": "buffer_zones.geojson",
+        "defaultVisible": true,
+        "style": [
+          {
+            "id": "buffer-zones-fill",
+            "type": "fill",
+            "paint": {
+              "fill-color": "#1E6AFF",
+              "fill-opacity": 0.05
+            }
+          },
+          {
+            "id": "buffer-zones-border",
+            "type": "line",
+            "paint": {
+              "line-color": "#1E6AFF",
+              "line-width": 1.5,
+              "line-opacity": 0.6,
+              "line-dasharray": [4, 3]
             }
           }
         ]
@@ -154,6 +179,22 @@
           "ru": "ООПТ"
         },
         "symbol": "hatch",
+        "defaultVisible": true
+      },
+      {
+        "layers": [
+          "buffer-zones-fill",
+          "buffer-zones-border"
+        ],
+        "label": {
+          "en": "Buffer zones",
+          "ru": "Охранные зоны"
+        },
+        "labelShort": {
+          "en": "Buffers",
+          "ru": "Охр. зоны"
+        },
+        "symbol": "dashed",
         "defaultVisible": true
       },
       {

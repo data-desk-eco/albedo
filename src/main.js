@@ -34,12 +34,15 @@ let map = null
 
 // Map state
 let currentCategory = 'all'
+let currentFlagFilter = 'all'
 let categories = []
 let cogUrls = {}
 let activeYears = new Set()
 let knownYears = []
 let satelliteVisible = false
 let dataInitialized = false
+let sanctionedMmsi = new Set()
+let showSanctionedOnly = false
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -154,6 +157,8 @@ function updateUI() {
   }
 
   if (categories.length > 0) populateCategoryDropdown()
+  populateFlagDropdown()
+  document.getElementById('sanctions-label').textContent = t('sanctioned')
 }
 
 function initYearLegend(years) {
@@ -299,6 +304,60 @@ function loadCategories() {
   populateCategoryDropdown()
 }
 
+// ============================================================================
+// Flag Filter
+// ============================================================================
+
+const FLAG_PRESETS = [
+  { id: 'all', labelKey: 'allFlags' },
+  { id: 'foreign', labelKey: 'foreignFlag' },
+  { id: 'RUS', label: 'RUS' },
+  { id: 'NOR', label: 'NOR' },
+  { id: 'PAN', label: 'PAN' },
+  { id: 'LBR', label: 'LBR' },
+  { id: 'MHL', label: 'MHL' },
+  { id: 'MLT', label: 'MLT' },
+  { id: 'CHN', label: 'CHN' },
+  { id: 'GBR', label: 'GBR' },
+]
+
+function populateFlagDropdown() {
+  const select = document.getElementById('flag-select')
+  select.classList.remove('hidden')
+  select.innerHTML = ''
+  FLAG_PRESETS.forEach(preset => {
+    const option = document.createElement('option')
+    option.value = preset.id
+    option.textContent = preset.labelKey ? t(preset.labelKey) : preset.label
+    select.appendChild(option)
+  })
+  select.value = currentFlagFilter
+}
+
+// ============================================================================
+// Sanctions
+// ============================================================================
+
+async function loadSanctions(manifestDir) {
+  const sanctionsUrl = manifest?.data?.sanctionedMmsi
+  if (!sanctionsUrl) return
+  try {
+    const fullUrl = sanctionsUrl.startsWith('http')
+      ? sanctionsUrl
+      : manifestDir + sanctionsUrl
+    const resp = await fetch(fullUrl)
+    if (!resp.ok) return
+    const mmsiList = await resp.json()
+    sanctionedMmsi = new Set(mmsiList)
+    console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
+    // Show sanctions toggle
+    document.getElementById('sanctions-toggle').classList.remove('hidden')
+    document.getElementById('sanctions-label').textContent = t('sanctioned')
+  } catch (err) {
+    console.warn('Failed to load sanctions data:', err)
+  }
+}
+
 function populateCategoryDropdown() {
   const select = document.getElementById('category-select')
   if (categories.length <= 1) {
@@ -380,15 +439,36 @@ function formatDateShort(isoString) {
   return `${day} ${month} ${year}`
 }
 
+function filterVesselsByFlags(vessels) {
+  if (currentFlagFilter === 'all' && !showSanctionedOnly) return vessels
+  let filtered = vessels
+  if (currentFlagFilter === 'foreign') {
+    filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
+  } else if (currentFlagFilter !== 'all') {
+    filtered = filtered.filter(v => v.flag === currentFlagFilter)
+  }
+  if (showSanctionedOnly) {
+    filtered = filtered.filter(v => sanctionedMmsi.has(v.mmsi))
+  }
+  return filtered
+}
+
 function showRasterTooltip(vessels) {
   if (!vessels || vessels.length === 0) {
     hideTooltip()
     return
   }
 
+  // Apply flag and sanctions filters
+  const filteredVessels = filterVesselsByFlags(vessels)
+  if (filteredVessels.length === 0) {
+    hideTooltip()
+    return
+  }
+
   // Group entries by mmsi to consolidate multiple dates for same vessel
   const byMmsi = new Map()
-  for (const v of vessels) {
+  for (const v of filteredVessels) {
     const key = v.mmsi || v.ship_name || 'unknown'
     if (!byMmsi.has(key)) {
       byMmsi.set(key, {
@@ -397,7 +477,8 @@ function showRasterTooltip(vessels) {
         vessel_type: v.vessel_type,
         flag: v.flag,
         total_hours: 0,
-        dates: []
+        dates: [],
+        sanctioned: sanctionedMmsi.has(v.mmsi)
       })
     }
     const entry = byMmsi.get(key)
@@ -410,11 +491,14 @@ function showRasterTooltip(vessels) {
 
   const grouped = Array.from(byMmsi.values())
   const displayVessels = grouped.slice(0, 3)
-  const totalCount = vessels[0]?.cell_count || grouped.length
+  const totalCount = filteredVessels[0]?.cell_count || grouped.length
   const moreCount = totalCount > 3 ? totalCount - 3 : 0
 
   const rows = [
-    { key: t('vessel'), values: displayVessels.map(v => v.ship_name || t('unknown')) },
+    { key: t('vessel'), values: displayVessels.map(v => {
+      const name = v.ship_name || t('unknown')
+      return v.sanctioned ? `${name} <span class="sanction-badge">⚠ ${t('sanctioned')}</span>` : name
+    })},
     { key: t('mmsi'), values: displayVessels.map(v => v.mmsi) },
     { key: t('type'), values: displayVessels.map(v => tVesselType(v.vessel_type)) },
     { key: t('flag'), values: displayVessels.map(v => v.flag || '?') },
@@ -439,17 +523,23 @@ function showRasterTooltip(vessels) {
 // Protected Area Info Panel
 // ============================================================================
 
-function showProtectedAreaInfo(feature) {
+function showProtectedAreaInfo(feature, isBuffer = false) {
   const props = feature.properties || {}
   const lang = getLang()
   const name = props[`name_${lang}`] || props.name_en || props.name || t('protectedArea')
   const nameEl = document.getElementById('pa-info-name')
   const detailsEl = document.getElementById('pa-info-details')
-  nameEl.textContent = name
+
+  const prefix = isBuffer ? `[${t('bufferZone')}] ` : ''
+  nameEl.textContent = prefix + name
 
   const details = []
   if (props.category) details.push(`${t('category')}: ${props.category}`)
   if (props.iucn_cat) details.push(`${t('iucnCategory')}: ${props.iucn_cat}`)
+  if (props.area_ha) {
+    const areaKm2 = Math.round(props.area_ha / 100)
+    details.push(`${t('area')}: ${areaKm2.toLocaleString()} km²`)
+  }
   detailsEl.innerHTML = details.join('<br>')
 
   document.getElementById('pa-info').classList.add('visible')
@@ -579,11 +669,38 @@ async function initPhase2(manifestDir) {
   initLayerToggles()
   updateMultiYearLegend()
   populatePlacesDropdown()
+  populateFlagDropdown()
   loadCategories()
   updateUI()
 
   // Show full UI now that map is ready
   document.body.classList.add('app-ready')
+
+  // Load GeoJSON layers after map is ready
+  loadGeoJSONLayers(manifestDir)
+
+  // Load sanctions data (non-blocking)
+  loadSanctions(manifestDir)
+}
+
+async function loadGeoJSONLayers(manifestDir) {
+  const vectorLayers = manifest?.layers?.vectors || {}
+  for (const [id, config] of Object.entries(vectorLayers)) {
+    if (!config.geojson) continue
+    try {
+      const url = config.geojson.startsWith('http')
+        ? config.geojson
+        : manifestDir + config.geojson
+      const resp = await fetch(url)
+      if (!resp.ok) continue
+      const geojson = await resp.json()
+      const source = map.getSource(id)
+      if (source) source.setData(geojson)
+      console.log(`Loaded GeoJSON layer: ${id} (${geojson.features?.length} features)`)
+    } catch (err) {
+      console.warn(`Failed to load GeoJSON layer ${id}:`, err)
+    }
+  }
 }
 
 async function init() {
@@ -656,22 +773,25 @@ function setupMapHandlers() {
   }, 16)
 
   map.on('mousemove', (e) => {
-    // Cursor for protected areas
-    const paFeatures = map.queryRenderedFeatures(e.point, {
-      layers: ['protected-areas-fill']
-    })
+    // Cursor for protected areas and buffer zones
+    const clickableLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    const paFeatures = clickableLayers.length > 0
+      ? map.queryRenderedFeatures(e.point, { layers: clickableLayers })
+      : []
     map.getCanvas().style.cursor = paFeatures?.length > 0 ? 'pointer' : ''
 
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
   })
   map.on('mouseout', hideTooltip)
   map.on('click', async (e) => {
-    // Check for protected area click first
-    const paFeatures = map.queryRenderedFeatures(e.point, {
-      layers: ['protected-areas-fill']
-    })
+    // Check for protected area or buffer zone click first
+    const clickableLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    const paFeatures = clickableLayers.length > 0
+      ? map.queryRenderedFeatures(e.point, { layers: clickableLayers })
+      : []
     if (paFeatures && paFeatures.length > 0) {
-      showProtectedAreaInfo(paFeatures[0])
+      const isBuffer = paFeatures[0].layer?.id === 'buffer-zones-fill'
+      showProtectedAreaInfo(paFeatures[0], isBuffer)
       return
     }
 
@@ -711,6 +831,14 @@ function setupUIHandlers() {
 
   document.getElementById('category-select').addEventListener('change', (e) => {
     selectCategory(e.target.value)
+  })
+
+  document.getElementById('flag-select').addEventListener('change', (e) => {
+    currentFlagFilter = e.target.value
+  })
+
+  document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
+    showSanctionedOnly = e.target.checked
   })
 
   document.getElementById('places-select').addEventListener('change', (e) => {

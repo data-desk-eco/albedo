@@ -78,13 +78,20 @@ export function createMapStyle(manifest) {
     }
   }
 
-  // Add PMTiles vector sources
+  // Add PMTiles vector sources and GeoJSON sources
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
     if (config.url) {
       sources[id] = {
         type: 'vector',
         url: `pmtiles://${config.url}`
+      }
+    } else if (config.geojson) {
+      // GeoJSON sources loaded via manifest-relative URL
+      // Actual data is loaded dynamically in main.js after map init
+      sources[id] = {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
       }
     }
   }
@@ -145,14 +152,19 @@ export function createMapStyle(manifest) {
   for (const [sourceId, config] of Object.entries(vectorLayers)) {
     if (!config.style) continue
     for (const layerStyle of config.style) {
-      layers.push({
+      const layer = {
         ...layerStyle,
         source: sourceId,
         layout: {
           ...layerStyle.layout,
           visibility: config.defaultVisible !== false ? 'visible' : 'none'
         }
-      })
+      }
+      // GeoJSON sources don't use source-layer
+      if (config.geojson && layer['source-layer']) {
+        delete layer['source-layer']
+      }
+      layers.push(layer)
     }
   }
 
