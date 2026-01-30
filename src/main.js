@@ -314,9 +314,27 @@ function updateSanctionsFilter() {
   }
 
   if (!map) return
-  const filter = hasYears
+
+  // Year filter
+  const yearFilter = hasYears
     ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
     : ['literal', false]
+
+  // Combine with vessel type and flag filters
+  const conditions = [yearFilter]
+
+  if (currentCategory !== 'all') {
+    conditions.push(['has', `t_${currentCategory}`])
+  }
+
+  if (currentFlagFilter === 'foreign') {
+    conditions.push(['has', 'f_foreign'])
+  } else if (currentFlagFilter !== 'all') {
+    conditions.push(['has', `f_${currentFlagFilter}`])
+  }
+
+  const filter = conditions.length === 1 ? conditions[0] : ['all', ...conditions]
+
   for (const id of ['sanctioned-vessels-fill', 'sanctioned-vessels-outline']) {
     if (map.getLayer(id)) map.setFilter(id, filter)
   }
@@ -415,11 +433,10 @@ function formatDateShort(isoString) {
 }
 
 function filterVesselsByFlags(vessels) {
-  if (currentFlagFilter === 'all' && !showSanctionedOnly) return vessels
+  if (currentFlagFilter === 'all') return vessels
   let filtered = vessels
   if (currentFlagFilter === 'foreign') filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
   else if (currentFlagFilter !== 'all') filtered = filtered.filter(v => v.flag === currentFlagFilter)
-  if (showSanctionedOnly) filtered = filtered.filter(v => sanctionedMmsi.has(v.mmsi))
   return filtered
 }
 
@@ -444,6 +461,8 @@ function showRasterTooltip(vessels, isRefilter = false) {
   }
 
   const grouped = Array.from(byMmsi.values())
+  // Prioritize sanctioned vessels for display
+  grouped.sort((a, b) => (b.sanctioned ? 1 : 0) - (a.sanctioned ? 1 : 0))
   const display = grouped.slice(0, 3)
   const totalCount = filtered[0]?.cell_count || grouped.length
   const more = totalCount > 3 ? totalCount - 3 : 0
@@ -641,7 +660,7 @@ function setupMapHandlers() {
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
-    const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentCategory}_${currentFlagFilter}_${showSanctionedOnly}`
+    const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentCategory}_${currentFlagFilter}`
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
 
@@ -707,11 +726,15 @@ function setupUIHandlers() {
 
   $('about-modal').addEventListener('click', () => document.body.classList.remove('about-visible'))
 
-  $('category-select').addEventListener('change', e => selectCategory(e.target.value))
+  $('category-select').addEventListener('change', e => {
+    selectCategory(e.target.value)
+    updateSanctionsFilter()
+  })
 
   $('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
     await switchActiveCOG()
+    updateSanctionsFilter()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
@@ -720,7 +743,6 @@ function setupUIHandlers() {
     showSanctionedOnly = !showSanctionedOnly
     $('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
     setSanctionsVisibility(showSanctionedOnly)
-    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   $('places-select').addEventListener('change', (e) => {
