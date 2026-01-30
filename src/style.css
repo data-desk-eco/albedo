@@ -481,7 +481,7 @@ body.app-ready #zoom-controls {
 /* Responsive */
 @media (max-width: 768px) {
   :root {
-    --ui-panel-width: auto;
+    --ui-panel-width: 160px;
   }
 
   #logo-container {
@@ -523,7 +523,7 @@ body.app-ready #zoom-controls {
   }
 
   #legend-collapse::after {
-    content: '▲';
+    content: '▼';
   }
 
   #legend.collapsed #legend-collapse {
@@ -539,7 +539,7 @@ body.app-ready #zoom-controls {
   }
 
   #legend.collapsed #legend-collapse::after {
-    content: '▼';
+    content: '▲';
   }
 
   #legend.collapsed #legend-body {
