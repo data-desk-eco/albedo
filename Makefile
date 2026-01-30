@@ -106,6 +106,7 @@ deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/buffer_zones.geojson gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)

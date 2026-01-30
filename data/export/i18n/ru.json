@@ -1,6 +1,6 @@
 {
-  "allVessels": "все суда",
-  "selectPlace": "выберите место",
+  "allVessels": "типы судов",
+  "selectPlace": "места",
   "unknown": "неизвестно",
   "vessel": "судно",
   "mmsi": "mmsi",
@@ -24,7 +24,7 @@
   "area": "площадь",
   "significance": "значение",
   "status": "статус",
-  "allFlags": "все флаги",
+  "allFlags": "флаги судов",
   "foreignFlag": "иностранный флаг",
   "sanctioned": "под санкциями",
   "buildYear": "год постройки",

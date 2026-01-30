@@ -115,12 +115,6 @@ export function createMapStyle(manifest, manifestDir = '') {
       layout: { visibility: manifest.layers?.satellite?.defaultVisible ? 'visible' : 'none' },
       paint: { 'raster-opacity': 1 }
     })
-    layers.push({
-      id: 'south-mask',
-      type: 'fill',
-      source: 'south-mask',
-      paint: { 'fill-color': theme.background || '#000000' }
-    })
   }
 
   // Vessel heatmap
@@ -168,6 +162,14 @@ export function createMapStyle(manifest, manifestDir = '') {
       layers.push(layer)
     }
   }
+
+  // South-mask: clip all layers below SOUTH_LAT boundary
+  layers.push({
+    id: 'south-mask',
+    type: 'fill',
+    source: 'south-mask',
+    paint: { 'fill-color': theme.background || '#000000' }
+  })
 
   return {
     version: 8,

@@ -1,6 +1,6 @@
 {
-  "allVessels": "all vessels",
-  "selectPlace": "select a place",
+  "allVessels": "vessel types",
+  "selectPlace": "places",
   "unknown": "unknown",
   "vessel": "vessel",
   "mmsi": "mmsi",
@@ -24,7 +24,7 @@
   "area": "area",
   "significance": "significance",
   "status": "status",
-  "allFlags": "all flags",
+  "allFlags": "vessel flags",
   "foreignFlag": "foreign-flagged",
   "sanctioned": "sanctioned",
   "buildYear": "built",

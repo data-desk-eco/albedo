@@ -166,17 +166,17 @@ html, body {
 .legend-hatch {
   width: 18px;
   height: 18px;
-  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #1E6AFF 2px, #1E6AFF 3px);
-  border: 2px solid #1E6AFF;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #70DFEE 2px, #70DFEE 3px);
+  border: 2px solid #70DFEE;
   box-sizing: border-box;
 }
 
 .legend-dashed {
   width: 18px;
   height: 18px;
-  border: 2px dashed rgba(30, 106, 255, 0.6);
+  border: 2px dashed rgba(112, 223, 238, 0.6);
   box-sizing: border-box;
-  background: rgba(30, 106, 255, 0.05);
+  background: rgba(112, 223, 238, 0.05);
 }
 
 .legend-satellite {
@@ -205,33 +205,48 @@ html, body {
 }
 
 /* Zoom controls */
-.maplibregl-ctrl-top-right {
-  top: 40px;
+#zoom-controls {
+  position: absolute;
+  top: 10px;
+  right: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
-.maplibregl-ctrl-group {
-  background: var(--ui-bg) !important;
-  border: var(--ui-border) !important;
+body.app-ready #zoom-controls {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.15s ease-out;
+}
+
+#zoom-controls button {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  font-family: var(--ui-font-family);
+  font-weight: 300;
+  cursor: pointer;
+  color: var(--ui-color);
+  background: var(--ui-bg);
+  border: var(--ui-border);
   backdrop-filter: var(--ui-blur);
   -webkit-backdrop-filter: var(--ui-blur);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
 }
 
-.maplibregl-ctrl-group button {
-  background-color: transparent !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+#zoom-in {
+  border-bottom: none;
 }
 
-.maplibregl-ctrl-group button:hover {
-  background-color: var(--ui-bg-hover) !important;
-}
-
-.maplibregl-ctrl-group button + button {
-  border-top: none !important;
-}
-
-.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
-.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
-  filter: invert(1);
+#zoom-controls button:hover {
+  background: var(--ui-bg-hover);
 }
 
 /* Language toggle */
@@ -305,27 +320,8 @@ html, body {
 }
 
 #sanctions-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  padding: 6px 12px;
   cursor: pointer;
-  width: var(--ui-panel-width);
-  box-sizing: border-box;
-  color: var(--ui-color);
-  background: var(--ui-bg);
-  border: var(--ui-border);
-  backdrop-filter: var(--ui-blur);
-  -webkit-backdrop-filter: var(--ui-blur);
-}
-
-#sanctions-toggle:hover {
-  background: var(--ui-bg-hover);
-}
-
-#sanctions-toggle input {
-  accent-color: #ff4444;
+  margin-top: 8px;
 }
 
 .sanction-badge {
@@ -471,10 +467,6 @@ html, body {
   #places-select,
   #flag-select,
   #places-info {
-    max-width: 200px;
-  }
-
-  #sanctions-toggle {
     max-width: 200px;
   }
 }
