@@ -100,6 +100,7 @@ html, body {
   width: var(--ui-panel-width);
   box-sizing: border-box;
   font-size: var(--ui-font-size);
+  z-index: 3;
 }
 
 #legend-collapse {
@@ -245,6 +246,7 @@ html, body {
   gap: 0;
   opacity: 0;
   pointer-events: none;
+  z-index: 3;
 }
 
 body.app-ready #zoom-controls {
@@ -288,6 +290,7 @@ body.app-ready #zoom-controls {
   font-size: 12px;
   padding: 4px 8px;
   cursor: pointer;
+  z-index: 3;
 }
 
 /* Performance overlay */
@@ -324,6 +327,7 @@ body.app-ready #zoom-controls {
   font-family: var(--ui-font-family);
   font-size: var(--ui-font-size);
   color: var(--ui-color);
+  z-index: 3;
 }
 
 #category-select,
@@ -550,5 +554,14 @@ body.app-ready #zoom-controls {
   #flag-select,
   #places-info {
     max-width: 200px;
+  }
+
+  #lang-toggle {
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  #zoom-controls {
+    top: 52px;
   }
 }
