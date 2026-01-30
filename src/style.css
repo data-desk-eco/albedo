@@ -166,17 +166,17 @@ html, body {
 .legend-hatch {
   width: 18px;
   height: 18px;
-  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #70DFEE 2px, #70DFEE 3px);
-  border: 2px solid #70DFEE;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #037874 2px, #037874 3px);
+  border: 2px solid #037874;
   box-sizing: border-box;
 }
 
 .legend-dashed {
   width: 18px;
   height: 18px;
-  border: 2px dashed rgba(112, 223, 238, 0.6);
+  border: 2px dashed rgba(3, 120, 116, 0.6);
   box-sizing: border-box;
-  background: rgba(112, 223, 238, 0.05);
+  background: rgba(3, 120, 116, 0.05);
 }
 
 .legend-satellite {
@@ -413,6 +413,17 @@ body.app-ready #zoom-controls {
 
 #about-description p:last-child {
   margin-bottom: 0;
+}
+
+#about-description .about-credits {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--ui-color-muted);
+}
+
+#about-description .about-credits a {
+  color: inherit;
+  text-decoration: underline;
 }
 
 #about-content p:last-of-type {
