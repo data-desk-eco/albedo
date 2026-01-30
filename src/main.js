@@ -301,8 +301,10 @@ function populateFlagDropdown() {
 function updateSanctionsFilter() {
   const toggle = $('sanctions-toggle')
   const hasYears = activeYears.size > 0
+  const hasFilters = currentCategory !== 'all' || currentFlagFilter !== 'all'
+  const canUse = hasYears && !hasFilters
 
-  if (!hasYears) {
+  if (!canUse) {
     toggle.classList.add('disabled')
     if (showSanctionedOnly) {
       showSanctionedOnly = false
