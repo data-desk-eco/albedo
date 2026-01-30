@@ -65,8 +65,12 @@ def main():
     # Build GeoJSON polygon features (one per grid cell)
     features = []
     for lat, lon, total_hours, vessel_count in rows:
-        min_lat, min_lon = lat, lon
-        max_lat = lat + CELL_SIZE
+        # lat from the DB is the TOP edge of the cell (snapToGrid uses
+        # 90 - floor((90 - lat) * 100) * 0.01), so the polygon extends
+        # downward.  lon is the LEFT edge, so the polygon extends right.
+        min_lat = lat - CELL_SIZE
+        max_lat = lat
+        min_lon = lon
         max_lon = lon + CELL_SIZE
 
         features.append({

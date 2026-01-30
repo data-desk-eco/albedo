@@ -64,6 +64,18 @@ try {
   console.warn('Warning: Could not parse AVAILABLE_LANGS:', e.message)
 }
 
+// Clean env text: strip surrounding quotes and convert literal \n to newlines
+function cleanText(val) {
+  if (!val) return ''
+  // Strip surrounding quotes (dotenv may leave them)
+  if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+    val = val.slice(1, -1)
+  }
+  // Convert literal \n to actual newlines
+  val = val.replace(/\\n/g, '\n')
+  return val
+}
+
 // Build manifest object
 const manifest = {
   name: env.REGION_ID || 'albedo',
@@ -71,12 +83,12 @@ const manifest = {
   about: {
     title: { en: 'about this map', ru: 'о карте' },
     description: {
-      en: env.ABOUT_EN || '',
-      ru: env.ABOUT_RU || ''
+      en: cleanText(env.ABOUT_EN),
+      ru: cleanText(env.ABOUT_RU)
     },
     dataCredits: {
-      en: 'Sanctions data: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
-      ru: 'Данные о санкциях: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
+      en: 'Vessel data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>. Sanctions data: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
+      ru: 'Данные о судах: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>. Данные о санкциях: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
     }
   },
 

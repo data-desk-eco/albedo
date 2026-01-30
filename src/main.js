@@ -126,19 +126,24 @@ function applyManifestUI(manifest) {
 // UI Functions
 // ============================================================================
 
+function renderAboutModal() {
+  if (!manifest?.about) return
+  document.getElementById('about-title').textContent = localize(manifest.about.title)
+  const descText = localize(manifest.about.description)
+  const descEl = document.getElementById('about-description')
+  let html = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
+  if (manifest.about.dataCredits) {
+    html += `<p class="about-credits">${localize(manifest.about.dataCredits)}</p>`
+  }
+  descEl.innerHTML = html
+}
+
 function updateUI() {
   const isNarrow = window.innerWidth <= 768
 
   // About modal
+  renderAboutModal()
   if (manifest?.about) {
-    document.getElementById('about-title').textContent = localize(manifest.about.title)
-    const descText = localize(manifest.about.description)
-    const descEl = document.getElementById('about-description')
-    let html = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
-    if (manifest.about.dataCredits) {
-      html += `<p class="about-credits">${localize(manifest.about.dataCredits)}</p>`
-    }
-    descEl.innerHTML = html
     document.getElementById('about-continue').textContent = t('continue')
   }
 
@@ -513,11 +518,6 @@ function filterVesselsByFlags(vessels) {
 function showRasterTooltip(vessels, isRefilter = false, point = null) {
   if (!isRefilter) lastTooltipVesselsRaw = vessels
   if (!vessels || vessels.length === 0) {
-    // Fallback: if in sanctions mode, try vector feature tooltip
-    if (showSanctionedOnly && point) {
-      showSanctionedFeatureTooltip(point)
-      return
-    }
     hideTooltip()
     return
   }
@@ -525,11 +525,6 @@ function showRasterTooltip(vessels, isRefilter = false, point = null) {
   // Apply flag and sanctions filters
   const filteredVessels = filterVesselsByFlags(vessels)
   if (filteredVessels.length === 0) {
-    // Fallback: if sanctions filter excluded all results, try vector feature
-    if (showSanctionedOnly && point) {
-      showSanctionedFeatureTooltip(point)
-      return
-    }
     hideTooltip()
     return
   }
@@ -609,29 +604,6 @@ function showRasterTooltip(vessels, isRefilter = false, point = null) {
 }
 
 // ============================================================================
-// Sanctioned Vessel Vector Feature Tooltip (fallback)
-// ============================================================================
-
-function showSanctionedFeatureTooltip(point) {
-  if (!map.getLayer('sanctioned-vessels-fill')) return
-  const features = map.queryRenderedFeatures(point, { layers: ['sanctioned-vessels-fill'] })
-  if (!features?.length) {
-    hideTooltip()
-    return
-  }
-  const props = features[0].properties || {}
-  const rows = [
-    { key: t('status'), value: `<span class="sanction-badge">${t('sanctioned')}</span>` }
-  ]
-  if (props.vessels) rows.push({ key: t('vessel'), value: `${props.vessels} ${t('vessel').toLowerCase()}` })
-  if (props.hours) rows.push({ key: t('hours'), value: `${Math.round(props.hours)}${t('hoursShort')}` })
-  const html = '<table>' +
-    rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') +
-    '</table>'
-  showTooltip(html)
-}
-
-// ============================================================================
 // Protected Area Tooltip
 // ============================================================================
 
@@ -683,12 +655,7 @@ async function initPhase1() {
   applyManifestUI(manifest)
 
   // Show about modal content immediately
-  if (manifest?.about) {
-    document.getElementById('about-title').textContent = localize(manifest.about.title)
-    const descText = localize(manifest.about.description)
-    const descEl = document.getElementById('about-description')
-    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
-  }
+  renderAboutModal()
 
   // Show the about modal now (before map loads)
   document.body.classList.add('about-visible')
@@ -853,7 +820,8 @@ function setupMapHandlers() {
   // Vessel tooltips
   let lastQueryCell = null
   const handleRasterHover = rafThrottle(async (e) => {
-    if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+    if (!dataInitialized) return
+    if (!showSanctionedOnly && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
@@ -913,8 +881,7 @@ function setupMapHandlers() {
       return
     }
 
-    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
-    else if (showSanctionedOnly) showSanctionedFeatureTooltip(e.point)
+    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM || showSanctionedOnly) handleRasterHover(e)
   })
   map.on('mouseout', hideTooltip)
   map.on('click', async (e) => {

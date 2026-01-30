@@ -58,8 +58,9 @@ export function tileToBBox(z, x, y) {
 
 /**
  * Snap coordinates to grid cell (pixel-is-area convention)
- * Grid cells are identified by their lower-left corner.
- * A cell labeled "72.51" covers the area [72.51, 72.52).
+ * Returns the upper-left corner of the cell:
+ *   lat is the TOP edge (cell covers (lat-0.01, lat])
+ *   lon is the LEFT edge (cell covers [lon, lon+0.01))
  *
  * @param {number} lat Latitude
  * @param {number} lon Longitude
