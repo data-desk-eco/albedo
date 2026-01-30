@@ -112,6 +112,8 @@ function renderAboutModal() {
 
 // --- UI updates ---
 
+let wasNarrow = window.innerWidth <= 768
+
 function updateUI() {
   const narrow = window.innerWidth <= 768
 
@@ -131,8 +133,12 @@ function updateUI() {
   // Sanctions label
   $('sanctions-label').textContent = t(narrow ? 'sanctionedShort' : 'sanctioned')
 
-  // Legend collapse toggle (mobile only)
-  if (!narrow) $('legend').classList.remove('collapsed')
+  // Legend collapse label
+  $('legend-collapse-label').textContent = t('legend')
+
+  // Force legend open only when transitioning from narrow to wide
+  if (!narrow && wasNarrow) $('legend').classList.remove('collapsed')
+  wasNarrow = narrow
 
   // Data credits section
   $('legend-section-data').textContent = t(narrow ? 'sectionDataShort' : 'sectionData')

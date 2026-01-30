@@ -29,6 +29,7 @@
   "allFlags": "флаги судов",
   "foreignFlag": "иностранный флаг",
   "sanctioned": "под санкциями",
+  "legend": "легенда",
   "sanctionedShort": "санкции",
   "buildYear": "год постройки",
   "dwt": "дедвейт",

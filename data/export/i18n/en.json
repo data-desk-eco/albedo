@@ -29,6 +29,7 @@
   "allFlags": "vessel flags",
   "foreignFlag": "foreign-flagged",
   "sanctioned": "sanctioned",
+  "legend": "legend",
   "sanctionedShort": "sanction",
   "buildYear": "built",
   "dwt": "DWT",

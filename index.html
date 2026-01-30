@@ -41,13 +41,13 @@
 </div>
 <div id="tooltip"></div>
 <div id="controls">
-  <select id="category-select">
+  <select id="category-select" class="ui-select-text">
     <option value="all">vessel types</option>
   </select>
-  <select id="flag-select" class="hidden">
+  <select id="flag-select" class="ui-select-text hidden">
     <option value="all">vessel flags</option>
   </select>
-  <select id="places-select" class="hidden">
+  <select id="places-select" class="ui-select-text hidden">
     <option value="">places</option>
   </select>
   <div id="places-info" class="hidden"></div>
@@ -58,7 +58,7 @@
   <div>load: <span id="perf-load">-</span>ms</div>
 </div>
 <div id="legend">
-  <div id="legend-collapse"></div>
+  <div id="legend-collapse" class="ui-select-text"><span id="legend-collapse-label"></span></div>
   <div id="legend-body">
   <div id="legend-section-vessel" class="legend-section-title"></div>
   <div class="legend-item legend-multi-year">
