@@ -5,34 +5,13 @@
 
 import './style.css'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import {
-  DEBUG_MODE,
-  RASTER_TOOLTIP_MIN_ZOOM,
-  MANIFEST_URL,
-  createMapStyle,
-  getYearColor
-} from './config.js'
+import { RASTER_TOOLTIP_MIN_ZOOM, MANIFEST_URL, createMapStyle, getYearColor } from './config.js'
 
 // Lazy-loaded modules
-let maplibregl = null
-let cogModule = null
-let dataModule = null
-
-// Progress bar
-const PROGRESS_WIDTH = 20
-function updateProgress(percent) {
-  const filled = Math.round((percent / 100) * PROGRESS_WIDTH)
-  const empty = PROGRESS_WIDTH - filled
-  const bar = '#'.repeat(filled) + '.'.repeat(empty)
-  const el = document.getElementById('about-progress')
-  if (el) el.textContent = `loading [${bar}] ${percent}%`
-}
+let maplibregl, cogModule, dataModule
 
 // App state
-let manifest = null
-let map = null
-
-// Map state
+let manifest, map
 let currentCategory = 'all'
 let currentFlagFilter = 'all'
 let categories = []
@@ -43,25 +22,33 @@ let knownYears = []
 let satelliteVisible = false
 let dataInitialized = false
 let sanctionedMmsi = new Set()
-let vesselMeta = {}  // mmsi -> {imo, y: buildYear, d: dwt}
+let vesselMeta = {}
 let showSanctionedOnly = false
-let lastTooltipVesselsRaw = null // unfiltered vessel results for re-filtering
+let lastTooltipVesselsRaw = null
 
 // COG tile cache
 const cogTileCache = new Map()
 let activeYearBands = []
 
-// DOM elements
-const tooltip = document.getElementById('tooltip')
-const controlsEl = document.getElementById('controls')
+// DOM refs
+const $ = id => document.getElementById(id)
+const tooltip = $('tooltip')
+const controlsEl = $('controls')
 
-// ============================================================================
-// Utility Functions
-// ============================================================================
+// --- Progress ---
+
+const PROGRESS_WIDTH = 20
+function updateProgress(percent) {
+  const filled = Math.round((percent / 100) * PROGRESS_WIDTH)
+  const bar = '#'.repeat(filled) + '.'.repeat(PROGRESS_WIDTH - filled)
+  const el = $('about-progress')
+  if (el) el.textContent = `loading [${bar}] ${percent}%`
+}
+
+// --- Tooltip ---
 
 function showTooltip(html) {
-  const rect = controlsEl.getBoundingClientRect()
-  tooltip.style.top = (rect.bottom + 8) + 'px'
+  tooltip.style.top = (controlsEl.getBoundingClientRect().bottom + 8) + 'px'
   tooltip.innerHTML = html
   tooltip.classList.add('visible')
 }
@@ -71,142 +58,113 @@ function hideTooltip() {
   lastTooltipVesselsRaw = null
 }
 
-/**
- * RAF-based throttle - coalesces calls to next animation frame
- */
-function rafThrottle(fn) {
-  let pending = null
-  let rafId = null
+// --- Utilities ---
 
+function rafThrottle(fn) {
+  let pending = null, rafId = null
   return (...args) => {
     pending = args
     if (rafId === null) {
       rafId = requestAnimationFrame(() => {
         rafId = null
-        if (pending) {
-          fn(...pending)
-          pending = null
-        }
+        if (pending) { fn(...pending); pending = null }
       })
     }
   }
 }
 
-function applyManifestUI(manifest) {
-  const ui = manifest.ui || {}
-  if (ui.title) document.title = ui.title
-  {
-    // Globe favicon: north pole view, black sea, white land
-    const link = document.createElement('link')
-    link.rel = 'icon'
-    link.href = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-<circle cx='32' cy='32' r='30' fill='%23000'/>
-<g fill='%23fff'>
-<ellipse cx='32' cy='20' rx='12' ry='8' transform='rotate(-20 32 20)'/>
-<ellipse cx='18' cy='32' rx='8' ry='14' transform='rotate(30 18 32)'/>
-<ellipse cx='46' cy='28' rx='7' ry='10' transform='rotate(-40 46 28)'/>
-<ellipse cx='32' cy='44' rx='10' ry='6' transform='rotate(10 32 44)'/>
-<circle cx='32' cy='10' r='6'/>
-</g>
-<circle cx='32' cy='32' r='30' fill='none' stroke='%23333' stroke-width='1'/>
-</svg>`)}`
-    document.head.appendChild(link)
-  }
-  const theme = ui.theme || {}
-  const root = document.documentElement
-  if (theme.background) root.style.setProperty('--ui-background', theme.background)
-  if (theme.text) root.style.setProperty('--ui-color', theme.text)
-  if (theme.textMuted) root.style.setProperty('--ui-color-muted', theme.textMuted)
-  if (theme.panelBg) root.style.setProperty('--ui-bg', theme.panelBg)
-  if (theme.panelBorder) root.style.setProperty('--ui-border', `1px solid ${theme.panelBorder}`)
-  if (theme.panelHover) root.style.setProperty('--ui-bg-hover', theme.panelHover)
+function resolveUrl(url, base) {
+  return url.startsWith('http') ? url : base + url
 }
 
-// ============================================================================
-// UI Functions
-// ============================================================================
+// --- Manifest UI ---
+
+function applyManifestUI() {
+  const ui = manifest.ui || {}
+  if (ui.title) document.title = ui.title
+
+  // Globe favicon
+  const link = document.createElement('link')
+  link.rel = 'icon'
+  link.href = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='30' fill='%23000'/><g fill='%23fff'><ellipse cx='32' cy='20' rx='12' ry='8' transform='rotate(-20 32 20)'/><ellipse cx='18' cy='32' rx='8' ry='14' transform='rotate(30 18 32)'/><ellipse cx='46' cy='28' rx='7' ry='10' transform='rotate(-40 46 28)'/><ellipse cx='32' cy='44' rx='10' ry='6' transform='rotate(10 32 44)'/><circle cx='32' cy='10' r='6'/></g><circle cx='32' cy='32' r='30' fill='none' stroke='%23333' stroke-width='1'/></svg>`)}`
+  document.head.appendChild(link)
+
+  const theme = ui.theme || {}
+  const root = document.documentElement
+  const props = { background: '--ui-background', text: '--ui-color', textMuted: '--ui-color-muted', panelBg: '--ui-bg', panelHover: '--ui-bg-hover' }
+  for (const [key, prop] of Object.entries(props)) {
+    if (theme[key]) root.style.setProperty(prop, theme[key])
+  }
+  if (theme.panelBorder) root.style.setProperty('--ui-border', `1px solid ${theme.panelBorder}`)
+}
+
+// --- About modal ---
 
 function renderAboutModal() {
   if (!manifest?.about) return
-  document.getElementById('about-title').textContent = localize(manifest.about.title)
-  const descText = localize(manifest.about.description)
-  const descEl = document.getElementById('about-description')
-  let html = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
+  $('about-title').textContent = localize(manifest.about.title)
+  let html = localize(manifest.about.description).split('\n\n').map(p => `<p>${p}</p>`).join('')
   if (manifest.about.dataCredits) {
     html += `<p class="about-credits">${localize(manifest.about.dataCredits)}</p>`
   }
-  descEl.innerHTML = html
+  $('about-description').innerHTML = html
 }
+
+// --- UI updates ---
 
 function updateUI() {
-  const isNarrow = window.innerWidth <= 768
+  const narrow = window.innerWidth <= 768
 
-  // About modal
   renderAboutModal()
-  if (manifest?.about) {
-    document.getElementById('about-continue').textContent = t('continue')
-  }
+  if (manifest?.about) $('about-continue').textContent = t('continue')
 
-  // Legend labels
-  document.getElementById('legend-multi-year').textContent = t(isNarrow ? 'multiYearShort' : 'multiYear')
-  document.getElementById('legend-section-vessel').textContent = t(isNarrow ? 'sectionVesselShort' : 'sectionVessel')
-  document.getElementById('legend-section-layers').textContent = t(isNarrow ? 'sectionLayersShort' : 'sectionLayers')
+  $('legend-multi-year').textContent = t(narrow ? 'multiYearShort' : 'multiYear')
+  $('legend-section-vessel').textContent = t(narrow ? 'sectionVesselShort' : 'sectionVessel')
+  $('legend-section-layers').textContent = t(narrow ? 'sectionLayersShort' : 'sectionLayers')
 
-  // Layer toggle labels from manifest
-  const layerToggles = manifest.ui?.layerToggles || []
-  layerToggles.forEach((toggle, i) => {
-    const el = document.getElementById(`legend-layer-${i}`)
-    if (el) el.textContent = localize(isNarrow && toggle.labelShort ? toggle.labelShort : toggle.label)
+  // Layer toggle labels
+  ;(manifest.ui?.layerToggles || []).forEach((toggle, i) => {
+    const el = $(`legend-layer-${i}`)
+    if (el) el.textContent = localize(narrow && toggle.labelShort ? toggle.labelShort : toggle.label)
   })
 
-  // Data sources
-  const sourceEl = document.getElementById('legend-source')
+  // Source links
+  const sourceEl = $('legend-source')
   if (sourceEl) {
     const links = manifest.ui?.sourceLinks || (manifest.ui?.sourceLink ? [manifest.ui.sourceLink] : [])
-    if (links.length > 0) {
-      const parts = links
-        .filter(link => link.url)
-        .map(link => `<a href="${link.url}" target="_blank" rel="noopener">${localize(isNarrow && link.labelShort ? link.labelShort : link.label)}</a>`)
-      sourceEl.innerHTML = `data: ${parts.join(', ')}`
-    }
+    const parts = links.filter(l => l.url).map(l =>
+      `<a href="${l.url}" target="_blank" rel="noopener">${localize(narrow && l.labelShort ? l.labelShort : l.label)}</a>`
+    )
+    if (parts.length) sourceEl.innerHTML = `data: ${parts.join(', ')}`
   }
 
-  // Update dropdowns
+  // Dropdowns
   if (manifest?.places?.length > 0) {
-    const select = document.getElementById('places-select')
-    const selectedValue = select.value
+    const select = $('places-select')
+    const val = select.value
     populatePlacesDropdown()
-    select.value = selectedValue
-    if (selectedValue !== '') {
-      const place = manifest.places[parseInt(selectedValue)]
-      if (place) {
-        document.getElementById('places-info').innerHTML = `<span>${localize(place.description)}</span>`
-      }
+    select.value = val
+    if (val !== '') {
+      const place = manifest.places[parseInt(val)]
+      if (place) $('places-info').innerHTML = `<span>${localize(place.description)}</span>`
     }
   }
-
   if (categories.length > 0) populateCategoryDropdown()
   populateFlagDropdown()
-  document.getElementById('sanctions-label').textContent = t('sanctioned')
+  $('sanctions-label').textContent = t('sanctioned')
 }
 
-function initYearLegend(years) {
-  const container = document.getElementById('legend-years')
-  container.innerHTML = ''
+// --- Legend ---
 
-  const sortedYears = [...years].sort((a, b) => b - a)
-  sortedYears.forEach((year) => {
-    const bandIndex = years.indexOf(year)
-    const color = getYearColor(bandIndex)
+function initYearLegend(years) {
+  const container = $('legend-years')
+  container.innerHTML = ''
+  ;[...years].sort((a, b) => b - a).forEach(year => {
+    const color = getYearColor(years.indexOf(year))
     const item = document.createElement('div')
     item.className = 'legend-item legend-toggle active'
     item.dataset.year = year
-    item.innerHTML = `
-      <div class="legend-symbol">
-        <div class="legend-square" style="background: ${color};"></div>
-      </div>
-      <span class="legend-text">${year}</span>
-    `
+    item.innerHTML = `<div class="legend-symbol"><div class="legend-square" style="background:${color}"></div></div><span class="legend-text">${year}</span>`
     container.appendChild(item)
     item.addEventListener('click', () => {
       toggleYear(parseInt(item.dataset.year))
@@ -216,163 +174,171 @@ function initYearLegend(years) {
 }
 
 function initLayerToggles() {
-  const container = document.getElementById('legend-layers')
+  const container = $('legend-layers')
   container.innerHTML = ''
-
-  const layerToggles = manifest.ui?.layerToggles || []
-  layerToggles.forEach((toggle, i) => {
+  ;(manifest.ui?.layerToggles || []).forEach((toggle, i) => {
     const item = document.createElement('div')
     item.className = `legend-item legend-toggle ${toggle.defaultVisible !== false ? 'active' : ''}`
     item.dataset.layers = toggle.layers.join(',')
-    item.innerHTML = `
-      <div class="legend-symbol">
-        <div class="legend-${toggle.symbol || 'square'}"></div>
-      </div>
-      <span id="legend-layer-${i}" class="legend-text">${localize(toggle.label)}</span>
-    `
+    item.innerHTML = `<div class="legend-symbol"><div class="legend-${toggle.symbol || 'square'}"></div></div><span id="legend-layer-${i}" class="legend-text">${localize(toggle.label)}</span>`
     container.appendChild(item)
     item.addEventListener('click', () => {
       const layerIds = item.dataset.layers.split(',')
-      const firstLayer = layerIds.find(id => map.getLayer(id))
-      if (!firstLayer) return
-
-      const isVisible = map.getLayoutProperty(firstLayer, 'visibility') !== 'none'
-      layerIds.forEach(id => {
-        if (map.getLayer(id)) {
-          map.setLayoutProperty(id, 'visibility', isVisible ? 'none' : 'visible')
-        }
-      })
+      const first = layerIds.find(id => map.getLayer(id))
+      if (!first) return
+      const visible = map.getLayoutProperty(first, 'visibility') !== 'none'
+      layerIds.forEach(id => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'none' : 'visible') })
       item.classList.toggle('active')
-
-      // Handle satellite mode for COG rendering
       if (toggle.isSatellite) {
-        satelliteVisible = !isVisible
-        cogTileCache.clear()
-        cogModule?.clearCache()
-        map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+        satelliteVisible = !visible
+        refreshHeatmapTiles()
       }
     })
   })
 }
 
 function updateMultiYearLegend() {
-  const multiYearItem = document.querySelector('.legend-multi-year')
-  if (multiYearItem) multiYearItem.classList.toggle('disabled', activeYears.size < 2)
+  document.querySelector('.legend-multi-year')?.classList.toggle('disabled', activeYears.size < 2)
 }
 
 function updateMapLabels() {
-  if (!map || !map.getLayer('place-labels')) return
+  if (!map?.getLayer('place-labels')) return
   const lang = getLang()
-  map.setLayoutProperty('place-labels', 'text-field', [
-    'coalesce',
-    ['get', `name_${lang}`],
-    ['get', 'name_en']
-  ])
+  map.setLayoutProperty('place-labels', 'text-field', ['coalesce', ['get', `name_${lang}`], ['get', 'name_en']])
 }
 
-// ============================================================================
-// Hatch Patterns
-// ============================================================================
+// --- Hatch patterns ---
 
 function createHatchPattern(color, size = 6) {
   const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
+  canvas.width = canvas.height = size
   const ctx = canvas.getContext('2d')
   ctx.strokeStyle = color
   ctx.lineWidth = 1
   ctx.beginPath()
-  ctx.moveTo(0, size)
-  ctx.lineTo(size, 0)
-  ctx.moveTo(-size, size)
-  ctx.lineTo(size, -size)
-  ctx.moveTo(0, size * 2)
-  ctx.lineTo(size * 2, 0)
+  ctx.moveTo(0, size); ctx.lineTo(size, 0)
+  ctx.moveTo(-size, size); ctx.lineTo(size, -size)
+  ctx.moveTo(0, size * 2); ctx.lineTo(size * 2, 0)
   ctx.stroke()
   return ctx.getImageData(0, 0, size, size)
 }
 
-const hatchPatterns = {
-  'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
-  'hatch-white-md': () => createHatchPattern('#ffffff', 10),
-  'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
-  'hatch-blue-sm': () => createHatchPattern('#037874', 6),
-  'hatch-blue-md': () => createHatchPattern('#037874', 10),
-  'hatch-blue-lg': () => createHatchPattern('#037874', 16)
-}
+const hatchPatterns = Object.fromEntries(
+  ['white', 'blue'].flatMap(c => ['sm', 'md', 'lg'].map((s, i) =>
+    [`hatch-${c === 'white' ? 'white' : 'blue'}-${s}`, () => createHatchPattern(c === 'white' ? '#ffffff' : '#037874', [6, 10, 16][i])]
+  ))
+)
 
-// ============================================================================
-// Layer Controls
-// ============================================================================
+// --- Heatmap & year controls ---
 
-function updateHeatmapSource() {
-  const years = Array.from(activeYears).sort()
-  activeYearBands = years.map(y => knownYears.indexOf(y)).filter(i => i >= 0)
-  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
+function refreshHeatmapTiles() {
   cogTileCache.clear()
   cogModule?.clearCache()
   map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+}
+
+function updateHeatmapSource() {
+  activeYearBands = Array.from(activeYears).sort().map(y => knownYears.indexOf(y)).filter(i => i >= 0)
+  map.setLayoutProperty('vessel-heatmap', 'visibility', 'visible')
+  refreshHeatmapTiles()
 }
 
 function toggleYear(year) {
   activeYears.has(year) ? activeYears.delete(year) : activeYears.add(year)
   updateHeatmapSource()
   updateMultiYearLegend()
+  updateSanctionsFilter()
 }
 
-// ============================================================================
-// Categories (Vessel Type Filter)
-// ============================================================================
+// --- Categories ---
 
 function loadCategories() {
   categories = [{ id: 'all', label: t('allVessels') }]
-  const cogsByType = manifest?.data?.cogsByType || {}
-  Object.keys(cogsByType).sort().forEach(type => {
+  for (const type of Object.keys(manifest?.data?.cogsByType || {}).sort()) {
     categories.push({ id: type, label: tVesselType(type) })
-  })
+  }
   populateCategoryDropdown()
 }
 
-// ============================================================================
-// Flag Filter
-// ============================================================================
+function populateCategoryDropdown() {
+  const select = $('category-select')
+  if (categories.length <= 1) { select.classList.add('hidden'); return }
+  select.classList.remove('hidden')
+  select.innerHTML = categories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')
+  select.value = currentCategory
+}
+
+// --- Flag filter ---
 
 const FLAG_PRESETS = [
   { id: 'all', labelKey: 'allFlags' },
   { id: 'foreign', labelKey: 'foreignFlag' },
-  { id: 'RUS', label: 'RUS' },
-  { id: 'NOR', label: 'NOR' },
-  { id: 'PAN', label: 'PAN' },
-  { id: 'LBR', label: 'LBR' },
-  { id: 'MHL', label: 'MHL' },
-  { id: 'MLT', label: 'MLT' },
-  { id: 'CHN', label: 'CHN' },
-  { id: 'GBR', label: 'GBR' },
+  { id: 'RUS' }, { id: 'NOR' }, { id: 'PAN' }, { id: 'LBR' },
+  { id: 'MHL' }, { id: 'MLT' }, { id: 'CHN' }, { id: 'GBR' },
 ]
 
 function populateFlagDropdown() {
-  const select = document.getElementById('flag-select')
+  const select = $('flag-select')
   select.classList.remove('hidden')
-  select.innerHTML = ''
-  FLAG_PRESETS.forEach(preset => {
-    const option = document.createElement('option')
-    option.value = preset.id
-    option.textContent = preset.labelKey ? t(preset.labelKey) : preset.label
-    select.appendChild(option)
-  })
+  select.innerHTML = FLAG_PRESETS.map(p =>
+    `<option value="${p.id}">${p.labelKey ? t(p.labelKey) : p.id}</option>`
+  ).join('')
   select.value = currentFlagFilter
 }
 
-// ============================================================================
-// Sanctions
-// ============================================================================
+// --- Sanctions ---
+
+function updateSanctionsFilter() {
+  const toggle = $('sanctions-toggle')
+  const hasYears = activeYears.size > 0
+
+  if (!hasYears) {
+    toggle.classList.add('disabled')
+    if (showSanctionedOnly) {
+      showSanctionedOnly = false
+      toggle.classList.remove('active')
+      setSanctionsVisibility(false)
+    }
+  } else {
+    toggle.classList.remove('disabled')
+  }
+
+  if (!map) return
+  const filter = hasYears
+    ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
+    : ['literal', false]
+  for (const id of ['sanctioned-vessels-fill', 'sanctioned-vessels-outline']) {
+    if (map.getLayer(id)) map.setFilter(id, filter)
+  }
+}
+
+function setSanctionsVisibility(visible) {
+  for (const id of ['sanctioned-vessels-fill', 'sanctioned-vessels-outline']) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+  }
+}
+
+async function loadSanctions(manifestDir) {
+  const url = manifest?.data?.sanctionedMmsi
+  if (!url) return
+  try {
+    const resp = await fetch(resolveUrl(url, manifestDir))
+    if (!resp.ok) return
+    sanctionedMmsi = new Set(await resp.json())
+    console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
+    $('sanctions-toggle').classList.remove('hidden')
+    $('sanctions-label').textContent = t('sanctioned')
+    updateSanctionsFilter()
+  } catch (err) {
+    console.warn('Failed to load sanctions data:', err)
+  }
+}
 
 async function loadVesselMetadata(manifestDir) {
   const url = manifest?.data?.vesselMetadata
   if (!url) return
   try {
-    const fullUrl = url.startsWith('http') ? url : manifestDir + url
-    const resp = await fetch(fullUrl)
+    const resp = await fetch(resolveUrl(url, manifestDir))
     if (!resp.ok) return
     vesselMeta = await resp.json()
     console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels`)
@@ -381,51 +347,10 @@ async function loadVesselMetadata(manifestDir) {
   }
 }
 
-async function loadSanctions(manifestDir) {
-  const sanctionsUrl = manifest?.data?.sanctionedMmsi
-  if (!sanctionsUrl) return
-  try {
-    const fullUrl = sanctionsUrl.startsWith('http')
-      ? sanctionsUrl
-      : manifestDir + sanctionsUrl
-    const resp = await fetch(fullUrl)
-    if (!resp.ok) return
-    const mmsiList = await resp.json()
-    sanctionedMmsi = new Set(mmsiList)
-    console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
-    // Show sanctions toggle
-    document.getElementById('sanctions-toggle').classList.remove('hidden')
-    document.getElementById('sanctions-label').textContent = t('sanctioned')
-  } catch (err) {
-    console.warn('Failed to load sanctions data:', err)
-  }
-}
+// --- COG switching ---
 
-function populateCategoryDropdown() {
-  const select = document.getElementById('category-select')
-  if (categories.length <= 1) {
-    select.classList.add('hidden')
-    return
-  }
-  select.classList.remove('hidden')
-  select.innerHTML = ''
-  categories.forEach(cat => {
-    const option = document.createElement('option')
-    option.value = cat.id
-    option.textContent = cat.label
-    select.appendChild(option)
-  })
-  select.value = currentCategory
-}
-
-/**
- * Get the appropriate COG URL based on current filter state.
- * Flag filter takes precedence over type filter when both are set.
- */
 function getActiveCogUrl() {
-  if (currentFlagFilter !== 'all' && flagCogUrls[currentFlagFilter]) {
-    return flagCogUrls[currentFlagFilter]
-  }
+  if (currentFlagFilter !== 'all' && flagCogUrls[currentFlagFilter]) return flagCogUrls[currentFlagFilter]
   return cogUrls[currentCategory] || cogUrls.all
 }
 
@@ -434,8 +359,7 @@ async function switchActiveCOG() {
   if (!url || !cogModule) return
   try {
     await cogModule.switchCOG(url)
-    cogTileCache.clear()
-    map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+    refreshHeatmapTiles()
   } catch (err) {
     console.warn('Failed to switch COG:', err)
   }
@@ -443,322 +367,214 @@ async function switchActiveCOG() {
 
 async function selectCategory(categoryId) {
   if (categoryId === currentCategory) return
-  const previousCategory = currentCategory
+  const prev = currentCategory
   currentCategory = categoryId
-
-  try {
-    await switchActiveCOG()
-  } catch (err) {
-    console.error(`Failed to switch COG:`, err)
-    currentCategory = previousCategory
-    document.getElementById('category-select').value = previousCategory
+  try { await switchActiveCOG() } catch (err) {
+    console.error('Failed to switch COG:', err)
+    currentCategory = prev
+    $('category-select').value = prev
   }
 }
 
-// ============================================================================
-// Places
-// ============================================================================
+// --- Places ---
 
 function populatePlacesDropdown() {
-  const select = document.getElementById('places-select')
+  const select = $('places-select')
   const places = manifest?.places || []
-  if (places.length === 0) {
-    select.classList.add('hidden')
-    return
-  }
+  if (!places.length) { select.classList.add('hidden'); return }
   select.classList.remove('hidden')
-  select.innerHTML = `<option value="">${t('selectPlace')}</option>`
-  places.forEach((place, index) => {
-    const option = document.createElement('option')
-    option.value = index
-    option.textContent = localize(place.name)
-    select.appendChild(option)
-  })
+  select.innerHTML = `<option value="">${t('selectPlace')}</option>` +
+    places.map((p, i) => `<option value="${i}">${localize(p.name)}</option>`).join('')
 }
 
 function showPlace(index) {
   const place = manifest?.places?.[index]
-  const infoEl = document.getElementById('places-info')
-  if (!place) {
-    infoEl.classList.add('hidden')
-    return
-  }
-  infoEl.innerHTML = `<span>${localize(place.description)}</span>`
-  infoEl.classList.remove('hidden')
+  const el = $('places-info')
+  if (!place) { el.classList.add('hidden'); return }
+  el.innerHTML = `<span>${localize(place.description)}</span>`
+  el.classList.remove('hidden')
   map.flyTo({ center: place.center, zoom: place.zoom, duration: 2000 })
 }
 
-// ============================================================================
-// Tooltips
-// ============================================================================
+// --- Tooltips ---
 
 function formatDateShort(isoString) {
   if (!isoString) return '?'
-  const date = new Date(isoString)
-  const day = date.getDate()
-  const month = date.toLocaleString(getLang() === 'ru' ? 'ru' : 'en', { month: 'short' })
-  const year = String(date.getFullYear()).slice(-2)
-  return `${day} ${month} ${year}`
+  const d = new Date(isoString)
+  return `${d.getDate()} ${d.toLocaleString(getLang() === 'ru' ? 'ru' : 'en', { month: 'short' })} ${String(d.getFullYear()).slice(-2)}`
 }
 
 function filterVesselsByFlags(vessels) {
   if (currentFlagFilter === 'all' && !showSanctionedOnly) return vessels
   let filtered = vessels
-  if (currentFlagFilter === 'foreign') {
-    filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
-  } else if (currentFlagFilter !== 'all') {
-    filtered = filtered.filter(v => v.flag === currentFlagFilter)
-  }
-  if (showSanctionedOnly) {
-    filtered = filtered.filter(v => sanctionedMmsi.has(v.mmsi))
-  }
+  if (currentFlagFilter === 'foreign') filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
+  else if (currentFlagFilter !== 'all') filtered = filtered.filter(v => v.flag === currentFlagFilter)
+  if (showSanctionedOnly) filtered = filtered.filter(v => sanctionedMmsi.has(v.mmsi))
   return filtered
 }
 
-function showRasterTooltip(vessels, isRefilter = false, point = null) {
+function showRasterTooltip(vessels, isRefilter = false) {
   if (!isRefilter) lastTooltipVesselsRaw = vessels
-  if (!vessels || vessels.length === 0) {
-    hideTooltip()
-    return
-  }
+  if (!vessels?.length) { hideTooltip(); return }
 
-  // Apply flag and sanctions filters
-  const filteredVessels = filterVesselsByFlags(vessels)
-  if (filteredVessels.length === 0) {
-    hideTooltip()
-    return
-  }
+  const filtered = filterVesselsByFlags(vessels)
+  if (!filtered.length) { hideTooltip(); return }
 
-  // Group entries by mmsi to consolidate multiple dates for same vessel
+  // Group by MMSI
   const byMmsi = new Map()
-  for (const v of filteredVessels) {
+  for (const v of filtered) {
     const key = v.mmsi || v.ship_name || 'unknown'
     if (!byMmsi.has(key)) {
-      byMmsi.set(key, {
-        mmsi: v.mmsi,
-        ship_name: v.ship_name,
-        vessel_type: v.vessel_type,
-        flag: v.flag,
-        total_hours: 0,
-        dates: [],
-        sanctioned: sanctionedMmsi.has(v.mmsi)
-      })
+      byMmsi.set(key, { mmsi: v.mmsi, ship_name: v.ship_name, vessel_type: v.vessel_type, flag: v.flag, total_hours: 0, dates: [], sanctioned: sanctionedMmsi.has(v.mmsi) })
     }
     const entry = byMmsi.get(key)
     entry.total_hours += v.total_hours || 0
     const dateStr = v.last_seen ? formatDateShort(v.last_seen) : v.year
-    if (!entry.dates.includes(dateStr)) {
-      entry.dates.push(dateStr)
-    }
+    if (!entry.dates.includes(dateStr)) entry.dates.push(dateStr)
   }
 
   const grouped = Array.from(byMmsi.values())
-  const displayVessels = grouped.slice(0, 3)
-  const totalCount = filteredVessels[0]?.cell_count || grouped.length
-  const moreCount = totalCount > 3 ? totalCount - 3 : 0
+  const display = grouped.slice(0, 3)
+  const totalCount = filtered[0]?.cell_count || grouped.length
+  const more = totalCount > 3 ? totalCount - 3 : 0
 
   const rows = [
-    { key: t('vessel'), values: displayVessels.map(v => v.ship_name || t('unknown')) },
-    { key: t('mmsi'), values: displayVessels.map(v => v.mmsi) },
-    { key: t('type'), values: displayVessels.map(v => tVesselType(v.vessel_type)) },
-    { key: t('flag'), values: displayVessels.map(v => v.flag || '?') },
-    { key: t('hours'), values: displayVessels.map(v => Math.round(v.total_hours) + t('hoursShort')) },
-    { key: t('date'), values: displayVessels.map(v => v.dates.join('<br>')) }
+    { key: t('vessel'), values: display.map(v => v.ship_name || t('unknown')) },
+    { key: t('mmsi'), values: display.map(v => v.mmsi) },
+    { key: t('type'), values: display.map(v => tVesselType(v.vessel_type)) },
+    { key: t('flag'), values: display.map(v => v.flag || '?') },
+    { key: t('hours'), values: display.map(v => Math.round(v.total_hours) + t('hoursShort')) },
+    { key: t('date'), values: display.map(v => v.dates.join('<br>')) }
   ]
 
-  // Add enriched metadata rows if available
-  const hasMeta = displayVessels.some(v => vesselMeta[v.mmsi])
-  if (hasMeta) {
-    const buildYears = displayVessels.map(v => vesselMeta[v.mmsi]?.y || '–')
-    if (buildYears.some(y => y !== '–')) {
-      rows.push({ key: t('buildYear'), values: buildYears })
-    }
-    const dwts = displayVessels.map(v => {
-      const d = vesselMeta[v.mmsi]?.d
-      return d ? d.toLocaleString() + ' t' : '–'
-    })
-    if (dwts.some(d => d !== '–')) {
-      rows.push({ key: t('dwt'), values: dwts })
-    }
+  // Enriched metadata
+  if (display.some(v => vesselMeta[v.mmsi])) {
+    const years = display.map(v => vesselMeta[v.mmsi]?.y || '–')
+    if (years.some(y => y !== '–')) rows.push({ key: t('buildYear'), values: years })
+    const dwts = display.map(v => { const d = vesselMeta[v.mmsi]?.d; return d ? d.toLocaleString() + ' t' : '–' })
+    if (dwts.some(d => d !== '–')) rows.push({ key: t('dwt'), values: dwts })
   }
 
-  // Add sanctions status row at the bottom if any vessel is sanctioned
-  const hasSanctioned = displayVessels.some(v => v.sanctioned)
-  if (hasSanctioned) {
-    rows.push({ key: t('status'), values: displayVessels.map(v =>
+  // Sanctions badge
+  if (display.some(v => v.sanctioned)) {
+    rows.push({ key: t('status'), values: display.map(v =>
       v.sanctioned ? `<span class="sanction-badge">${t('sanctioned')}</span>` : '–'
     )})
   }
 
-  let html = '<table>'
-  html += rows.map(row =>
-    `<tr><td>${row.key}</td>${row.values.map(v => `<td>${v}</td>`).join('')}</tr>`
-  ).join('')
-  html += '</table>'
-
-  if (moreCount > 0) {
-    html += `<div style="padding-top: 8px; color: var(--ui-color-muted);">+${moreCount} ${t('more')}</div>`
-  }
-
+  let html = '<table>' + rows.map(r =>
+    `<tr><td>${r.key}</td>${r.values.map(v => `<td>${v}</td>`).join('')}</tr>`
+  ).join('') + '</table>'
+  if (more > 0) html += `<div style="padding-top:8px;color:var(--ui-color-muted)">+${more} ${t('more')}</div>`
   showTooltip(html)
 }
-
-// ============================================================================
-// Protected Area Tooltip
-// ============================================================================
 
 function showProtectedAreaTooltip(feature, isBuffer = false) {
-  const props = feature.properties || {}
+  const p = feature.properties || {}
   const lang = getLang()
-  const name = props[`name_${lang}`] || props.name_en || props.name || t('protectedArea')
-  const prefix = isBuffer ? t('bufferZone') : t('protectedArea')
-
-  const rows = [
-    { key: prefix, value: name }
-  ]
-  if (props.category) rows.push({ key: t('category'), value: props.category })
-  if (props.significance) rows.push({ key: t('significance'), value: props.significance })
-  if (props.area_ha) {
-    const areaKm2 = Math.round(props.area_ha / 100)
-    rows.push({ key: t('area'), value: `${areaKm2.toLocaleString()} km²` })
-  }
-  if (props.status) rows.push({ key: t('status'), value: props.status })
-
-  const html = '<table>' +
-    rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') +
-    '</table>'
-  showTooltip(html)
+  const name = p[`name_${lang}`] || p.name_en || p.name_ru || p.name || t('protectedArea')
+  const category = p[`category_${lang}`] || p.category_en || p.category
+  const status = p[`status_${lang}`] || p.status_en || p.status
+  const rows = [{ key: isBuffer ? t('bufferZone') : t('protectedArea'), value: name }]
+  if (category) rows.push({ key: t('category'), value: category })
+  if (p.significance) rows.push({ key: t('significance'), value: p.significance })
+  if (p.area_ha) rows.push({ key: t('area'), value: `${Math.round(p.area_ha / 100).toLocaleString()} km²` })
+  if (status) rows.push({ key: t('status'), value: status })
+  showTooltip('<table>' + rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') + '</table>')
 }
 
-// ============================================================================
-// Application Initialization
-// ============================================================================
+// --- Initialization ---
 
-/**
- * Phase 1: Load manifest and show about modal immediately
- * This runs before any heavy libraries are loaded
- */
 async function initPhase1() {
-  // Load manifest (tiny JSON file)
   const resp = await fetch(MANIFEST_URL)
   if (!resp.ok) throw new Error(`Failed to load manifest: ${resp.status}`)
   manifest = await resp.json()
 
-  // Determine base URL for data files
   const manifestDir = MANIFEST_URL.substring(0, MANIFEST_URL.lastIndexOf('/') + 1) || './'
 
-  // Initialize i18n (small module, already imported)
   await initI18n(manifest, manifestDir)
-  document.getElementById('lang-toggle').textContent = getLang() === 'ru' ? 'en' : 'ру'
-
-  // Apply UI theme immediately
-  applyManifestUI(manifest)
-
-  // Show about modal content immediately
+  $('lang-toggle').textContent = getLang() === 'ru' ? 'en' : 'ру'
+  applyManifestUI()
   renderAboutModal()
-
-  // Show the about modal now (before map loads)
   document.body.classList.add('about-visible')
 
   return manifestDir
 }
 
-/**
- * Phase 2: Load heavy libraries and initialize map (runs in background)
- */
 async function initPhase2(manifestDir) {
   updateProgress(10)
 
-  // Lazy-load MapLibre GL and COG module in parallel
   const [maplibreModule, cog, data] = await Promise.all([
     import('maplibre-gl'),
     import('./cog.js'),
     import('./data.js')
   ])
-
   maplibregl = maplibreModule.default
   cogModule = cog
   dataModule = data
   updateProgress(40)
 
-  // Build COG URLs
-  const cogUrl = manifest.data?.cog?.startsWith('http')
-    ? manifest.data.cog
-    : manifestDir + (manifest.data?.cog || 'vessel_heatmap.tif')
-
-  cogUrls = { all: cogUrl }
-  const cogsByType = manifest.data?.cogsByType || {}
-  for (const [type, url] of Object.entries(cogsByType)) {
-    cogUrls[type] = url.startsWith('http') ? url : manifestDir + url
-  }
-
-  flagCogUrls = { all: cogUrl }
-  const cogsByFlag = manifest.data?.cogsByFlag || {}
-  for (const [flag, url] of Object.entries(cogsByFlag)) {
-    flagCogUrls[flag] = url.startsWith('http') ? url : manifestDir + url
-  }
+  // Build COG URL maps
+  const baseCogUrl = resolveUrl(manifest.data?.cog || 'vessel_heatmap.tif', manifestDir)
+  cogUrls = { all: baseCogUrl }
+  for (const [k, v] of Object.entries(manifest.data?.cogsByType || {})) cogUrls[k] = resolveUrl(v, manifestDir)
+  flagCogUrls = { all: baseCogUrl }
+  for (const [k, v] of Object.entries(manifest.data?.cogsByFlag || {})) flagCogUrls[k] = resolveUrl(v, manifestDir)
 
   // Initialize COG
-  const cogConfig = await cogModule.initCOG(cogUrl)
+  const cogConfig = await cogModule.initCOG(baseCogUrl)
   knownYears = cogConfig.years
   activeYears = new Set(knownYears)
-  activeYearBands = knownYears.map((_, idx) => idx)
+  activeYearBands = knownYears.map((_, i) => i)
   updateProgress(60)
 
-  // Initialize data layer (PMTiles protocol + vessel tooltips)
   await dataModule.initData(manifestDir, manifest)
   updateProgress(80)
 
-  // Register COG tile protocol
+  // COG tile protocol
   maplibregl.addProtocol('cog', async (params) => {
-    const match = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
-    if (!match) throw new Error('Invalid COG tile URL')
-    const [, z, x, y] = match.map(Number)
-    const cacheKey = `${z}/${x}/${y}/${activeYearBands.join(',')}/${satelliteVisible}`
-    if (cogTileCache.has(cacheKey)) return { data: cogTileCache.get(cacheKey) }
-    const buffer = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
-    cogTileCache.set(cacheKey, buffer)
-    return { data: buffer }
+    const m = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
+    if (!m) throw new Error('Invalid COG tile URL')
+    const [, z, x, y] = m.map(Number)
+    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}`
+    if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
+    const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
+    cogTileCache.set(key, buf)
+    return { data: buf }
   })
 
   // Create map
-  const mapConfig = manifest.map || {}
-  map = window.map = new maplibregl.Map({
+  const mc = manifest.map || {}
+  map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
     style: createMapStyle(manifest, manifestDir),
-    center: mapConfig.center || [0, 0],
-    zoom: mapConfig.zoom || 2,
-    pitch: mapConfig.pitch || 0,
-    bearing: mapConfig.bearing || 0,
-    maxZoom: mapConfig.maxZoom || 18,
-    minZoom: mapConfig.minZoom || 0,
+    center: mc.center || [0, 0],
+    zoom: mc.zoom || 2,
+    pitch: mc.pitch || 0,
+    bearing: mc.bearing || 0,
+    maxZoom: mc.maxZoom || 18,
+    minZoom: mc.minZoom || 0,
     minPitch: 0,
     maxPitch: 30,
     renderWorldCopies: false,
     localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
 
-  // Custom zoom controls
-  const zoomContainer = document.createElement('div')
-  zoomContainer.id = 'zoom-controls'
-  const zoomIn = document.createElement('button')
-  zoomIn.id = 'zoom-in'
-  zoomIn.textContent = '+'
-  zoomIn.addEventListener('click', () => map.zoomIn())
-  const zoomOut = document.createElement('button')
-  zoomOut.id = 'zoom-out'
-  zoomOut.textContent = '−'
-  zoomOut.addEventListener('click', () => map.zoomOut())
-  zoomContainer.appendChild(zoomIn)
-  zoomContainer.appendChild(zoomOut)
-  document.body.appendChild(zoomContainer)
+  // Zoom controls
+  const zc = document.createElement('div')
+  zc.id = 'zoom-controls'
+  for (const [id, label, action] of [['zoom-in', '+', () => map.zoomIn()], ['zoom-out', '−', () => map.zoomOut()]]) {
+    const btn = document.createElement('button')
+    btn.id = id
+    btn.textContent = label
+    btn.addEventListener('click', action)
+    zc.appendChild(btn)
+  }
+  document.body.appendChild(zc)
 
-  // Set up handlers
   setupMapHandlers()
   setupUIHandlers()
-
-  // Initial UI
   initYearLegend(knownYears)
   initLayerToggles()
   updateMultiYearLegend()
@@ -767,30 +583,22 @@ async function initPhase2(manifestDir) {
   loadCategories()
   updateUI()
 
-  // Show full UI now that map is ready
   document.body.classList.add('app-ready')
 
-  // Load GeoJSON layers after map is ready
+  // Non-blocking loads
   loadGeoJSONLayers(manifestDir)
-
-  // Load supplementary data (non-blocking)
   loadSanctions(manifestDir)
   loadVesselMetadata(manifestDir)
 }
 
 async function loadGeoJSONLayers(manifestDir) {
-  const vectorLayers = manifest?.layers?.vectors || {}
-  for (const [id, config] of Object.entries(vectorLayers)) {
+  for (const [id, config] of Object.entries(manifest?.layers?.vectors || {})) {
     if (!config.geojson) continue
     try {
-      const url = config.geojson.startsWith('http')
-        ? config.geojson
-        : manifestDir + config.geojson
-      const resp = await fetch(url)
+      const resp = await fetch(resolveUrl(config.geojson, manifestDir))
       if (!resp.ok) continue
       const geojson = await resp.json()
-      const source = map.getSource(id)
-      if (source) source.setData(geojson)
+      map.getSource(id)?.setData(geojson)
       console.log(`Loaded GeoJSON layer: ${id} (${geojson.features?.length} features)`)
     } catch (err) {
       console.warn(`Failed to load GeoJSON layer ${id}:`, err)
@@ -798,13 +606,10 @@ async function loadGeoJSONLayers(manifestDir) {
   }
 }
 
-async function init() {
-  const manifestDir = await initPhase1()
-  await initPhase2(manifestDir)
-}
+// --- Map handlers ---
 
 function setupMapHandlers() {
-  map.on('styleimagemissing', (e) => {
+  map.on('styleimagemissing', e => {
     if (hatchPatterns[e.id]) map.addImage(e.id, hatchPatterns[e.id](), { pixelRatio: 1 })
   })
 
@@ -813,11 +618,11 @@ function setupMapHandlers() {
     dataInitialized = true
     updateMapLabels()
     updateProgress(100)
-    document.getElementById('map').classList.add('ready')
+    $('map').classList.add('ready')
     document.body.classList.add('map-ready')
   })
 
-  // Vessel tooltips
+  // Vessel tooltips on hover — vessel data takes priority over protected areas
   let lastQueryCell = null
   const handleRasterHover = rafThrottle(async (e) => {
     if (!dataInitialized) return
@@ -825,154 +630,122 @@ function setupMapHandlers() {
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
-    const cellLat = Math.floor(lat * 100) / 100
-    const cellLon = Math.floor(lng * 100) / 100
-    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}_${currentFlagFilter}_${showSanctionedOnly}`
-
+    const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentCategory}_${currentFlagFilter}_${showSanctionedOnly}`
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
-
-    if (DEBUG_MODE) {
-      const cogBBox = getCOGBBox()
-      const pixelSize = getCOGPixelSize()
-      if (cogBBox && pixelSize) {
-        const [cogMinLon, , cogMaxLon, cogMaxLat] = cogBBox
-        const [pixelW, pixelH] = pixelSize
-        const col = Math.floor((lng - cogMinLon) / pixelW)
-        const row = Math.floor((cogMaxLat - lat) / pixelH)
-        const pixelMinLon = cogMinLon + col * pixelW
-        const pixelMaxLon = pixelMinLon + pixelW
-        const pixelMaxLat = cogMaxLat - row * pixelH
-        const pixelMinLat = pixelMaxLat - pixelH
-        map.getSource('debug-tooltip-targets')?.setData({
-          type: 'FeatureCollection',
-          features: [{
-            type: 'Feature',
-            geometry: {
-              type: 'Polygon',
-              coordinates: [[
-                [pixelMinLon, pixelMinLat], [pixelMaxLon, pixelMinLat],
-                [pixelMaxLon, pixelMaxLat], [pixelMinLon, pixelMaxLat],
-                [pixelMinLon, pixelMinLat]
-              ]]
-            }
-          }]
-        })
-      }
-    }
 
     try {
       const vesselType = currentCategory === 'all' ? null : currentCategory
       const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
-      showRasterTooltip(vessels, false, e.point)
-    } catch (err) { /* ignore */ }
-  }, 16)
+      if (vessels?.length) {
+        showRasterTooltip(vessels)
+        return
+      }
+    } catch { /* ignore */ }
+
+    // No vessel data — fall back to protected area tooltip
+    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    if (paLayers.length) {
+      const features = map.queryRenderedFeatures(e.point, { layers: paLayers })
+      if (features?.length) {
+        showProtectedAreaTooltip(features[0], features[0].layer?.id === 'buffer-zones-fill')
+        return
+      }
+    }
+    hideTooltip()
+  })
 
   map.on('mousemove', (e) => {
-    // Check for protected area or buffer zone hover
-    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
-    const paFeatures = paLayers.length > 0
-      ? map.queryRenderedFeatures(e.point, { layers: paLayers })
-      : []
-
-    if (paFeatures?.length > 0) {
-      const isBuffer = paFeatures[0].layer?.id === 'buffer-zones-fill'
-      showProtectedAreaTooltip(paFeatures[0], isBuffer)
+    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM || showSanctionedOnly) {
+      handleRasterHover(e)
       return
     }
-
-    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM || showSanctionedOnly) handleRasterHover(e)
+    // Below vessel tooltip zoom — only show protected area tooltips
+    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    if (paLayers.length) {
+      const features = map.queryRenderedFeatures(e.point, { layers: paLayers })
+      if (features?.length) {
+        showProtectedAreaTooltip(features[0], features[0].layer?.id === 'buffer-zones-fill')
+        return
+      }
+    }
+    hideTooltip()
   })
+
   map.on('mouseout', hideTooltip)
+
   map.on('click', async (e) => {
     if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
-    const vesselType = currentCategory === 'all' ? null : currentCategory
     try {
-      const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
-      showRasterTooltip(vessels)
-    } catch (err) { /* ignore */ }
+      showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year, currentCategory === 'all' ? null : currentCategory))
+    } catch { /* ignore */ }
   })
-  map.on('zoom', () => {
-    if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) hideTooltip()
-  })
+
+  map.on('zoom', () => { if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) hideTooltip() })
 }
 
+// --- UI handlers ---
+
 function setupUIHandlers() {
-  document.getElementById('lang-toggle').addEventListener('click', async () => {
-    const newLang = await toggleLang()
-    document.getElementById('lang-toggle').textContent = newLang === 'ru' ? 'en' : 'ру'
+  $('lang-toggle').addEventListener('click', async () => {
+    const lang = await toggleLang()
+    $('lang-toggle').textContent = lang === 'ru' ? 'en' : 'ру'
     updateUI()
     updateMapLabels()
     loadCategories()
   })
 
-  document.getElementById('about-modal').addEventListener('click', () => {
-    document.body.classList.remove('about-visible')
-  })
+  $('about-modal').addEventListener('click', () => document.body.classList.remove('about-visible'))
 
-  document.getElementById('category-select').addEventListener('change', (e) => {
-    selectCategory(e.target.value)
-  })
+  $('category-select').addEventListener('change', e => selectCategory(e.target.value))
 
-  document.getElementById('flag-select').addEventListener('change', async (e) => {
+  $('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
     await switchActiveCOG()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
-  document.getElementById('sanctions-toggle').addEventListener('click', () => {
+  $('sanctions-toggle').addEventListener('click', () => {
+    if ($('sanctions-toggle').classList.contains('disabled')) return
     showSanctionedOnly = !showSanctionedOnly
-    document.getElementById('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
-    if (map.getLayer('sanctioned-vessels-fill')) {
-      map.setLayoutProperty('sanctioned-vessels-fill', 'visibility', showSanctionedOnly ? 'visible' : 'none')
-    }
-    if (map.getLayer('sanctioned-vessels-outline')) {
-      map.setLayoutProperty('sanctioned-vessels-outline', 'visibility', showSanctionedOnly ? 'visible' : 'none')
-    }
+    $('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
+    setSanctionsVisibility(showSanctionedOnly)
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
-  document.getElementById('places-select').addEventListener('change', (e) => {
-    const value = e.target.value
-    if (value === '') {
-      document.getElementById('places-info').classList.add('hidden')
-      return
-    }
-    showPlace(parseInt(value))
+  $('places-select').addEventListener('change', (e) => {
+    if (e.target.value === '') { $('places-info').classList.add('hidden'); return }
+    showPlace(parseInt(e.target.value))
   })
 
   window.addEventListener('resize', updateUI)
 
-  // Performance overlay (press 'p' to toggle)
-  const perfOverlay = document.getElementById('perf-overlay')
+  // Debug perf overlay (press 'p')
   let perfVisible = false
   document.addEventListener('keydown', (e) => {
     if (e.key === 'p' && !e.ctrlKey && !e.metaKey) {
       perfVisible = !perfVisible
-      perfOverlay.classList.toggle('hidden', !perfVisible)
+      $('perf-overlay').classList.toggle('hidden', !perfVisible)
     }
   })
-
   setInterval(() => {
     if (!perfVisible || !map) return
-    const zoom = map.getZoom().toFixed(1)
-    const center = map.getCenter()
-    perfOverlay.innerHTML = `z${zoom} | ${center.lat.toFixed(2)},${center.lng.toFixed(2)} | tiles:${cogTileCache.size}`
+    const z = map.getZoom().toFixed(1)
+    const c = map.getCenter()
+    $('perf-overlay').innerHTML = `z${z} | ${c.lat.toFixed(2)},${c.lng.toFixed(2)} | tiles:${cogTileCache.size}`
   }, 500)
 }
 
-// ============================================================================
-// Start
-// ============================================================================
+// --- Start ---
 
-init().catch(err => {
-  console.error('Failed to initialize:', err)
-  document.body.innerHTML = `
-    <div style="padding: 2rem; color: #fff; background: #1a1a1a; min-height: 100vh;">
-      <h1>Failed to load</h1>
-      <p>${err.message}</p>
-    </div>
-  `
-})
+(async () => {
+  try {
+    const manifestDir = await initPhase1()
+    await initPhase2(manifestDir)
+  } catch (err) {
+    console.error('Failed to initialize:', err)
+    document.body.innerHTML = `<div style="padding:2rem;color:#fff;background:#1a1a1a;min-height:100vh"><h1>Failed to load</h1><p>${err.message}</p></div>`
+  }
+})()

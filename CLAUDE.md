@@ -14,21 +14,25 @@ make dev       # Dev server at localhost:5173
 ```
 albedo/
 ├── src/                    # Frontend application (vanilla JS + MapLibre GL)
-│   ├── main.js            # App initialization, UI handlers, map lifecycle
+│   ├── main.js            # App init, UI handlers, map lifecycle, tooltips
 │   ├── cog.js             # COG tile rendering with year-based colorization
 │   ├── config.js          # MapLibre style generation, manifest-driven config
 │   ├── data.js            # Data layer init (PMTiles protocol, vessel queries)
 │   ├── vessel-tiles.js    # Hilbert-indexed binary vessel data for tooltips
 │   ├── geo.js             # Coordinate conversions (Mercator, grid snapping)
-│   ├── i18n.js            # Multi-language support with localStorage persistence
+│   ├── i18n.js            # Multi-language support (remote JSON, localStorage)
 │   └── style.css          # Dark theme, responsive layout
 ├── scripts/               # Data pipeline scripts
-│   ├── fetch_*.sh         # GFW API data fetching
+│   ├── fetch_*.sh         # GFW API + Natural Earth data fetching
+│   ├── fetch_sanctions.py # OpenSanctions MMSI list
 │   ├── convert.sh         # JSON to Parquet conversion
 │   ├── export_raster.sh   # COG generation (uses create_raster.py, raster_utils.py)
-│   ├── export_pmtiles.sh  # Vector tile generation via tippecanoe
+│   ├── export_pmtiles.sh  # Vector tile generation via tippecanoe (bilingual)
+│   ├── export_sanctions_layer.py  # Sanctioned vessel grid polygons with year props
+│   ├── export_buffer_zones.py     # Protected area buffer zone GeoJSON
 │   ├── export_tiles.py    # Hilbert-indexed binary vessel data
-│   └── export_manifest.js # Manifest generation from template
+│   ├── export_manifest.js # Manifest generation from template
+│   └── ingest_vessel_metadata.py  # Vessel build year + DWT enrichment
 ├── etl/
 │   └── transform.sql      # DuckDB SQL transformations
 ├── tools/
@@ -44,11 +48,12 @@ albedo/
 ## Data Pipeline
 
 ```bash
-make fetch     # GFW API → data/gfw/*.json (monthly files)
-make convert   # JSON → Parquet (compressed columnar format)
-make transform # SQL → data/data.duckdb (vessel positions, activity, protected areas)
-make tiles     # Export COG heatmaps (aggregate + per-vessel-type)
-make export    # PMTiles + manifest + vessel binary data
+make fetch       # GFW API → data/gfw/*.json (monthly files)
+make convert     # JSON → Parquet (compressed columnar format)
+make transform   # SQL → data/data.duckdb (vessel positions, activity, protected areas)
+make tiles       # Export COG heatmaps (aggregate + per-vessel-type + per-flag)
+make sanctions   # Fetch sanctioned MMSIs from OpenSanctions
+make export      # PMTiles + manifest + vessel binary data + i18n + buffer zones
 ```
 
 ## Architecture
@@ -57,12 +62,35 @@ The app is fully static - all computation happens in the browser:
 
 ```
 GCS/CDN                          Browser
-├── vessel_heatmap.tif (COG)     geotiff.js → raster tiles via cog-tiles
-├── vectors.pmtiles              pmtiles → vector layers (protected areas)
+├── vessel_heatmap*.tif (COGs)   geotiff.js → raster tiles via cog-tiles
+├── vectors.pmtiles              pmtiles → protected areas, places, sanctions
 ├── vessel_data.bin              vessel-tiles.js → Hilbert-indexed tooltips
-├── manifest.json                config + layer definitions
+├── i18n/{lang}.json             i18n.js → UI translations
+├── sanctioned_mmsi.json         Sanctions overlay filter
+├── buffer_zones.geojson         Protected area buffer zones
+├── vessel_metadata.json         Build year, DWT enrichment
+├── manifest.json                Config + layer definitions
 └── index.html + JS              MapLibre GL → composite rendering
 ```
+
+## Tooltip Priority
+
+Vessel presence data takes priority over protected area tooltips. At zoom >= 8,
+vessel data is queried first via Hilbert-indexed binary tiles. Protected area
+tooltips display as fallback when no vessel data exists at the cursor position.
+
+## Sanctions Layer
+
+Sanctioned vessel positions are stored as 0.01° grid polygons in PMTiles with
+boolean year properties (`y2023`, `y2024`, etc.) for MapLibre filtering. The
+client uses `['has', 'y{year}']` filters to show only positions from active years.
+
+## i18n
+
+Translations load from remote JSON files (`data/export/i18n/{lang}.json`).
+Protected area properties (category, status, name) are exported with `_en`/`_ru`
+suffixes for bilingual tooltip display. The `localize()` helper picks the current
+language variant from objects with `{en: ..., ru: ...}` keys.
 
 ## Configuration
 

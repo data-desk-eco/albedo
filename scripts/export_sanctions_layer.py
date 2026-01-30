@@ -46,12 +46,13 @@ def main():
     for mmsi in mmsi_list:
         con.execute("INSERT INTO sanctioned_mmsi VALUES (?)", [str(mmsi)])
 
-    # Aggregate by grid cell across all sanctioned vessels
+    # Aggregate by grid cell across all sanctioned vessels, tracking years
     rows = con.execute("""
         SELECT
             vp.lat, vp.lon,
             SUM(vp.hours) as total_hours,
-            COUNT(DISTINCT vp.mmsi) as vessel_count
+            COUNT(DISTINCT vp.mmsi) as vessel_count,
+            LIST(DISTINCT vp.year ORDER BY vp.year) as years
         FROM vessel_positions vp
         JOIN sanctioned_mmsi sm ON vp.mmsi = sm.mmsi
         GROUP BY vp.lat, vp.lon
@@ -64,7 +65,8 @@ def main():
 
     # Build GeoJSON polygon features (one per grid cell)
     features = []
-    for lat, lon, total_hours, vessel_count in rows:
+    all_years = set()
+    for lat, lon, total_hours, vessel_count, years in rows:
         # lat from the DB is the TOP edge of the cell (snapToGrid uses
         # 90 - floor((90 - lat) * 100) * 0.01), so the polygon extends
         # downward.  lon is the LEFT edge, so the polygon extends right.
@@ -72,6 +74,15 @@ def main():
         max_lat = lat
         min_lon = lon
         max_lon = lon + CELL_SIZE
+
+        # Boolean year properties for efficient MapLibre filtering
+        props = {
+            "hours": round(total_hours, 1),
+            "vessels": vessel_count,
+        }
+        for y in years:
+            props[f"y{y}"] = True
+            all_years.add(y)
 
         features.append({
             "type": "Feature",
@@ -85,10 +96,7 @@ def main():
                     [min_lon, min_lat],
                 ]],
             },
-            "properties": {
-                "hours": round(total_hours, 1),
-                "vessels": vessel_count,
-            },
+            "properties": props,
         })
 
     geojson = {
@@ -98,7 +106,7 @@ def main():
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(geojson))
-    print(f"Wrote {OUTPUT_PATH} ({len(features)} polygon features)")
+    print(f"Wrote {OUTPUT_PATH} ({len(features)} polygon features, years: {sorted(all_years)})")
 
 
 if __name__ == "__main__":

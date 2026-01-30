@@ -17,6 +17,7 @@ mkdir -p "$EXPORT_DIR" "$TEMP_DIR"
 echo "Exporting GeoJSON layers..."
 
 # Export protected areas as GeoJSON FeatureCollection, clipped to SOUTH_LAT
+# Includes bilingual name/category/status fields for i18n support
 duckdb "$DUCKDB_PATH" -json -c "
 INSTALL spatial; LOAD spatial;
 SELECT json_object(
@@ -26,11 +27,29 @@ SELECT json_object(
       'type', 'Feature',
       'properties', json_object(
         'id', feature_id,
-        'name', area_name,
-        'category', category,
+        'name_ru', area_name,
+        'name_en', area_name,
+        'category_ru', category,
+        'category_en', CASE category
+          WHEN 'государственный природный заказник' THEN 'state nature reserve'
+          WHEN 'государственный природный заповедник' THEN 'strict nature reserve'
+          WHEN 'национальный парк' THEN 'national park'
+          WHEN 'охраняемая береговая линия' THEN 'protected coastline'
+          WHEN 'охраняемый природный комплекс' THEN 'protected natural area'
+          WHEN 'памятник природы' THEN 'natural monument'
+          WHEN 'природный парк' THEN 'nature park'
+          WHEN 'природный рекреационный комплекс' THEN 'nature recreation area'
+          WHEN 'ресурсный резерват' THEN 'resource reserve'
+          WHEN 'территория рекреационного назначения' THEN 'recreation area'
+          ELSE category
+        END,
         'significance', significance,
         'area_ha', ROUND(area_ha),
-        'status', status
+        'status_ru', status,
+        'status_en', CASE status
+          WHEN 'действующий' THEN 'active'
+          ELSE status
+        END
       ),
       'geometry', ST_AsGeoJSON(
         ST_Intersection(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'))

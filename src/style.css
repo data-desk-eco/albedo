@@ -117,7 +117,7 @@ html, body {
 }
 
 .legend-multi-year {
-  margin-top: 8px;
+  margin-bottom: 8px;
   transition: opacity 0.15s ease;
 }
 
@@ -322,6 +322,12 @@ body.app-ready #zoom-controls {
 #sanctions-toggle {
   cursor: pointer;
   margin-top: 8px;
+}
+
+#sanctions-toggle.disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
 }
 
 .sanction-badge {

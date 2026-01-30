@@ -10,11 +10,17 @@ make dev       Dev server at localhost:5173
 
 Data Pipeline
 -------------
-make fetch     GFW API to data/gfw/*.json
-make convert   JSON to Parquet
-make transform SQL to data/data.duckdb
-make tiles     Export COG heatmaps
-make export    PMTiles + manifest
+make fetch       GFW API to data/gfw/*.json
+make convert     JSON to Parquet
+make transform   SQL to data/data.duckdb
+make tiles       Export COG heatmaps (aggregate + per-type + per-flag)
+make sanctions   Fetch sanctioned MMSIs from OpenSanctions
+make export      PMTiles + manifest + i18n + vessel binary data
+
+Deployment
+----------
+make deploy-data   Upload data files to GCS bucket
+make build         Vite production build
 
 Configuration
 -------------
