@@ -131,16 +131,8 @@ function updateUI() {
   // Sanctions label
   $('sanctions-label').textContent = t(narrow ? 'sanctionedShort' : 'sanctioned')
 
-  // Legend collapse toggle
-  const legend = $('legend')
-  const collapseEl = $('legend-collapse')
-  if (narrow) {
-    const collapsed = legend.classList.contains('collapsed')
-    collapseEl.textContent = collapsed ? '▶ ' + t('legend') : '▼ ' + t('legend')
-  } else {
-    legend.classList.remove('collapsed')
-    collapseEl.textContent = ''
-  }
+  // Legend collapse toggle (mobile only)
+  if (!narrow) $('legend').classList.remove('collapsed')
 
   // Data credits section
   $('legend-section-data').textContent = t(narrow ? 'sectionDataShort' : 'sectionData')
@@ -738,7 +730,6 @@ function setupUIHandlers() {
 
   $('legend-collapse').addEventListener('click', () => {
     $('legend').classList.toggle('collapsed')
-    updateUI()
   })
 
   window.addEventListener('resize', updateUI)
