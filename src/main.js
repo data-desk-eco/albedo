@@ -419,10 +419,10 @@ function filterVesselsByFlags(vessels) {
 
 function showRasterTooltip(vessels, isRefilter = false) {
   if (!isRefilter) lastTooltipVesselsRaw = vessels
-  if (!vessels?.length) { hideTooltip(); return }
+  if (!vessels?.length) { hideTooltip(); return false }
 
   const filtered = filterVesselsByFlags(vessels)
-  if (!filtered.length) { hideTooltip(); return }
+  if (!filtered.length) { hideTooltip(); return false }
 
   // Group by MMSI
   const byMmsi = new Map()
@@ -471,6 +471,7 @@ function showRasterTooltip(vessels, isRefilter = false) {
   ).join('') + '</table>'
   if (more > 0) html += `<div style="padding-top:8px;color:var(--ui-color-muted)">+${more} ${t('more')}</div>`
   showTooltip(html)
+  return true
 }
 
 function showProtectedAreaTooltip(feature, isBuffer = false) {
@@ -641,10 +642,7 @@ function setupMapHandlers() {
     try {
       const vesselType = currentCategory === 'all' ? null : currentCategory
       const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
-      if (vessels?.length) {
-        showRasterTooltip(vessels)
-        return
-      }
+      if (vessels?.length && showRasterTooltip(vessels)) return
     } catch { /* ignore */ }
 
     // No vessel data — fall back to protected area tooltip
