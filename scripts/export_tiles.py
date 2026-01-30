@@ -42,6 +42,7 @@ Format (v3):
       last_seen: u32 (Unix timestamp)
 """
 import gzip
+import json
 import struct
 from collections import defaultdict
 from pathlib import Path
@@ -50,6 +51,7 @@ import duckdb
 
 DATA_ROOT = Path(__file__).parent.parent / "data"
 OUTPUT_FILE = DATA_ROOT / "export" / "vessel_data.bin"
+SANCTIONS_PATH = DATA_ROOT / "export" / "sanctioned_mmsi.json"
 
 # Block size: number of cells per block
 BLOCK_SIZE = 1000
@@ -152,22 +154,44 @@ def build_cells(
 
     Returns list of (hilbert_index, lat, lon, total_vessels, vessels_data)
     """
+    # Load sanctioned MMSIs if available (prioritize them in ranking)
+    has_sanctions = False
+    if SANCTIONS_PATH.exists():
+        mmsi_list = json.loads(SANCTIONS_PATH.read_text())
+        if mmsi_list:
+            db.execute("CREATE TEMP TABLE IF NOT EXISTS sanctioned_mmsi (mmsi VARCHAR)")
+            db.execute("DELETE FROM sanctioned_mmsi")
+            for mmsi in mmsi_list:
+                db.execute("INSERT INTO sanctioned_mmsi VALUES (?)", [str(mmsi)])
+            has_sanctions = True
+            print(f"  Loaded {len(mmsi_list)} sanctioned MMSIs for priority ranking")
+
     print("  Querying vessel positions...")
+    # Sanctioned vessels get priority in per-cell ranking so they always
+    # appear in tooltips even if they have fewer hours than other vessels.
+    sanctions_join = "LEFT JOIN sanctioned_mmsi sm ON a.mmsi = sm.mmsi" if has_sanctions else ""
+    sanctions_order = "CASE WHEN sm.mmsi IS NOT NULL THEN 0 ELSE 1 END," if has_sanctions else ""
+
     rows = db.execute(
-        """
+        f"""
         WITH cells AS (
             SELECT lat, lon FROM vessel_positions GROUP BY lat, lon HAVING SUM(hours) >= 1
         ),
-        ranked AS (
+        agg AS (
             SELECT v.lat, v.lon, v.mmsi, v.flag, v.vessel_type, v.year,
                    CAST(SUM(v.hours) AS INTEGER) as total_hours,
                    MIN(v.entry_timestamp) as first_seen,
-                   MAX(v.exit_timestamp) as last_seen,
-                   ROW_NUMBER() OVER (PARTITION BY v.lat, v.lon ORDER BY SUM(v.hours) DESC) as rn,
-                   COUNT(*) OVER (PARTITION BY v.lat, v.lon) as cell_count
+                   MAX(v.exit_timestamp) as last_seen
             FROM vessel_positions v
             JOIN cells c USING (lat, lon)
             GROUP BY v.lat, v.lon, v.mmsi, v.flag, v.vessel_type, v.year
+        ),
+        ranked AS (
+            SELECT a.*,
+                   ROW_NUMBER() OVER (PARTITION BY a.lat, a.lon ORDER BY {sanctions_order} a.total_hours DESC) as rn,
+                   COUNT(*) OVER (PARTITION BY a.lat, a.lon) as cell_count
+            FROM agg a
+            {sanctions_join}
         )
         SELECT lat, lon, mmsi, flag, vessel_type, year, total_hours, first_seen, last_seen, cell_count
         FROM ranked WHERE rn <= 5

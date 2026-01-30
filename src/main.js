@@ -510,9 +510,14 @@ function filterVesselsByFlags(vessels) {
   return filtered
 }
 
-function showRasterTooltip(vessels, isRefilter = false) {
+function showRasterTooltip(vessels, isRefilter = false, point = null) {
   if (!isRefilter) lastTooltipVesselsRaw = vessels
   if (!vessels || vessels.length === 0) {
+    // Fallback: if in sanctions mode, try vector feature tooltip
+    if (showSanctionedOnly && point) {
+      showSanctionedFeatureTooltip(point)
+      return
+    }
     hideTooltip()
     return
   }
@@ -520,6 +525,11 @@ function showRasterTooltip(vessels, isRefilter = false) {
   // Apply flag and sanctions filters
   const filteredVessels = filterVesselsByFlags(vessels)
   if (filteredVessels.length === 0) {
+    // Fallback: if sanctions filter excluded all results, try vector feature
+    if (showSanctionedOnly && point) {
+      showSanctionedFeatureTooltip(point)
+      return
+    }
     hideTooltip()
     return
   }
@@ -595,6 +605,29 @@ function showRasterTooltip(vessels, isRefilter = false) {
     html += `<div style="padding-top: 8px; color: var(--ui-color-muted);">+${moreCount} ${t('more')}</div>`
   }
 
+  showTooltip(html)
+}
+
+// ============================================================================
+// Sanctioned Vessel Vector Feature Tooltip (fallback)
+// ============================================================================
+
+function showSanctionedFeatureTooltip(point) {
+  if (!map.getLayer('sanctioned-vessels-fill')) return
+  const features = map.queryRenderedFeatures(point, { layers: ['sanctioned-vessels-fill'] })
+  if (!features?.length) {
+    hideTooltip()
+    return
+  }
+  const props = features[0].properties || {}
+  const rows = [
+    { key: t('status'), value: `<span class="sanction-badge">${t('sanctioned')}</span>` }
+  ]
+  if (props.vessels) rows.push({ key: t('vessel'), value: `${props.vessels} ${t('vessel').toLowerCase()}` })
+  if (props.hours) rows.push({ key: t('hours'), value: `${Math.round(props.hours)}${t('hoursShort')}` })
+  const html = '<table>' +
+    rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') +
+    '</table>'
   showTooltip(html)
 }
 
@@ -863,7 +896,7 @@ function setupMapHandlers() {
     try {
       const vesselType = currentCategory === 'all' ? null : currentCategory
       const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
-      showRasterTooltip(vessels)
+      showRasterTooltip(vessels, false, e.point)
     } catch (err) { /* ignore */ }
   }, 16)
 
@@ -881,6 +914,7 @@ function setupMapHandlers() {
     }
 
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
+    else if (showSanctionedOnly) showSanctionedFeatureTooltip(e.point)
   })
   map.on('mouseout', hideTooltip)
   map.on('click', async (e) => {
