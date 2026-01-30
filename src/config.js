@@ -75,20 +75,27 @@ export function createMapStyle(manifest, manifestDir = '') {
     })
   }
 
+  // Vector layers marked belowHeatmap render under the raster heatmap
+  const addVectorLayers = (belowHeatmap) => {
+    for (const [sourceId, config] of Object.entries(vectorLayers)) {
+      if (!config.style) continue
+      if (!!config.belowHeatmap !== belowHeatmap) continue
+      for (const s of config.style) {
+        const layer = { ...s, source: sourceId, layout: { ...s.layout, visibility: config.defaultVisible !== false ? 'visible' : 'none' } }
+        if (config.geojson) delete layer['source-layer']
+        layers.push(layer)
+      }
+    }
+  }
+
+  addVectorLayers(true)
+
   layers.push({
     id: 'vessel-heatmap', type: 'raster', source: 'vessel-heatmap',
     paint: { 'raster-opacity': 1, 'raster-resampling': 'nearest', 'raster-brightness-max': 1, 'raster-contrast': 0.3 }
   })
 
-  // Vector layers from manifest
-  for (const [sourceId, config] of Object.entries(vectorLayers)) {
-    if (!config.style) continue
-    for (const s of config.style) {
-      const layer = { ...s, source: sourceId, layout: { ...s.layout, visibility: config.defaultVisible !== false ? 'visible' : 'none' } }
-      if (config.geojson) delete layer['source-layer']
-      layers.push(layer)
-    }
-  }
+  addVectorLayers(false)
 
   // South mask: hide everything below SOUTH_LAT
   layers.push({ id: 'south-mask', type: 'fill', source: 'south-mask', paint: { 'fill-color': theme.background || '#000000' } })

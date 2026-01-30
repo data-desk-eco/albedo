@@ -16,6 +16,8 @@
   "sectionVesselShort": "vessels",
   "sectionLayers": "map layers",
   "sectionLayersShort": "layers",
+  "sectionData": "data",
+  "sectionDataShort": "data",
   "continue": "click anywhere to continue",
   "protectedArea": "protected area",
   "bufferZone": "buffer zone",

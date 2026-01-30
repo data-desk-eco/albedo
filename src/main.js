@@ -128,14 +128,16 @@ function updateUI() {
     if (el) el.textContent = localize(narrow && toggle.labelShort ? toggle.labelShort : toggle.label)
   })
 
-  // Source links
-  const sourceEl = $('legend-source')
-  if (sourceEl) {
+  // Data credits section
+  $('legend-section-data').textContent = t(narrow ? 'sectionDataShort' : 'sectionData')
+  const dataEl = $('legend-data')
+  if (dataEl) {
     const links = manifest.ui?.sourceLinks || (manifest.ui?.sourceLink ? [manifest.ui.sourceLink] : [])
-    const parts = links.filter(l => l.url).map(l =>
-      `<a href="${l.url}" target="_blank" rel="noopener">${localize(narrow && l.labelShort ? l.labelShort : l.label)}</a>`
-    )
-    if (parts.length) sourceEl.innerHTML = `data: ${parts.join(', ')}`
+    dataEl.innerHTML = links.filter(l => l.url).map(l => {
+      const label = localize(narrow && l.labelShort ? l.labelShort : l.label)
+      const logo = l.logo || ''
+      return `<div class="legend-data-item"><a href="${l.url}" target="_blank" rel="noopener"><div class="legend-data-logo">${logo}</div><span class="legend-text">${label}</span></a></div>`
+    }).join('')
   }
 
   // Dropdowns
@@ -193,6 +195,8 @@ function initLayerToggles() {
         satelliteVisible = !visible
         refreshHeatmapTiles()
       }
+      // Force re-render — needed for fill-pattern layers with globe projection
+      map.triggerRepaint()
     })
   })
 }
@@ -626,7 +630,7 @@ function setupMapHandlers() {
   let lastQueryCell = null
   const handleRasterHover = rafThrottle(async (e) => {
     if (!dataInitialized) return
-    if (!showSanctionedOnly && map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
+    if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
@@ -656,7 +660,7 @@ function setupMapHandlers() {
   })
 
   map.on('mousemove', (e) => {
-    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM || showSanctionedOnly) {
+    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
       handleRasterHover(e)
       return
     }
