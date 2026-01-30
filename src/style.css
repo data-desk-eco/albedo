@@ -102,6 +102,10 @@ html, body {
   font-size: var(--ui-font-size);
 }
 
+.legend-collapse-toggle {
+  display: none;
+}
+
 #legend-years .legend-item:last-child {
   margin-bottom: 0;
 }
@@ -506,6 +510,24 @@ body.app-ready #zoom-controls {
 
   .legend-symbol {
     margin-right: 8px;
+  }
+
+  .legend-collapse-toggle {
+    display: block;
+    cursor: pointer;
+    font-size: var(--ui-font-size);
+    color: var(--ui-color-muted);
+    padding-bottom: 6px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #legend.collapsed #legend-body {
+    display: none;
+  }
+
+  #legend.collapsed {
+    padding: 8px 10px;
   }
 
   #places-select,
