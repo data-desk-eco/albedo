@@ -16,6 +16,8 @@
   "sectionVesselShort": "суда",
   "sectionLayers": "слои карты",
   "sectionLayersShort": "слои",
+  "sectionData": "данные",
+  "sectionDataShort": "данные",
   "continue": "нажмите в любом месте, чтобы продолжить",
   "protectedArea": "охраняемая территория",
   "bufferZone": "охранная зона",

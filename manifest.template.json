@@ -46,6 +46,7 @@
       "protected-areas": {
         "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
+        "belowHeatmap": true,
         "style": [
           {
             "id": "protected-areas-fill",
@@ -64,6 +65,7 @@
       "buffer-zones": {
         "geojson": "buffer_zones.geojson",
         "defaultVisible": true,
+        "belowHeatmap": true,
         "style": [
           {
             "id": "buffer-zones-fill",
