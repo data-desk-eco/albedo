@@ -79,10 +79,7 @@ def main():
         max_lon = lon + CELL_SIZE
 
         # Boolean year, vessel type, and flag properties for MapLibre filtering
-        props = {
-            "hours": round(total_hours, 1),
-            "vessels": vessel_count,
-        }
+        props = {}
         for y in years:
             props[f"y{y}"] = True
             all_years.add(y)

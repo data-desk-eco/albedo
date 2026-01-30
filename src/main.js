@@ -307,8 +307,7 @@ function populateFlagDropdown() {
 function updateSanctionsFilter() {
   const toggle = $('sanctions-toggle')
   const hasYears = activeYears.size > 0
-  const hasFilters = currentCategory !== 'all' || currentFlagFilter !== 'all'
-  const canUse = hasYears && !hasFilters
+  const canUse = hasYears
 
   if (!canUse) {
     toggle.classList.add('disabled')
@@ -440,6 +439,14 @@ function formatDateShort(isoString) {
   return `${d.getDate()} ${d.toLocaleString(getLang() === 'ru' ? 'ru' : 'en', { month: 'short' })} ${String(d.getFullYear()).slice(-2)}`
 }
 
+function yearsFromMask(mask) {
+  const years = []
+  for (let i = 0; i < 8; i++) {
+    if (mask & (1 << i)) years.push(2020 + i)
+  }
+  return years.join(', ') || '?'
+}
+
 function filterVesselsByFlags(vessels) {
   if (currentFlagFilter === 'all') return vessels
   let filtered = vessels
@@ -464,7 +471,7 @@ function showRasterTooltip(vessels, isRefilter = false) {
     }
     const entry = byMmsi.get(key)
     entry.total_hours += v.total_hours || 0
-    const dateStr = v.last_seen ? formatDateShort(v.last_seen) : v.year
+    const dateStr = v.last_seen ? formatDateShort(v.last_seen) : yearsFromMask(v.year_mask)
     if (!entry.dates.includes(dateStr)) entry.dates.push(dateStr)
   }
 

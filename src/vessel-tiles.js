@@ -227,7 +227,7 @@ async function loadBlock(blockId) {
       offset += 1
       const typeId = view.getUint8(offset)
       offset += 1
-      const yearOffset = view.getUint8(offset)
+      const yearMask = view.getUint8(offset)
       offset += 1
       const hours = view.getUint16(offset, true)
       offset += 2
@@ -251,7 +251,7 @@ async function loadBlock(blockId) {
         ship_name: vessel.shipName,
         flag: flags[flagId] || null,
         vessel_type: vesselTypes[typeId] || null,
-        year: 2020 + yearOffset,
+        year_mask: yearMask,
         total_hours: hours,
         cell_count: totalCount,
         first_seen: firstSeen,
@@ -288,7 +288,8 @@ export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
   let result = cells.get(cellKey) || []
 
   if (year !== null) {
-    result = result.filter(v => v.year === year)
+    const bit = 1 << (year - 2020)
+    result = result.filter(v => v.year_mask & bit)
   }
 
   if (vesselType !== null) {
