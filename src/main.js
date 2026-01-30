@@ -128,6 +128,9 @@ function updateUI() {
     if (el) el.textContent = localize(narrow && toggle.labelShort ? toggle.labelShort : toggle.label)
   })
 
+  // Sanctions label
+  $('sanctions-label').textContent = t(narrow ? 'sanctionedShort' : 'sanctioned')
+
   // Data credits section
   $('legend-section-data').textContent = t(narrow ? 'sectionDataShort' : 'sectionData')
   const dataEl = $('legend-data')

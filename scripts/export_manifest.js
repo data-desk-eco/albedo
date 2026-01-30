@@ -237,7 +237,7 @@ const manifest = {
       {
         url: 'https://www.opensanctions.org/',
         label: { en: 'OpenSanctions', ru: 'OpenSanctions' },
-        labelShort: { en: 'OpenSanctions', ru: 'OpenSanctions' },
+        labelShort: { en: 'OS', ru: 'OS' },
         logo: "<img src='https://assets.opensanctions.org/images/nura/favicon-32.png' alt='OpenSanctions'>"
       }
     ],
