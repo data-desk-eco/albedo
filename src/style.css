@@ -481,7 +481,7 @@ body.app-ready #zoom-controls {
 /* Responsive */
 @media (max-width: 768px) {
   :root {
-    --ui-panel-width: 160px;
+    --ui-panel-width: 120px;
   }
 
   #logo-container {
