@@ -533,8 +533,15 @@ body.app-ready #zoom-controls {
     content: '▼';
   }
 
+  #legend.collapsed #legend-collapse {
+    position: static;
+    width: auto;
+    height: auto;
+    text-align: left;
+  }
+
   #legend.collapsed #legend-collapse::after {
-    content: '▶';
+    content: '▶ legend';
   }
 
   #legend.collapsed #legend-body {
