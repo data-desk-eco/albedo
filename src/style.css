@@ -3,7 +3,7 @@
 :root {
   /* Font settings */
   --ui-font-size: 13px;
-  --ui-font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', Menlo, Monaco, Consolas, monospace;
+  --ui-font-family: 'Golos Text', ui-monospace, 'SF Mono', 'Cascadia Code', 'Segoe UI Mono', Menlo, Monaco, Consolas, monospace;
   --ui-font-weight: 400;
   --ui-panel-width: 220px;
   --ui-blur: blur(6px);
@@ -32,6 +32,7 @@ html, body {
 #legend,
 #places-info,
 #category-select,
+#flag-select,
 #places-select,
 #lang-toggle,
 #about-content {
@@ -165,9 +166,17 @@ html, body {
 .legend-hatch {
   width: 18px;
   height: 18px;
-  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #fff 2px, #fff 3px);
-  border: 2px solid #fff;
+  background: repeating-linear-gradient(-45deg, transparent, transparent 2px, #1E6AFF 2px, #1E6AFF 3px);
+  border: 2px solid #1E6AFF;
   box-sizing: border-box;
+}
+
+.legend-dashed {
+  width: 18px;
+  height: 18px;
+  border: 2px dashed rgba(30, 106, 255, 0.6);
+  box-sizing: border-box;
+  background: rgba(30, 106, 255, 0.05);
 }
 
 .legend-satellite {
@@ -193,6 +202,36 @@ html, body {
 .legend-source a {
   color: inherit;
   text-decoration: underline;
+}
+
+/* Zoom controls */
+.maplibregl-ctrl-top-right {
+  top: 40px;
+}
+
+.maplibregl-ctrl-group {
+  background: var(--ui-bg) !important;
+  border: var(--ui-border) !important;
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
+}
+
+.maplibregl-ctrl-group button {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: var(--ui-bg-hover) !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: none !important;
+}
+
+.maplibregl-ctrl-zoom-in .maplibregl-ctrl-icon,
+.maplibregl-ctrl-zoom-out .maplibregl-ctrl-icon {
+  filter: invert(1);
 }
 
 /* Language toggle */
@@ -242,6 +281,7 @@ html, body {
 }
 
 #category-select,
+#flag-select,
 #places-select {
   font-size: 14px;
   padding: 8px 12px;
@@ -252,14 +292,44 @@ html, body {
 }
 
 #category-select:hover,
+#flag-select:hover,
 #places-select:hover {
   background: var(--ui-bg-hover);
 }
 
 #category-select option,
+#flag-select option,
 #places-select option {
   background: #1a1a1a;
   color: var(--ui-color);
+}
+
+#sanctions-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+  width: var(--ui-panel-width);
+  box-sizing: border-box;
+  color: var(--ui-color);
+  background: var(--ui-bg);
+  border: var(--ui-border);
+  backdrop-filter: var(--ui-blur);
+  -webkit-backdrop-filter: var(--ui-blur);
+}
+
+#sanctions-toggle:hover {
+  background: var(--ui-bg-hover);
+}
+
+#sanctions-toggle input {
+  accent-color: #ff4444;
+}
+
+.sanction-badge {
+  color: #ff4444;
 }
 
 #places-info {
@@ -345,6 +415,10 @@ html, body {
   line-height: 1.6;
 }
 
+#about-description p:last-child {
+  margin-bottom: 0;
+}
+
 #about-content p:last-of-type {
   margin-bottom: 0;
 }
@@ -395,7 +469,12 @@ html, body {
   }
 
   #places-select,
+  #flag-select,
   #places-info {
+    max-width: 200px;
+  }
+
+  #sanctions-toggle {
     max-width: 200px;
   }
 }

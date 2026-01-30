@@ -24,7 +24,14 @@ SELECT json_object(
   'features', json_group_array(
     json_object(
       'type', 'Feature',
-      'properties', json_object('id', feature_id, 'name', area_name),
+      'properties', json_object(
+        'id', feature_id,
+        'name', area_name,
+        'category', category,
+        'significance', significance,
+        'area_ha', ROUND(area_ha),
+        'status', status
+      ),
       'geometry', ST_AsGeoJSON(
         ST_Intersection(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'))
       )::JSON
@@ -57,9 +64,21 @@ FROM ST_Read('$DATA_ROOT/ne_10m_populated_places/ne_10m_populated_places.shp')
 WHERE SCALERANK <= 5 AND ST_Y(geom) >= $MIN_LAT;
 " | jq -r '.[0].geojson' > "$TEMP_DIR/places.geojson"
 
+echo "Exporting sanctioned vessel positions..."
+# Generate sanctioned vessel GeoJSON from DuckDB + sanctions list
+if [ -f "$EXPORT_DIR/sanctioned_mmsi.json" ]; then
+  uv run python scripts/export_sanctions_layer.py
+fi
+
 echo "Creating PMTiles with tippecanoe..."
 
-# Create PMTiles with both layers
+# Build layer args
+LAYER_ARGS="-L protected_areas:$TEMP_DIR/protected_areas.geojson -L places:$TEMP_DIR/places.geojson"
+if [ -f "$TEMP_DIR/sanctioned_vessels.geojson" ]; then
+  LAYER_ARGS="$LAYER_ARGS -L sanctioned_vessels:$TEMP_DIR/sanctioned_vessels.geojson"
+fi
+
+# Create PMTiles with all layers
 tippecanoe \
   --output="$EXPORT_DIR/vectors.pmtiles" \
   --force \
@@ -67,8 +86,7 @@ tippecanoe \
   --no-tile-size-limit \
   --minimum-zoom=0 \
   --maximum-zoom=10 \
-  -L protected_areas:"$TEMP_DIR/protected_areas.geojson" \
-  -L places:"$TEMP_DIR/places.geojson"
+  $LAYER_ARGS
 
 # Cleanup
 rm -rf "$TEMP_DIR"

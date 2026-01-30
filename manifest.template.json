@@ -27,7 +27,10 @@
   "data": {
     "cog": "${COG_URL}",
     "vesselData": "${COG_BASE_URL}vessel_data.bin",
-    "cogsByType": ${COGS_BY_TYPE}
+    "sanctionedMmsi": "sanctioned_mmsi.json",
+    "cogsByType": ${COGS_BY_TYPE},
+    "cogsByFlag": ${COGS_BY_FLAG},
+    "vesselMetadata": "${COG_BASE_URL}vessel_metadata.json"
   },
 
   "layers": {
@@ -44,13 +47,34 @@
             "id": "protected-areas-fill",
             "type": "fill",
             "source-layer": "protected_areas",
-            "paint": { "fill-pattern": "hatch-white-md", "fill-opacity": 1 }
+            "paint": { "fill-pattern": "hatch-blue-md", "fill-opacity": 1 }
           },
           {
             "id": "protected-areas-border",
             "type": "line",
             "source-layer": "protected_areas",
-            "paint": { "line-color": "#ffffff", "line-width": 2, "line-opacity": 1 }
+            "paint": { "line-color": "#1E6AFF", "line-width": 2, "line-opacity": 1 }
+          }
+        ]
+      },
+      "buffer-zones": {
+        "geojson": "buffer_zones.geojson",
+        "defaultVisible": true,
+        "style": [
+          {
+            "id": "buffer-zones-fill",
+            "type": "fill",
+            "paint": { "fill-color": "#1E6AFF", "fill-opacity": 0.05 }
+          },
+          {
+            "id": "buffer-zones-border",
+            "type": "line",
+            "paint": {
+              "line-color": "#1E6AFF",
+              "line-width": 1.5,
+              "line-opacity": 0.6,
+              "line-dasharray": [4, 3]
+            }
           }
         ]
       },
@@ -98,6 +122,13 @@
         "label": { "en": "Protected areas", "ru": "ООПТ" },
         "labelShort": { "en": "Protected", "ru": "ООПТ" },
         "symbol": "hatch",
+        "defaultVisible": true
+      },
+      {
+        "layers": ["buffer-zones-fill", "buffer-zones-border"],
+        "label": { "en": "Buffer zones", "ru": "Охранные зоны" },
+        "labelShort": { "en": "Buffers", "ru": "Охр. зоны" },
+        "symbol": "dashed",
         "defaultVisible": true
       },
       {

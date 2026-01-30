@@ -3,14 +3,14 @@
  * Loads settings from manifest.json and COG metadata
  */
 
-// Color palette for years (must match cog.js)
+// Color palette for years - Arctida blue scale (must match cog.js)
 const YEAR_PALETTE = [
-  [0, 255, 255],    // Cyan
-  [0, 255, 0],      // Green
-  [255, 0, 255],    // Magenta
-  [255, 255, 0],    // Yellow
-  [255, 128, 0],    // Orange
-  [128, 0, 255],    // Purple
+  [41, 136, 255],   // Blue #2988FF (2023)
+  [112, 223, 238],  // Turquoise #70DFEE (2024)
+  [204, 227, 255],  // Light Blue #CCE3FF (2025)
+  [0, 99, 219],     // Deep Blue #0063DB
+  [133, 187, 255],  // Mid Blue #85BBFF
+  [70, 213, 217],   // Turquoise Second #46D5D9
 ]
 
 // Debug mode: visualize tooltip target grid cells
@@ -39,7 +39,7 @@ export function getYearColor(bandIndex) {
 /**
  * Create MapLibre style from manifest configuration
  */
-export function createMapStyle(manifest) {
+export function createMapStyle(manifest, manifestDir = '') {
   const theme = manifest.ui?.theme || {}
   const bounds = manifest.map?.bounds || {}
   const southBound = bounds.south ?? -90
@@ -78,13 +78,21 @@ export function createMapStyle(manifest) {
     }
   }
 
-  // Add PMTiles vector sources
+  // Add PMTiles vector sources and GeoJSON sources
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
     if (config.url) {
+      const resolvedUrl = config.url.startsWith('http') ? config.url : manifestDir + config.url
       sources[id] = {
         type: 'vector',
-        url: `pmtiles://${config.url}`
+        url: `pmtiles://${resolvedUrl}`
+      }
+    } else if (config.geojson) {
+      // GeoJSON sources loaded via manifest-relative URL
+      // Actual data is loaded dynamically in main.js after map init
+      sources[id] = {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
       }
     }
   }
@@ -145,14 +153,19 @@ export function createMapStyle(manifest) {
   for (const [sourceId, config] of Object.entries(vectorLayers)) {
     if (!config.style) continue
     for (const layerStyle of config.style) {
-      layers.push({
+      const layer = {
         ...layerStyle,
         source: sourceId,
         layout: {
           ...layerStyle.layout,
           visibility: config.defaultVisible !== false ? 'visible' : 'none'
         }
-      })
+      }
+      // GeoJSON sources don't use source-layer
+      if (config.geojson && layer['source-layer']) {
+        delete layer['source-layer']
+      }
+      layers.push(layer)
     }
   }
 

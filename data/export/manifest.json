@@ -6,8 +6,8 @@
       "ru": "о карте"
     },
     "description": {
-      "en": "Interactive map of vessel presence based on Global Fishing Watch data.",
-      "ru": "Интерактивная карта присутствия судов на основе данных Global Fishing Watch."
+      "en": "This interactive map helps you analyze vessel traffic and infrastructure pressure in Russia's Arctic waters along the Northern Sea Route between 2023 and 2025.\n\nIt visualizes how shipping activity has evolved over time, overlays the boundaries of protected areas, and allows you to identify when and where vessels crossed into these zones.\n\nUsing built-in filters, you can explore specific categories of vessels, track patterns of activity in key Arctic regions, and focus on areas where shipping, energy infrastructure, and environmental protection intersect.\n\nEach colored pixel represents the aggregated presence of vessels in that grid cell during the selected time period. Hover over an area at high zoom to see individual vessel details. Dates shown for protected area crossings indicate when a vessel was detected inside the protected zone.",
+      "ru": "Эта интерактивная карта позволяет анализировать судоходный трафик и нагрузку на инфраструктуру в арктических водах России вдоль Северного морского пути в период с 2023 по 2025 год.\n\nОна визуализирует, как менялась судоходная активность с течением времени, показывает границы особо охраняемых природных территорий и позволяет определить, когда и где суда заходили в эти зоны.\n\nС помощью встроенных фильтров можно исследовать определённые категории судов, отслеживать закономерности активности в ключевых арктических регионах и сосредоточиться на районах пересечения судоходства, энергетической инфраструктуры и охраны окружающей среды.\n\nКаждый цветной пиксель представляет агрегированное присутствие судов в данной ячейке за выбранный период. Наведите курсор на область при большом увеличении, чтобы увидеть данные отдельных судов. Даты пересечений с охраняемыми территориями указывают, когда судно было обнаружено внутри охраняемой зоны."
     }
   },
   "map": {
@@ -28,14 +28,27 @@
     }
   },
   "data": {
-    "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
-    "vesselData": "https://storage.googleapis.com/albedo-data/vessel_data.bin",
+    "cog": "vessel_heatmap.tif",
+    "vesselData": "vessel_data.bin",
+    "sanctionedMmsi": "sanctioned_mmsi.json",
     "cogsByType": {
-      "FISHING": "https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif",
-      "CARGO": "https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif",
-      "PASSENGER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif",
-      "CARRIER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"
-    }
+      "FISHING": "vessel_heatmap_fishing.tif",
+      "CARGO": "vessel_heatmap_cargo.tif",
+      "PASSENGER": "vessel_heatmap_passenger.tif",
+      "CARRIER": "vessel_heatmap_carrier.tif"
+    },
+    "cogsByFlag": {
+      "foreign": "vessel_heatmap_flag_foreign.tif",
+      "RUS": "vessel_heatmap_flag_rus.tif",
+      "NOR": "vessel_heatmap_flag_nor.tif",
+      "PAN": "vessel_heatmap_flag_pan.tif",
+      "LBR": "vessel_heatmap_flag_lbr.tif",
+      "MHL": "vessel_heatmap_flag_mhl.tif",
+      "MLT": "vessel_heatmap_flag_mlt.tif",
+      "CHN": "vessel_heatmap_flag_chn.tif",
+      "GBR": "vessel_heatmap_flag_gbr.tif"
+    },
+    "vesselMetadata": "vessel_metadata.json"
   },
   "layers": {
     "satellite": {
@@ -44,7 +57,7 @@
     },
     "vectors": {
       "protected-areas": {
-        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
+        "url": "vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -52,7 +65,7 @@
             "type": "fill",
             "source-layer": "protected_areas",
             "paint": {
-              "fill-pattern": "hatch-white-md",
+              "fill-pattern": "hatch-blue-md",
               "fill-opacity": 1
             }
           },
@@ -61,15 +74,57 @@
             "type": "line",
             "source-layer": "protected_areas",
             "paint": {
-              "line-color": "#ffffff",
+              "line-color": "#1E6AFF",
               "line-width": 2,
               "line-opacity": 1
             }
           }
         ]
       },
+      "buffer-zones": {
+        "geojson": "buffer_zones.geojson",
+        "defaultVisible": true,
+        "style": [
+          {
+            "id": "buffer-zones-fill",
+            "type": "fill",
+            "paint": {
+              "fill-color": "#1E6AFF",
+              "fill-opacity": 0.05
+            }
+          },
+          {
+            "id": "buffer-zones-border",
+            "type": "line",
+            "paint": {
+              "line-color": "#1E6AFF",
+              "line-width": 1.5,
+              "line-opacity": 0.6,
+              "line-dasharray": [
+                4,
+                3
+              ]
+            }
+          }
+        ]
+      },
+      "sanctioned-vessels": {
+        "url": "vectors.pmtiles",
+        "defaultVisible": false,
+        "style": [
+          {
+            "id": "sanctioned-vessels-fill",
+            "type": "fill",
+            "source-layer": "sanctioned_vessels",
+            "paint": {
+              "fill-color": "#FF3B30",
+              "fill-opacity": 0.8
+            }
+          }
+        ]
+      },
       "places": {
-        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
+        "url": "vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -158,6 +213,22 @@
       },
       {
         "layers": [
+          "buffer-zones-fill",
+          "buffer-zones-border"
+        ],
+        "label": {
+          "en": "Buffer zones",
+          "ru": "Охранные зоны"
+        },
+        "labelShort": {
+          "en": "Buffers",
+          "ru": "Охр. зоны"
+        },
+        "symbol": "dashed",
+        "defaultVisible": true
+      },
+      {
+        "layers": [
           "satellite"
         ],
         "label": {
@@ -200,6 +271,118 @@
       "zoom": 2.5
     },
     {
+      "id": "barents-sea",
+      "name": {
+        "en": "Barents Sea Gateway",
+        "ru": "Баренцево море"
+      },
+      "description": {
+        "en": "Western entrance to the Northern Sea Route",
+        "ru": "Западный вход на Северный морской путь"
+      },
+      "center": [
+        40,
+        74
+      ],
+      "zoom": 4.5
+    },
+    {
+      "id": "kola-bay",
+      "name": {
+        "en": "Kola Bay",
+        "ru": "Кольский залив"
+      },
+      "description": {
+        "en": "Major naval and commercial port area",
+        "ru": "Крупный военно-морской и коммерческий портовый район"
+      },
+      "center": [
+        33.1,
+        69
+      ],
+      "zoom": 9
+    },
+    {
+      "id": "murmansk",
+      "name": {
+        "en": "Murmansk Port",
+        "ru": "Порт Мурманск"
+      },
+      "description": {
+        "en": "Largest city above the Arctic Circle",
+        "ru": "Крупнейший город за Полярным кругом"
+      },
+      "center": [
+        33.08,
+        68.97
+      ],
+      "zoom": 11
+    },
+    {
+      "id": "lavna",
+      "name": {
+        "en": "Lavna Port",
+        "ru": "Порт Лавна"
+      },
+      "description": {
+        "en": "New deep-water coal terminal on the Kola Peninsula",
+        "ru": "Новый глубоководный угольный терминал на Кольском полуострове"
+      },
+      "center": [
+        33.05,
+        68.88
+      ],
+      "zoom": 12
+    },
+    {
+      "id": "arkhangelsk",
+      "name": {
+        "en": "Arkhangelsk Port",
+        "ru": "Порт Архангельск"
+      },
+      "description": {
+        "en": "Historic Arctic port on the White Sea",
+        "ru": "Исторический арктический порт на Белом море"
+      },
+      "center": [
+        40.5,
+        64.55
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "kandalaksha",
+      "name": {
+        "en": "Kandalaksha Port",
+        "ru": "Порт Кандалакша"
+      },
+      "description": {
+        "en": "White Sea port at the head of Kandalaksha Bay",
+        "ru": "Порт Белого моря в вершине Кандалакшского залива"
+      },
+      "center": [
+        32.4,
+        67.15
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "kara-gate",
+      "name": {
+        "en": "Kara Gate Strait",
+        "ru": "Карские Ворота"
+      },
+      "description": {
+        "en": "Strait between Novaya Zemlya and Vaygach Island",
+        "ru": "Пролив между Новой Землёй и островом Вайгач"
+      },
+      "center": [
+        58.5,
+        70.5
+      ],
+      "zoom": 7
+    },
+    {
       "id": "kara-sea",
       "name": {
         "en": "Kara Sea",
@@ -214,6 +397,230 @@
         74
       ],
       "zoom": 5
+    },
+    {
+      "id": "ob-gulf",
+      "name": {
+        "en": "Ob Gulf",
+        "ru": "Обская губа"
+      },
+      "description": {
+        "en": "Estuary of the Ob River, major LNG shipping area",
+        "ru": "Устье реки Обь, крупный район транспортировки СПГ"
+      },
+      "center": [
+        72.5,
+        70
+      ],
+      "zoom": 6
+    },
+    {
+      "id": "sabetta",
+      "name": {
+        "en": "Sabetta Port",
+        "ru": "Порт Сабетта"
+      },
+      "description": {
+        "en": "Yamal LNG terminal on the Ob Gulf",
+        "ru": "Терминал Ямал СПГ на Обской губе"
+      },
+      "center": [
+        72.07,
+        71.27
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "utrenny",
+      "name": {
+        "en": "Utrenny Port",
+        "ru": "Порт Утренний"
+      },
+      "description": {
+        "en": "Arctic LNG 2 terminal on the Gydan Peninsula",
+        "ru": "Терминал Арктик СПГ 2 на Гыданском полуострове"
+      },
+      "center": [
+        73,
+        71.2
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "novy-port",
+      "name": {
+        "en": "Novy Port Oil Terminal",
+        "ru": "Нефтяной терминал Новый Порт"
+      },
+      "description": {
+        "en": "Arctic Gate oil terminal in the Ob Gulf",
+        "ru": "Нефтяной терминал «Ворота Арктики» в Обской губе"
+      },
+      "center": [
+        72.8,
+        70.2
+      ],
+      "zoom": 9
+    },
+    {
+      "id": "franz-josef-land",
+      "name": {
+        "en": "Franz Josef Land",
+        "ru": "Земля Франца-Иосифа"
+      },
+      "description": {
+        "en": "Remote archipelago and nature reserve",
+        "ru": "Удалённый архипелаг и природный заповедник"
+      },
+      "center": [
+        55,
+        80.5
+      ],
+      "zoom": 5.5
+    },
+    {
+      "id": "severnaya-zemlya",
+      "name": {
+        "en": "Severnaya Zemlya",
+        "ru": "Северная Земля"
+      },
+      "description": {
+        "en": "Archipelago separating the Kara and Laptev Seas",
+        "ru": "Архипелаг, разделяющий Карское море и море Лаптевых"
+      },
+      "center": [
+        97,
+        79.5
+      ],
+      "zoom": 5.5
+    },
+    {
+      "id": "laptev-sea",
+      "name": {
+        "en": "Laptev Sea",
+        "ru": "Море Лаптевых"
+      },
+      "description": {
+        "en": "Central section of the Northern Sea Route",
+        "ru": "Центральный участок Северного морского пути"
+      },
+      "center": [
+        125,
+        76
+      ],
+      "zoom": 5
+    },
+    {
+      "id": "dudinka",
+      "name": {
+        "en": "Dudinka Port",
+        "ru": "Порт Дудинка"
+      },
+      "description": {
+        "en": "River port serving the Norilsk industrial area",
+        "ru": "Речной порт, обслуживающий Норильский промышленный район"
+      },
+      "center": [
+        86.18,
+        69.4
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "tiksi",
+      "name": {
+        "en": "Tiksi Port",
+        "ru": "Порт Тикси"
+      },
+      "description": {
+        "en": "Key port on the Laptev Sea coast",
+        "ru": "Ключевой порт на побережье моря Лаптевых"
+      },
+      "center": [
+        128.87,
+        71.64
+      ],
+      "zoom": 9
+    },
+    {
+      "id": "east-siberian-sea",
+      "name": {
+        "en": "East Siberian Sea",
+        "ru": "Восточно-Сибирское море"
+      },
+      "description": {
+        "en": "Eastern section of the Northern Sea Route",
+        "ru": "Восточный участок Северного морского пути"
+      },
+      "center": [
+        160,
+        73
+      ],
+      "zoom": 4.5
+    },
+    {
+      "id": "chaun-bay",
+      "name": {
+        "en": "Chaun Bay",
+        "ru": "Чаунская губа"
+      },
+      "description": {
+        "en": "Bay in the East Siberian Sea near Pevek",
+        "ru": "Залив Восточно-Сибирского моря близ Певека"
+      },
+      "center": [
+        170,
+        68.8
+      ],
+      "zoom": 7
+    },
+    {
+      "id": "pevek",
+      "name": {
+        "en": "Pevek Port",
+        "ru": "Порт Певек"
+      },
+      "description": {
+        "en": "Northernmost city in Russia, floating nuclear power plant",
+        "ru": "Самый северный город России, плавучая АЭС"
+      },
+      "center": [
+        170.3,
+        69.7
+      ],
+      "zoom": 10
+    },
+    {
+      "id": "provideniya",
+      "name": {
+        "en": "Provideniya Port",
+        "ru": "Порт Провидения"
+      },
+      "description": {
+        "en": "Eastern gateway to the Northern Sea Route",
+        "ru": "Восточные ворота Северного морского пути"
+      },
+      "center": [
+        -173.2,
+        64.4
+      ],
+      "zoom": 9
+    },
+    {
+      "id": "bering-strait",
+      "name": {
+        "en": "Bering Strait",
+        "ru": "Берингов пролив"
+      },
+      "description": {
+        "en": "Strait between Russia and Alaska, eastern terminus of the NSR",
+        "ru": "Пролив между Россией и Аляской, восточная оконечность СМП"
+      },
+      "center": [
+        -169,
+        65.8
+      ],
+      "zoom": 6
     }
   ]
 }

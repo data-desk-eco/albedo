@@ -34,12 +34,18 @@ let map = null
 
 // Map state
 let currentCategory = 'all'
+let currentFlagFilter = 'all'
 let categories = []
 let cogUrls = {}
+let flagCogUrls = {}
 let activeYears = new Set()
 let knownYears = []
 let satelliteVisible = false
 let dataInitialized = false
+let sanctionedMmsi = new Set()
+let vesselMeta = {}  // mmsi -> {imo, y: buildYear, d: dwt}
+let showSanctionedOnly = false
+let lastTooltipVesselsRaw = null // unfiltered vessel results for re-filtering
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -62,6 +68,7 @@ function showTooltip(html) {
 
 function hideTooltip() {
   tooltip.classList.remove('visible')
+  lastTooltipVesselsRaw = null
 }
 
 /**
@@ -114,7 +121,9 @@ function updateUI() {
   // About modal
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
-    document.getElementById('about-description').textContent = localize(manifest.about.description)
+    const descText = localize(manifest.about.description)
+    const descEl = document.getElementById('about-description')
+    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
     document.getElementById('about-continue').textContent = t('continue')
   }
 
@@ -152,6 +161,8 @@ function updateUI() {
   }
 
   if (categories.length > 0) populateCategoryDropdown()
+  populateFlagDropdown()
+  document.getElementById('sanctions-label').textContent = t('sanctioned')
 }
 
 function initYearLegend(years) {
@@ -259,7 +270,10 @@ function createHatchPattern(color, size = 6) {
 const hatchPatterns = {
   'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
   'hatch-white-md': () => createHatchPattern('#ffffff', 10),
-  'hatch-white-lg': () => createHatchPattern('#ffffff', 16)
+  'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
+  'hatch-blue-sm': () => createHatchPattern('#1E6AFF', 6),
+  'hatch-blue-md': () => createHatchPattern('#1E6AFF', 10),
+  'hatch-blue-lg': () => createHatchPattern('#1E6AFF', 16)
 }
 
 // ============================================================================
@@ -294,6 +308,74 @@ function loadCategories() {
   populateCategoryDropdown()
 }
 
+// ============================================================================
+// Flag Filter
+// ============================================================================
+
+const FLAG_PRESETS = [
+  { id: 'all', labelKey: 'allFlags' },
+  { id: 'foreign', labelKey: 'foreignFlag' },
+  { id: 'RUS', label: 'RUS' },
+  { id: 'NOR', label: 'NOR' },
+  { id: 'PAN', label: 'PAN' },
+  { id: 'LBR', label: 'LBR' },
+  { id: 'MHL', label: 'MHL' },
+  { id: 'MLT', label: 'MLT' },
+  { id: 'CHN', label: 'CHN' },
+  { id: 'GBR', label: 'GBR' },
+]
+
+function populateFlagDropdown() {
+  const select = document.getElementById('flag-select')
+  select.classList.remove('hidden')
+  select.innerHTML = ''
+  FLAG_PRESETS.forEach(preset => {
+    const option = document.createElement('option')
+    option.value = preset.id
+    option.textContent = preset.labelKey ? t(preset.labelKey) : preset.label
+    select.appendChild(option)
+  })
+  select.value = currentFlagFilter
+}
+
+// ============================================================================
+// Sanctions
+// ============================================================================
+
+async function loadVesselMetadata(manifestDir) {
+  const url = manifest?.data?.vesselMetadata
+  if (!url) return
+  try {
+    const fullUrl = url.startsWith('http') ? url : manifestDir + url
+    const resp = await fetch(fullUrl)
+    if (!resp.ok) return
+    vesselMeta = await resp.json()
+    console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels`)
+  } catch (err) {
+    console.warn('Failed to load vessel metadata:', err)
+  }
+}
+
+async function loadSanctions(manifestDir) {
+  const sanctionsUrl = manifest?.data?.sanctionedMmsi
+  if (!sanctionsUrl) return
+  try {
+    const fullUrl = sanctionsUrl.startsWith('http')
+      ? sanctionsUrl
+      : manifestDir + sanctionsUrl
+    const resp = await fetch(fullUrl)
+    if (!resp.ok) return
+    const mmsiList = await resp.json()
+    sanctionedMmsi = new Set(mmsiList)
+    console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
+    // Show sanctions toggle
+    document.getElementById('sanctions-toggle').classList.remove('hidden')
+    document.getElementById('sanctions-label').textContent = t('sanctioned')
+  } catch (err) {
+    console.warn('Failed to load sanctions data:', err)
+  }
+}
+
 function populateCategoryDropdown() {
   const select = document.getElementById('category-select')
   if (categories.length <= 1) {
@@ -311,17 +393,36 @@ function populateCategoryDropdown() {
   select.value = currentCategory
 }
 
+/**
+ * Get the appropriate COG URL based on current filter state.
+ * Flag filter takes precedence over type filter when both are set.
+ */
+function getActiveCogUrl() {
+  if (currentFlagFilter !== 'all' && flagCogUrls[currentFlagFilter]) {
+    return flagCogUrls[currentFlagFilter]
+  }
+  return cogUrls[currentCategory] || cogUrls.all
+}
+
+async function switchActiveCOG() {
+  const url = getActiveCogUrl()
+  if (!url || !cogModule) return
+  try {
+    await cogModule.switchCOG(url)
+    cogTileCache.clear()
+    map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+  } catch (err) {
+    console.warn('Failed to switch COG:', err)
+  }
+}
+
 async function selectCategory(categoryId) {
   if (categoryId === currentCategory) return
   const previousCategory = currentCategory
   currentCategory = categoryId
-  const cogUrl = cogUrls[categoryId]
-  if (!cogUrl) return
 
   try {
-    await cogModule.switchCOG(cogUrl)
-    cogTileCache.clear()
-    map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+    await switchActiveCOG()
   } catch (err) {
     console.error(`Failed to switch COG:`, err)
     currentCategory = previousCategory
@@ -375,15 +476,37 @@ function formatDateShort(isoString) {
   return `${day} ${month} ${year}`
 }
 
-function showRasterTooltip(vessels) {
+function filterVesselsByFlags(vessels) {
+  if (currentFlagFilter === 'all' && !showSanctionedOnly) return vessels
+  let filtered = vessels
+  if (currentFlagFilter === 'foreign') {
+    filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
+  } else if (currentFlagFilter !== 'all') {
+    filtered = filtered.filter(v => v.flag === currentFlagFilter)
+  }
+  if (showSanctionedOnly) {
+    filtered = filtered.filter(v => sanctionedMmsi.has(v.mmsi))
+  }
+  return filtered
+}
+
+function showRasterTooltip(vessels, isRefilter = false) {
+  if (!isRefilter) lastTooltipVesselsRaw = vessels
   if (!vessels || vessels.length === 0) {
+    hideTooltip()
+    return
+  }
+
+  // Apply flag and sanctions filters
+  const filteredVessels = filterVesselsByFlags(vessels)
+  if (filteredVessels.length === 0) {
     hideTooltip()
     return
   }
 
   // Group entries by mmsi to consolidate multiple dates for same vessel
   const byMmsi = new Map()
-  for (const v of vessels) {
+  for (const v of filteredVessels) {
     const key = v.mmsi || v.ship_name || 'unknown'
     if (!byMmsi.has(key)) {
       byMmsi.set(key, {
@@ -392,7 +515,8 @@ function showRasterTooltip(vessels) {
         vessel_type: v.vessel_type,
         flag: v.flag,
         total_hours: 0,
-        dates: []
+        dates: [],
+        sanctioned: sanctionedMmsi.has(v.mmsi)
       })
     }
     const entry = byMmsi.get(key)
@@ -405,7 +529,7 @@ function showRasterTooltip(vessels) {
 
   const grouped = Array.from(byMmsi.values())
   const displayVessels = grouped.slice(0, 3)
-  const totalCount = vessels[0]?.cell_count || grouped.length
+  const totalCount = filteredVessels[0]?.cell_count || grouped.length
   const moreCount = totalCount > 3 ? totalCount - 3 : 0
 
   const rows = [
@@ -417,6 +541,30 @@ function showRasterTooltip(vessels) {
     { key: t('date'), values: displayVessels.map(v => v.dates.join('<br>')) }
   ]
 
+  // Add enriched metadata rows if available
+  const hasMeta = displayVessels.some(v => vesselMeta[v.mmsi])
+  if (hasMeta) {
+    const buildYears = displayVessels.map(v => vesselMeta[v.mmsi]?.y || '–')
+    if (buildYears.some(y => y !== '–')) {
+      rows.push({ key: t('buildYear'), values: buildYears })
+    }
+    const dwts = displayVessels.map(v => {
+      const d = vesselMeta[v.mmsi]?.d
+      return d ? d.toLocaleString() + ' t' : '–'
+    })
+    if (dwts.some(d => d !== '–')) {
+      rows.push({ key: t('dwt'), values: dwts })
+    }
+  }
+
+  // Add sanctions status row at the bottom if any vessel is sanctioned
+  const hasSanctioned = displayVessels.some(v => v.sanctioned)
+  if (hasSanctioned) {
+    rows.push({ key: t('status'), values: displayVessels.map(v =>
+      v.sanctioned ? `<span class="sanction-badge">${t('sanctioned')}</span>` : '–'
+    )})
+  }
+
   let html = '<table>'
   html += rows.map(row =>
     `<tr><td>${row.key}</td>${row.values.map(v => `<td>${v}</td>`).join('')}</tr>`
@@ -427,6 +575,33 @@ function showRasterTooltip(vessels) {
     html += `<div style="padding-top: 8px; color: var(--ui-color-muted);">+${moreCount} ${t('more')}</div>`
   }
 
+  showTooltip(html)
+}
+
+// ============================================================================
+// Protected Area Tooltip
+// ============================================================================
+
+function showProtectedAreaTooltip(feature, isBuffer = false) {
+  const props = feature.properties || {}
+  const lang = getLang()
+  const name = props[`name_${lang}`] || props.name_en || props.name || t('protectedArea')
+  const prefix = isBuffer ? t('bufferZone') : t('protectedArea')
+
+  const rows = [
+    { key: prefix, value: name }
+  ]
+  if (props.category) rows.push({ key: t('category'), value: props.category })
+  if (props.significance) rows.push({ key: t('significance'), value: props.significance })
+  if (props.area_ha) {
+    const areaKm2 = Math.round(props.area_ha / 100)
+    rows.push({ key: t('area'), value: `${areaKm2.toLocaleString()} km²` })
+  }
+  if (props.status) rows.push({ key: t('status'), value: props.status })
+
+  const html = '<table>' +
+    rows.map(r => `<tr><td>${r.key}</td><td>${r.value}</td></tr>`).join('') +
+    '</table>'
   showTooltip(html)
 }
 
@@ -457,7 +632,9 @@ async function initPhase1() {
   // Show about modal content immediately
   if (manifest?.about) {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
-    document.getElementById('about-description').textContent = localize(manifest.about.description)
+    const descText = localize(manifest.about.description)
+    const descEl = document.getElementById('about-description')
+    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
   }
 
   // Show the about modal now (before map loads)
@@ -495,6 +672,12 @@ async function initPhase2(manifestDir) {
     cogUrls[type] = url.startsWith('http') ? url : manifestDir + url
   }
 
+  flagCogUrls = { all: cogUrl }
+  const cogsByFlag = manifest.data?.cogsByFlag || {}
+  for (const [flag, url] of Object.entries(cogsByFlag)) {
+    flagCogUrls[flag] = url.startsWith('http') ? url : manifestDir + url
+  }
+
   // Initialize COG
   const cogConfig = await cogModule.initCOG(cogUrl)
   knownYears = cogConfig.years
@@ -523,7 +706,7 @@ async function initPhase2(manifestDir) {
   map = window.map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
-    style: createMapStyle(manifest),
+    style: createMapStyle(manifest, manifestDir),
     center: mapConfig.center || [0, 0],
     zoom: mapConfig.zoom || 2,
     pitch: mapConfig.pitch || 0,
@@ -536,6 +719,9 @@ async function initPhase2(manifestDir) {
     localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
 
+  // Add zoom controls
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
   // Set up handlers
   setupMapHandlers()
   setupUIHandlers()
@@ -545,11 +731,39 @@ async function initPhase2(manifestDir) {
   initLayerToggles()
   updateMultiYearLegend()
   populatePlacesDropdown()
+  populateFlagDropdown()
   loadCategories()
   updateUI()
 
   // Show full UI now that map is ready
   document.body.classList.add('app-ready')
+
+  // Load GeoJSON layers after map is ready
+  loadGeoJSONLayers(manifestDir)
+
+  // Load supplementary data (non-blocking)
+  loadSanctions(manifestDir)
+  loadVesselMetadata(manifestDir)
+}
+
+async function loadGeoJSONLayers(manifestDir) {
+  const vectorLayers = manifest?.layers?.vectors || {}
+  for (const [id, config] of Object.entries(vectorLayers)) {
+    if (!config.geojson) continue
+    try {
+      const url = config.geojson.startsWith('http')
+        ? config.geojson
+        : manifestDir + config.geojson
+      const resp = await fetch(url)
+      if (!resp.ok) continue
+      const geojson = await resp.json()
+      const source = map.getSource(id)
+      if (source) source.setData(geojson)
+      console.log(`Loaded GeoJSON layer: ${id} (${geojson.features?.length} features)`)
+    } catch (err) {
+      console.warn(`Failed to load GeoJSON layer ${id}:`, err)
+    }
+  }
 }
 
 async function init() {
@@ -580,7 +794,7 @@ function setupMapHandlers() {
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
     const cellLat = Math.floor(lat * 100) / 100
     const cellLon = Math.floor(lng * 100) / 100
-    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}`
+    const cellKey = `${cellLat}_${cellLon}_${year}_${currentCategory}_${currentFlagFilter}_${showSanctionedOnly}`
 
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
@@ -622,6 +836,18 @@ function setupMapHandlers() {
   }, 16)
 
   map.on('mousemove', (e) => {
+    // Check for protected area or buffer zone hover
+    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    const paFeatures = paLayers.length > 0
+      ? map.queryRenderedFeatures(e.point, { layers: paLayers })
+      : []
+
+    if (paFeatures?.length > 0) {
+      const isBuffer = paFeatures[0].layer?.id === 'buffer-zones-fill'
+      showProtectedAreaTooltip(paFeatures[0], isBuffer)
+      return
+    }
+
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) handleRasterHover(e)
   })
   map.on('mouseout', hideTooltip)
@@ -655,6 +881,21 @@ function setupUIHandlers() {
 
   document.getElementById('category-select').addEventListener('change', (e) => {
     selectCategory(e.target.value)
+  })
+
+  document.getElementById('flag-select').addEventListener('change', async (e) => {
+    currentFlagFilter = e.target.value
+    await switchActiveCOG()
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
+  })
+
+  document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
+    showSanctionedOnly = e.target.checked
+    // Toggle sanctioned vessels layer visibility
+    if (map.getLayer('sanctioned-vessels-fill')) {
+      map.setLayoutProperty('sanctioned-vessels-fill', 'visibility', showSanctionedOnly ? 'visible' : 'none')
+    }
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   document.getElementById('places-select').addEventListener('change', (e) => {
