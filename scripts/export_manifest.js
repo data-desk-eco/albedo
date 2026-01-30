@@ -231,12 +231,14 @@ const manifest = {
       {
         url: env.SOURCE_URL || '',
         label: { en: env.SOURCE_LABEL || '', ru: env.SOURCE_LABEL || '' },
-        labelShort: { en: env.SOURCE_LABEL_SHORT || '', ru: env.SOURCE_LABEL_SHORT || '' }
+        labelShort: { en: env.SOURCE_LABEL_SHORT || '', ru: env.SOURCE_LABEL_SHORT || '' },
+        logo: "<img src='https://globalfishingwatch.org/wp-content/uploads/cropped-gfwisologo512x512-1-1-32x32.png' alt='GFW'>"
       },
       {
         url: 'https://www.opensanctions.org/',
         label: { en: 'OpenSanctions', ru: 'OpenSanctions' },
-        labelShort: { en: 'OpenSanctions', ru: 'OpenSanctions' }
+        labelShort: { en: 'OpenSanctions', ru: 'OpenSanctions' },
+        logo: "<img src='https://assets.opensanctions.org/images/nura/favicon-32.png' alt='OpenSanctions'>"
       }
     ],
     layerToggles: [
