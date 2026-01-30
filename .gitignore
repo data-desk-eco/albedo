@@ -15,6 +15,7 @@ data/temp/
 data/backups/
 data/tiles/
 data/*.json
+!data/places.json
 data/*.geojson
 data/*.csv
 data/*.vrt
@@ -30,6 +31,8 @@ data/*.pmtiles
 data/*.tif
 !data/vessel_heatmap*.tif
 data/vessel_categories/
+data/buffer_zones/
+data/sanctions/
 
 # Data - databases are too large
 data/*.duckdb

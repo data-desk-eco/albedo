@@ -5,18 +5,18 @@
 
 import { COGTileSource } from '../tools/cog-tiles/src/index.js'
 
-// Color palette for years (assigned by index, cycles if >6 years)
+// Color palette for years - Arctida blue scale (assigned by index, cycles if >6 years)
 const YEAR_PALETTE = [
-  [0, 255, 255],    // Cyan
-  [0, 255, 0],      // Green
-  [255, 0, 255],    // Magenta
-  [255, 255, 0],    // Yellow
-  [255, 128, 0],    // Orange
-  [128, 0, 255],    // Purple
+  [41, 136, 255],   // Blue #2988FF (2023)
+  [112, 223, 238],  // Turquoise #70DFEE (2024)
+  [204, 227, 255],  // Light Blue #CCE3FF (2025)
+  [0, 99, 219],     // Deep Blue #0063DB
+  [133, 187, 255],  // Mid Blue #85BBFF
+  [70, 213, 217],   // Turquoise Second #46D5D9
 ]
 
-// Color for mixed cells where no single year dominates
-const MULTI_YEAR_COLOR = [180, 180, 180]
+// Color for mixed cells where no single year dominates - neutral grey
+const MULTI_YEAR_COLOR = [160, 170, 180]
 
 const DOMINANCE_THRESHOLD = 0.6
 

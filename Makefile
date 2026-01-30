@@ -17,9 +17,20 @@ fetch: data/.fetch.done
 data/.fetch.done:
 	./scripts/fetch_vessel_presence.sh
 	./scripts/fetch_protected_areas.sh
+	./scripts/fetch_buffer_zones.sh
 	./scripts/fetch_land.sh
 	./scripts/fetch_places.sh
 	@touch $@
+
+# Fetch sanctions data from OpenSanctions
+sanctions: data/export/sanctioned_mmsi.json
+
+data/export/sanctioned_mmsi.json: scripts/fetch_sanctions.py
+	uv run python scripts/fetch_sanctions.py
+
+# Ingest supplementary vessel metadata (build year, DWT, IMO)
+vessel-metadata: data/data.duckdb
+	uv run python scripts/ingest_vessel_metadata.py
 
 # Convert GFW JSON to Parquet
 convert: data/.convert.done
@@ -48,6 +59,7 @@ data/export/.done: data/data.duckdb manifest.template.json .env
 	node scripts/export_manifest.js
 	./scripts/export_pmtiles.sh
 	uv run python scripts/export_tiles.py
+	uv run python scripts/export_buffer_zones.py
 	@touch $@
 
 #───────────────────────────────────────────────────────────────────────────────
@@ -91,6 +103,9 @@ deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/export/vectors.pmtiles gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/
 	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/buffer_zones.geojson gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Setup GCS bucket with CORS for range requests (run once)
@@ -106,4 +121,4 @@ setup-gcs:
 	@rm /tmp/cors.json
 	@echo "GCS bucket configured with CORS for range requests"
 
-.PHONY: all fetch convert transform tiles export install dev build preview clean deploy-data setup-gcs
+.PHONY: all fetch convert transform tiles export sanctions vessel-metadata install dev build preview clean deploy-data setup-gcs

@@ -124,12 +124,20 @@ protected_areas_geom AS (
     SELECT
         feature.id as feature_id,
         feature.properties.title as area_name,
+        feature.properties.category_title as category,
+        feature.properties.sig as significance,
+        feature.properties.area as area_ha,
+        feature.properties.status_title as status,
         ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
     FROM protected_areas_raw
 )
 SELECT
     pa.feature_id,
     pa.area_name,
+    pa.category,
+    pa.significance,
+    pa.area_ha,
+    pa.status,
     ST_Intersection(pa.geometry, o.geometry) as geometry
 FROM protected_areas_geom pa
 CROSS JOIN ocean_mask o
