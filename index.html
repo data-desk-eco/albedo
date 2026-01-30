@@ -45,13 +45,10 @@
     <option value="all">vessel types</option>
   </select>
   <select id="flag-select" class="hidden">
-    <option value="all">all flags</option>
+    <option value="all">vessel flags</option>
   </select>
-  <label id="sanctions-toggle" class="hidden">
-    <input type="checkbox" id="sanctions-checkbox"> <span id="sanctions-label">sanctioned</span>
-  </label>
   <select id="places-select" class="hidden">
-    <option value="">places of interest</option>
+    <option value="">places</option>
   </select>
   <div id="places-info" class="hidden"></div>
 </div>
@@ -68,6 +65,12 @@
       <div class="legend-square" style="background: rgb(160,170,180);"></div>
     </div>
     <span id="legend-multi-year" class="legend-text"></span>
+  </div>
+  <div id="sanctions-toggle" class="legend-item legend-toggle hidden">
+    <div class="legend-symbol">
+      <div class="legend-square" style="background: #ff4444;"></div>
+    </div>
+    <span id="sanctions-label" class="legend-text">sanctioned</span>
   </div>
   <div id="legend-section-layers" class="legend-section-title"></div>
   <div id="legend-layers"></div>

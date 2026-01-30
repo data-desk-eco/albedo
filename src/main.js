@@ -271,9 +271,9 @@ const hatchPatterns = {
   'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
   'hatch-white-md': () => createHatchPattern('#ffffff', 10),
   'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
-  'hatch-blue-sm': () => createHatchPattern('#1E6AFF', 6),
-  'hatch-blue-md': () => createHatchPattern('#1E6AFF', 10),
-  'hatch-blue-lg': () => createHatchPattern('#1E6AFF', 16)
+  'hatch-blue-sm': () => createHatchPattern('#70DFEE', 6),
+  'hatch-blue-md': () => createHatchPattern('#70DFEE', 10),
+  'hatch-blue-lg': () => createHatchPattern('#70DFEE', 16)
 }
 
 // ============================================================================
@@ -719,8 +719,20 @@ async function initPhase2(manifestDir) {
     localFontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
   })
 
-  // Add zoom controls
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+  // Custom zoom controls
+  const zoomContainer = document.createElement('div')
+  zoomContainer.id = 'zoom-controls'
+  const zoomIn = document.createElement('button')
+  zoomIn.id = 'zoom-in'
+  zoomIn.textContent = '+'
+  zoomIn.addEventListener('click', () => map.zoomIn())
+  const zoomOut = document.createElement('button')
+  zoomOut.id = 'zoom-out'
+  zoomOut.textContent = '−'
+  zoomOut.addEventListener('click', () => map.zoomOut())
+  zoomContainer.appendChild(zoomIn)
+  zoomContainer.appendChild(zoomOut)
+  document.body.appendChild(zoomContainer)
 
   // Set up handlers
   setupMapHandlers()
@@ -889,9 +901,9 @@ function setupUIHandlers() {
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
-  document.getElementById('sanctions-checkbox').addEventListener('change', (e) => {
-    showSanctionedOnly = e.target.checked
-    // Toggle sanctioned vessels layer visibility
+  document.getElementById('sanctions-toggle').addEventListener('click', () => {
+    showSanctionedOnly = !showSanctionedOnly
+    document.getElementById('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
     if (map.getLayer('sanctioned-vessels-fill')) {
       map.setLayoutProperty('sanctioned-vessels-fill', 'visibility', showSanctionedOnly ? 'visible' : 'none')
     }
