@@ -513,19 +513,13 @@ body.app-ready #zoom-controls {
   }
 
   #legend-collapse {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: block;
+    float: right;
     cursor: pointer;
     color: var(--ui-color-muted);
     font-size: var(--ui-font-size);
     user-select: none;
     -webkit-user-select: none;
-    margin-bottom: 8px;
-  }
-
-  #legend-collapse::before {
-    content: '';
   }
 
   #legend-collapse::after {
@@ -533,7 +527,11 @@ body.app-ready #zoom-controls {
   }
 
   #legend.collapsed #legend-collapse {
-    margin-bottom: 0;
+    float: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
   }
 
   #legend.collapsed #legend-collapse::before {
