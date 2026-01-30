@@ -131,6 +131,17 @@ function updateUI() {
   // Sanctions label
   $('sanctions-label').textContent = t(narrow ? 'sanctionedShort' : 'sanctioned')
 
+  // Legend collapse toggle
+  const legend = $('legend')
+  const collapseEl = $('legend-collapse')
+  if (narrow) {
+    const collapsed = legend.classList.contains('collapsed')
+    collapseEl.textContent = collapsed ? '▶ ' + t('legend') : '▼ ' + t('legend')
+  } else {
+    legend.classList.remove('collapsed')
+    collapseEl.textContent = ''
+  }
+
   // Data credits section
   $('legend-section-data').textContent = t(narrow ? 'sectionDataShort' : 'sectionData')
   const dataEl = $('legend-data')
@@ -156,7 +167,7 @@ function updateUI() {
   }
   if (categories.length > 0) populateCategoryDropdown()
   populateFlagDropdown()
-  $('sanctions-label').textContent = t('sanctioned')
+  $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
 }
 
 // --- Legend ---
@@ -334,7 +345,7 @@ async function loadSanctions(manifestDir) {
     sanctionedMmsi = new Set(await resp.json())
     console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
     $('sanctions-toggle').classList.remove('hidden')
-    $('sanctions-label').textContent = t('sanctioned')
+    $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
     updateSanctionsFilter()
   } catch (err) {
     console.warn('Failed to load sanctions data:', err)
@@ -723,6 +734,11 @@ function setupUIHandlers() {
   $('places-select').addEventListener('change', (e) => {
     if (e.target.value === '') { $('places-info').classList.add('hidden'); return }
     showPlace(parseInt(e.target.value))
+  })
+
+  $('legend-collapse').addEventListener('click', () => {
+    $('legend').classList.toggle('collapsed')
+    updateUI()
   })
 
   window.addEventListener('resize', updateUI)
