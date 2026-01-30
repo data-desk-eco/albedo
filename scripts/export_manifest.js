@@ -73,6 +73,10 @@ const manifest = {
     description: {
       en: env.ABOUT_EN || '',
       ru: env.ABOUT_RU || ''
+    },
+    dataCredits: {
+      en: 'Sanctions data: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
+      ru: 'Данные о санкциях: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
     }
   },
 
@@ -123,7 +127,7 @@ const manifest = {
             id: 'protected-areas-border',
             type: 'line',
             'source-layer': 'protected_areas',
-            paint: { 'line-color': '#1E6AFF', 'line-width': 2, 'line-opacity': 1 }
+            paint: { 'line-color': '#037874', 'line-width': 2, 'line-opacity': 1 }
           }
         ]
       },
@@ -134,13 +138,13 @@ const manifest = {
           {
             id: 'buffer-zones-fill',
             type: 'fill',
-            paint: { 'fill-color': '#1E6AFF', 'fill-opacity': 0.05 }
+            paint: { 'fill-color': '#037874', 'fill-opacity': 0.05 }
           },
           {
             id: 'buffer-zones-border',
             type: 'line',
             paint: {
-              'line-color': '#1E6AFF',
+              'line-color': '#037874',
               'line-width': 1.5,
               'line-opacity': 0.6,
               'line-dasharray': [4, 3]
@@ -159,6 +163,16 @@ const manifest = {
             paint: {
               'fill-color': '#FF3B30',
               'fill-opacity': 0.8
+            }
+          },
+          {
+            id: 'sanctioned-vessels-outline',
+            type: 'line',
+            'source-layer': 'sanctioned_vessels',
+            paint: {
+              'line-color': '#FF3B30',
+              'line-width': 1,
+              'line-opacity': 0.9
             }
           }
         ]
@@ -201,6 +215,18 @@ const manifest = {
       label: { en: env.SOURCE_LABEL || '', ru: env.SOURCE_LABEL || '' },
       labelShort: { en: env.SOURCE_LABEL_SHORT || '', ru: env.SOURCE_LABEL_SHORT || '' }
     },
+    sourceLinks: [
+      {
+        url: env.SOURCE_URL || '',
+        label: { en: env.SOURCE_LABEL || '', ru: env.SOURCE_LABEL || '' },
+        labelShort: { en: env.SOURCE_LABEL_SHORT || '', ru: env.SOURCE_LABEL_SHORT || '' }
+      },
+      {
+        url: 'https://www.opensanctions.org/',
+        label: { en: 'OpenSanctions', ru: 'OpenSanctions' },
+        labelShort: { en: 'OpenSanctions', ru: 'OpenSanctions' }
+      }
+    ],
     layerToggles: [
       {
         layers: ['protected-areas-fill', 'protected-areas-border'],
