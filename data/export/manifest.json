@@ -9,6 +9,10 @@
       "en": "This interactive map helps you analyze vessel traffic and infrastructure pressure in Russia's Arctic waters along the Northern Sea Route between 2023 and 2025.\n\nIt visualizes how shipping activity has evolved over time, overlays the boundaries of protected areas, and allows you to identify when and where vessels crossed into these zones.\n\nUsing built-in filters, you can explore specific categories of vessels, track patterns of activity in key Arctic regions, and focus on areas where shipping, energy infrastructure, and environmental protection intersect.",
       "ru": "Эта интерактивная карта позволяет анализировать судоходный трафик и нагрузку на инфраструктуру в арктических водах России вдоль Северного морского пути в период с 2023 по 2025 год.\n\nОна визуализирует, как менялась судоходная активность с течением времени, показывает границы особо охраняемых природных территорий и позволяет определить, когда и где суда заходили в эти зоны.\n\nС помощью встроенных фильтров можно исследовать определённые категории судов, отслеживать закономерности активности в ключевых арктических регионах и сосредоточиться на районах пересечения судоходства, энергетической инфраструктуры и охраны окружающей среды."
     },
+    "builtBy": {
+      "en": "Built by: <a href=\"https://arctida.io\" target=\"_blank\" rel=\"noopener\">Arctida</a>, <a href=\"https://datadesk.eco\" target=\"_blank\" rel=\"noopener\">Data Desk</a>",
+      "ru": "Создано: <a href=\"https://arctida.io\" target=\"_blank\" rel=\"noopener\">Arctida</a>, <a href=\"https://datadesk.eco\" target=\"_blank\" rel=\"noopener\">Data Desk</a>"
+    },
     "dataCredits": {
       "en": "Data: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>",
       "ru": "Данные: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>"

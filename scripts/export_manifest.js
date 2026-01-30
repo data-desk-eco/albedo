@@ -89,6 +89,10 @@ const manifest = {
       en: cleanText(env.ABOUT_EN),
       ru: cleanText(env.ABOUT_RU)
     },
+    builtBy: {
+      en: 'Built by: <a href="https://arctida.io" target="_blank" rel="noopener">Arctida</a>, <a href="https://datadesk.eco" target="_blank" rel="noopener">Data Desk</a>',
+      ru: 'Создано: <a href="https://arctida.io" target="_blank" rel="noopener">Arctida</a>, <a href="https://datadesk.eco" target="_blank" rel="noopener">Data Desk</a>'
+    },
     dataCredits: {
       en: 'Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
       ru: 'Данные: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'

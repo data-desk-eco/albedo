@@ -512,10 +512,15 @@ body.app-ready #zoom-controls {
 }
 
 #about-description .about-credits {
-  margin-top: 16px;
+  margin: 0;
   font-size: 13px;
   color: var(--ui-color-muted);
 }
+
+#about-description .about-credits:first-of-type {
+  margin-top: 16px;
+}
+
 
 #about-description .about-credits a {
   color: inherit;

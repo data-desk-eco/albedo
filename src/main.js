@@ -104,6 +104,9 @@ function renderAboutModal() {
   if (!manifest?.about) return
   $('about-title').textContent = localize(manifest.about.title)
   let html = localize(manifest.about.description).split('\n\n').map(p => `<p>${p}</p>`).join('')
+  if (manifest.about.builtBy) {
+    html += `<p class="about-credits">${localize(manifest.about.builtBy)}</p>`
+  }
   if (manifest.about.dataCredits) {
     html += `<p class="about-credits">${localize(manifest.about.dataCredits)}</p>`
   }
