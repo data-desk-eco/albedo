@@ -22,6 +22,18 @@ Deployment
 make deploy-data   Upload data files to GCS bucket
 make build         Vite production build
 
+Architecture
+------------
+All computation happens in the browser. Data served from GCS:
+- COG raster tiles for heatmap visualization
+- PMTiles for vector layers (protected areas, places, sanctions overlay)
+- Hilbert-indexed binary tiles for vessel tooltips (year bitmask per entry)
+- Sanctions MMSI list for client-side badge matching
+
+Tooltips come from a single source (binary tiles). Sanctioned vessels are
+prioritized in per-cell ranking. Sanctions overlay respects all filters
+(year, vessel type, flag).
+
 Configuration
 -------------
 Copy .env.example to .env and edit for your region.

@@ -15,7 +15,10 @@ const ROOT = join(__dirname, '..')
 // Load .env
 config({ path: join(ROOT, '.env') })
 
-const env = process.env
+// Strip wrapping quotes from env values (guards against shell/dotenv version differences)
+const env = new Proxy(process.env, {
+  get: (target, key) => typeof target[key] === 'string' ? target[key].replace(/^"|"$/g, '') : target[key]
+})
 const EXPORT_DIR = join(ROOT, 'data/export')
 
 // Ensure export directory exists

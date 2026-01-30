@@ -24,14 +24,14 @@ albedo/
 │   └── style.css          # Dark theme, responsive layout
 ├── scripts/               # Data pipeline scripts
 │   ├── fetch_*.sh         # GFW API + Natural Earth data fetching
-│   ├── fetch_sanctions.py # OpenSanctions MMSI list
+│   ├── fetch_sanctions.py # OpenSanctions MMSI list + details
 │   ├── convert.sh         # JSON to Parquet conversion
 │   ├── export_raster.sh   # COG generation (uses create_raster.py, raster_utils.py)
 │   ├── export_pmtiles.sh  # Vector tile generation via tippecanoe (bilingual)
-│   ├── export_sanctions_layer.py  # Sanctioned vessel grid polygons with year props
+│   ├── export_sanctions_layer.py  # Sanctioned vessel grid polygons (rendering only)
 │   ├── export_buffer_zones.py     # Protected area buffer zone GeoJSON
-│   ├── export_tiles.py    # Hilbert-indexed binary vessel data
-│   ├── export_manifest.js # Manifest generation from template
+│   ├── export_tiles.py    # Hilbert-indexed binary vessel data (year bitmask)
+│   ├── export_manifest.js # Manifest generation with env quote stripping
 │   └── ingest_vessel_metadata.py  # Vessel build year + DWT enrichment
 ├── etl/
 │   └── transform.sql      # DuckDB SQL transformations
@@ -66,24 +66,36 @@ GCS/CDN                          Browser
 ├── vectors.pmtiles              pmtiles → protected areas, places, sanctions
 ├── vessel_data.bin              vessel-tiles.js → Hilbert-indexed tooltips
 ├── i18n/{lang}.json             i18n.js → UI translations
-├── sanctioned_mmsi.json         Sanctions overlay filter
-├── buffer_zones.geojson         Protected area buffer zones
+├── sanctioned_mmsi.json         Sanctions MMSI set (client-side badge matching)
+├── sanctions_details.json       Sanctions program/dataset metadata by MMSI
 ├── vessel_metadata.json         Build year, DWT enrichment
 ├── manifest.json                Config + layer definitions
 └── index.html + JS              MapLibre GL → composite rendering
 ```
 
-## Tooltip Priority
+## Tooltip System
 
-Vessel presence data takes priority over protected area tooltips. At zoom >= 8,
-vessel data is queried first via Hilbert-indexed binary tiles. Protected area
+All vessel tooltips come from a single source: Hilbert-indexed binary tiles
+(`vessel_data.bin`). At zoom >= 8, vessel data is queried first; protected area
 tooltips display as fallback when no vessel data exists at the cursor position.
+
+Each binary tile cell stores up to 5 vessel entries, one per vessel (aggregated
+across years). Sanctioned vessels are prioritized in the per-cell ranking so they
+always appear. Each entry carries a year bitmask (u8, bit 0 = 2020) enabling
+year filtering without wasting slots on duplicate year entries.
 
 ## Sanctions Layer
 
-Sanctioned vessel positions are stored as 0.01° grid polygons in PMTiles with
-boolean year properties (`y2023`, `y2024`, etc.) for MapLibre filtering. The
-client uses `['has', 'y{year}']` filters to show only positions from active years.
+Two complementary data sources:
+
+- **PMTiles polygons**: 0.01° grid cells rendered as red overlay. Boolean
+  properties for year (`y2023`), vessel type (`t_CARGO`), and flag (`f_RUS`,
+  `f_foreign`) enable MapLibre-side filtering. Used for rendering only — no
+  tooltip metadata.
+- **Binary tiles**: Sanctioned vessels get priority ranking so they always appear
+  in tooltips with full detail (name, MMSI, flag, type, hours, sanctions badge).
+
+The sanctions toggle works with all filter combinations (year, type, flag).
 
 ## i18n
 
@@ -102,6 +114,13 @@ Copy `.env.example` to `.env` and configure:
 - **UI**: `UI_TITLE`, `DEFAULT_LANG`, `PLACES_JSON`
 
 Manifest is generated from `manifest.template.json` via `scripts/export_manifest.js`.
+
+## Deployment
+
+```bash
+make deploy-data   # Upload data files to GCS bucket
+make build         # Vite production build
+```
 
 ## Key Dependencies
 
