@@ -512,10 +512,6 @@ body.app-ready #zoom-controls {
     margin-right: 8px;
   }
 
-  #legend {
-    position: relative;
-  }
-
   #legend-collapse {
     display: block;
     position: absolute;
