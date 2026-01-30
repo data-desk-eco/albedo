@@ -197,7 +197,8 @@
     "favicon": "magenta",
     "defaultLang": "ru",
     "availableLangs": [
-      "en"
+      "en",
+      "ru"
     ],
     "sourceLink": {
       "url": "https://globalfishingwatch.org/",

@@ -107,7 +107,6 @@ deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
-	node scripts/export_manifest.js
 
 # Setup GCS bucket with CORS for range requests (run once)
 setup-gcs:
