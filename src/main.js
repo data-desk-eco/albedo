@@ -624,24 +624,8 @@ async function initPhase2(manifestDir) {
   document.body.classList.add('app-ready')
 
   // Non-blocking loads
-  loadGeoJSONLayers(manifestDir)
   loadSanctions(manifestDir)
   loadVesselMetadata(manifestDir)
-}
-
-async function loadGeoJSONLayers(manifestDir) {
-  for (const [id, config] of Object.entries(manifest?.layers?.vectors || {})) {
-    if (!config.geojson) continue
-    try {
-      const resp = await fetch(resolveUrl(config.geojson, manifestDir))
-      if (!resp.ok) continue
-      const geojson = await resp.json()
-      map.getSource(id)?.setData(geojson)
-      console.log(`Loaded GeoJSON layer: ${id} (${geojson.features?.length} features)`)
-    } catch (err) {
-      console.warn(`Failed to load GeoJSON layer ${id}:`, err)
-    }
-  }
 }
 
 // --- Map handlers ---

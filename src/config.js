@@ -53,13 +53,11 @@ export function createMapStyle(manifest, manifestDir = '') {
     }
   }
 
-  // PMTiles vector sources and GeoJSON placeholder sources
+  // PMTiles vector sources
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
     if (config.url) {
       sources[id] = { type: 'vector', url: `pmtiles://${config.url.startsWith('http') ? config.url : manifestDir + config.url}` }
-    } else if (config.geojson) {
-      sources[id] = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } }
     }
   }
 
@@ -82,7 +80,6 @@ export function createMapStyle(manifest, manifestDir = '') {
       if (!!config.belowHeatmap !== belowHeatmap) continue
       for (const s of config.style) {
         const layer = { ...s, source: sourceId, layout: { ...s.layout, visibility: config.defaultVisible !== false ? 'visible' : 'none' } }
-        if (config.geojson) delete layer['source-layer']
         layers.push(layer)
       }
     }

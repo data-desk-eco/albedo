@@ -5,7 +5,8 @@
 -- Creates tables:
 --   - vessel_positions: All position data (25M+ rows)
 --   - vessel_activity: Aggregated vessel stats (80K+ vessels)
---   - protected_areas_ocean: Ocean-only protected areas
+--   - protected_areas_ocean: Coastal protected areas (filtered, not clipped)
+--   - buffer_zones_coastal: Coastal buffer zones
 --   - vessel_crossings: Vessels crossing protected areas
 
 INSTALL spatial;
@@ -88,10 +89,10 @@ FROM vessel_positions
 GROUP BY vessel_id, mmsi, ship_name, flag, vessel_type, gear_type;
 
 -- =============================================================================
--- PROTECTED AREAS (ocean-only, excludes land portions)
+-- SHARED: Ocean mask for coastal filtering
 -- =============================================================================
 
-CREATE OR REPLACE TABLE protected_areas_ocean AS
+CREATE OR REPLACE TABLE ocean_mask AS
 WITH study_area AS (
     SELECT ST_GeomFromText('POLYGON((-180 50, 180 50, 180 90, -180 90, -180 50))') as geometry
 ),
@@ -109,14 +110,18 @@ land_geom AS (
 land_union AS (
     SELECT ST_Union_Agg(geometry) as geometry
     FROM land_geom
-),
-ocean_mask AS (
-    SELECT ST_Difference(
-        (SELECT geometry FROM study_area),
-        (SELECT geometry FROM land_union)
-    ) as geometry
-),
-protected_areas_raw AS (
+)
+SELECT ST_Difference(
+    (SELECT geometry FROM study_area),
+    (SELECT geometry FROM land_union)
+) as geometry;
+
+-- =============================================================================
+-- PROTECTED AREAS (coastal only, full polygons — not clipped to ocean)
+-- =============================================================================
+
+CREATE OR REPLACE TABLE protected_areas_ocean AS
+WITH protected_areas_raw AS (
     SELECT unnest(features) as feature
     FROM read_json_auto('data/protected_areas.geojson', maximum_object_size=200000000)
 ),
@@ -138,12 +143,38 @@ SELECT
     pa.significance,
     pa.area_ha,
     pa.status,
-    ST_Intersection(pa.geometry, o.geometry) as geometry
+    pa.geometry
 FROM protected_areas_geom pa
 CROSS JOIN ocean_mask o
 WHERE ST_Intersects(pa.geometry, o.geometry)
   -- Exclude Большой Арктический (Great Arctic) - boundary too complex
   AND pa.feature_id != 'oopt_wth_details.fid-e747cd5_19a6f70ccf9_-2215';
+
+-- =============================================================================
+-- BUFFER ZONES (coastal only)
+-- =============================================================================
+
+CREATE OR REPLACE TABLE buffer_zones_coastal AS
+WITH buffer_zones_raw AS (
+    SELECT unnest(features) as feature
+    FROM read_json_auto('data/buffer_zones/raw.geojson', maximum_object_size=200000000)
+),
+buffer_zones_geom AS (
+    SELECT
+        feature.properties.name as area_name,
+        feature.properties.category as category,
+        feature.properties.area_ha as area_ha,
+        ST_GeomFromGeoJSON(json(feature.geometry)) as geometry
+    FROM buffer_zones_raw
+)
+SELECT
+    bz.area_name,
+    bz.category,
+    bz.area_ha,
+    bz.geometry
+FROM buffer_zones_geom bz
+CROSS JOIN ocean_mask o
+WHERE ST_Intersects(bz.geometry, o.geometry);
 
 -- =============================================================================
 -- Cleanup staging table (optional - keep for debugging)
@@ -155,4 +186,6 @@ SELECT 'vessel_positions' as table_name, COUNT(*) as row_count FROM vessel_posit
 UNION ALL
 SELECT 'vessel_activity', COUNT(*) FROM vessel_activity
 UNION ALL
-SELECT 'protected_areas_ocean', COUNT(*) FROM protected_areas_ocean;
+SELECT 'protected_areas_ocean', COUNT(*) FROM protected_areas_ocean
+UNION ALL
+SELECT 'buffer_zones_coastal', COUNT(*) FROM buffer_zones_coastal;

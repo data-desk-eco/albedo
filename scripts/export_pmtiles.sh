@@ -83,6 +83,31 @@ FROM ST_Read('$DATA_ROOT/ne_10m_populated_places/ne_10m_populated_places.shp')
 WHERE SCALERANK <= 5 AND ST_Y(geom) >= $MIN_LAT;
 " | jq -r '.[0].geojson' > "$TEMP_DIR/places.geojson"
 
+# Export buffer zones as GeoJSON FeatureCollection with bilingual properties
+duckdb "$DUCKDB_PATH" -json -c "
+INSTALL spatial; LOAD spatial;
+SELECT json_object(
+  'type', 'FeatureCollection',
+  'features', json_group_array(
+    json_object(
+      'type', 'Feature',
+      'properties', json_object(
+        'name_ru', area_name,
+        'name_en', area_name,
+        'category_ru', category,
+        'category_en', category,
+        'area_ha', ROUND(area_ha)
+      ),
+      'geometry', ST_AsGeoJSON(
+        ST_Intersection(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'))
+      )::JSON
+    )
+  )
+) as geojson
+FROM buffer_zones_coastal
+WHERE ST_Intersects(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'));
+" | jq -r '.[0].geojson' > "$TEMP_DIR/buffer_zones.geojson"
+
 echo "Exporting sanctioned vessel positions..."
 # Generate sanctioned vessel GeoJSON from DuckDB + sanctions list
 if [ -f "$EXPORT_DIR/sanctioned_mmsi.json" ]; then
@@ -92,7 +117,7 @@ fi
 echo "Creating PMTiles with tippecanoe..."
 
 # Build layer args
-LAYER_ARGS="-L protected_areas:$TEMP_DIR/protected_areas.geojson -L places:$TEMP_DIR/places.geojson"
+LAYER_ARGS="-L protected_areas:$TEMP_DIR/protected_areas.geojson -L buffer_zones:$TEMP_DIR/buffer_zones.geojson -L places:$TEMP_DIR/places.geojson"
 if [ -f "$TEMP_DIR/sanctioned_vessels.geojson" ]; then
   LAYER_ARGS="$LAYER_ARGS -L sanctioned_vessels:$TEMP_DIR/sanctioned_vessels.geojson"
 fi

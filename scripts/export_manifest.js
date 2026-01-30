@@ -144,17 +144,20 @@ const manifest = {
         ]
       },
       'buffer-zones': {
-        geojson: 'buffer_zones.geojson',
+        url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
+        belowHeatmap: true,
         style: [
           {
             id: 'buffer-zones-fill',
             type: 'fill',
+            'source-layer': 'buffer_zones',
             paint: { 'fill-color': '#037874', 'fill-opacity': 0.05 }
           },
           {
             id: 'buffer-zones-border',
             type: 'line',
+            'source-layer': 'buffer_zones',
             paint: {
               'line-color': '#037874',
               'line-width': 1.5,

@@ -59,7 +59,6 @@ data/export/.done: data/data.duckdb manifest.template.json .env
 	node scripts/export_manifest.js
 	./scripts/export_pmtiles.sh
 	uv run python scripts/export_tiles.py
-	uv run python scripts/export_buffer_zones.py
 	@touch $@
 
 #───────────────────────────────────────────────────────────────────────────────
@@ -98,6 +97,7 @@ GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
 # Deploy data files to GCS
 deploy-data: data/vessel_heatmap.tif data/export/.done
+	COG_BASE_URL=$(GCS_URL)/ node scripts/export_manifest.js
 	gcloud storage cp data/vessel_heatmap*.tif gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vectors.pmtiles gs://$(GCS_BUCKET)/
@@ -105,9 +105,9 @@ deploy-data: data/vessel_heatmap.tif data/export/.done
 	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/buffer_zones.geojson gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
+	node scripts/export_manifest.js
 
 # Setup GCS bucket with CORS for range requests (run once)
 setup-gcs:
