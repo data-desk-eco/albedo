@@ -102,7 +102,7 @@ html, body {
   font-size: var(--ui-font-size);
 }
 
-.legend-collapse-toggle {
+#legend-collapse {
   display: none;
 }
 
@@ -512,14 +512,33 @@ body.app-ready #zoom-controls {
     margin-right: 8px;
   }
 
-  .legend-collapse-toggle {
+  #legend {
+    position: relative;
+  }
+
+  #legend-collapse {
     display: block;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
     cursor: pointer;
-    font-size: var(--ui-font-size);
     color: var(--ui-color-muted);
-    padding-bottom: 6px;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center;
     user-select: none;
     -webkit-user-select: none;
+    z-index: 1;
+  }
+
+  #legend-collapse::after {
+    content: '▼';
+  }
+
+  #legend.collapsed #legend-collapse::after {
+    content: '▶';
   }
 
   #legend.collapsed #legend-body {
