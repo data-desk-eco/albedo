@@ -29,6 +29,7 @@
   "allFlags": "флаги судов",
   "foreignFlag": "иностранный флаг",
   "sanctioned": "под санкциями",
+  "sanctionedShort": "санкции",
   "buildYear": "год постройки",
   "dwt": "дедвейт",
   "vesselTypes": {
