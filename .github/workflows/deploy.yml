@@ -23,6 +23,8 @@ jobs:
 
       - run: yarn
       - run: yarn build
+        env:
+          VITE_MANIFEST_URL: https://storage.googleapis.com/albedo-data/manifest.json
 
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
