@@ -90,8 +90,8 @@ const manifest = {
       ru: cleanText(env.ABOUT_RU)
     },
     dataCredits: {
-      en: 'Vessel data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>. Sanctions data: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
-      ru: 'Данные о судах: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>. Данные о санкциях: <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
+      en: 'Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
+      ru: 'Данные: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
     }
   },
 

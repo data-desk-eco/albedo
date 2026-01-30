@@ -478,9 +478,11 @@ function showRasterTooltip(vessels, isRefilter = false) {
   const grouped = Array.from(byMmsi.values())
   // Prioritize sanctioned vessels for display
   grouped.sort((a, b) => (b.sanctioned ? 1 : 0) - (a.sanctioned ? 1 : 0))
-  const display = grouped.slice(0, 3)
+  const w = window.innerWidth
+  const maxDisplay = w >= 1000 ? 8 : w >= 768 ? 4 : 3
+  const display = grouped.slice(0, maxDisplay)
   const totalCount = filtered[0]?.cell_count || grouped.length
-  const more = totalCount > 3 ? totalCount - 3 : 0
+  const more = totalCount > maxDisplay ? totalCount - maxDisplay : 0
 
   const rows = [
     { key: t('vessel'), values: display.map(v => v.ship_name || t('unknown')) },
