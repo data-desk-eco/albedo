@@ -513,43 +513,39 @@ body.app-ready #zoom-controls {
   }
 
   #legend-collapse {
-    display: block;
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 22px;
-    height: 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     cursor: pointer;
     color: var(--ui-color-muted);
-    font-size: 14px;
-    line-height: 22px;
-    text-align: center;
+    font-size: var(--ui-font-size);
     user-select: none;
     -webkit-user-select: none;
-    z-index: 1;
+    margin-bottom: 8px;
+  }
+
+  #legend-collapse::before {
+    content: '';
   }
 
   #legend-collapse::after {
-    content: '▼';
+    content: '▲';
   }
 
   #legend.collapsed #legend-collapse {
-    position: static;
-    width: auto;
-    height: auto;
-    text-align: left;
+    margin-bottom: 0;
+  }
+
+  #legend.collapsed #legend-collapse::before {
+    content: 'legend';
   }
 
   #legend.collapsed #legend-collapse::after {
-    content: '▶ legend';
+    content: '▼';
   }
 
   #legend.collapsed #legend-body {
     display: none;
-  }
-
-  #legend.collapsed {
-    padding: 8px 10px;
   }
 
   #places-select,
