@@ -95,10 +95,21 @@ function rafThrottle(fn) {
 function applyManifestUI(manifest) {
   const ui = manifest.ui || {}
   if (ui.title) document.title = ui.title
-  if (ui.favicon) {
+  {
+    // Globe favicon: north pole view, black sea, white land
     const link = document.createElement('link')
     link.rel = 'icon'
-    link.href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><circle cx='5' cy='5' r='4' fill='${ui.favicon}'/></svg>`
+    link.href = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+<circle cx='32' cy='32' r='30' fill='%23000'/>
+<g fill='%23fff'>
+<ellipse cx='32' cy='20' rx='12' ry='8' transform='rotate(-20 32 20)'/>
+<ellipse cx='18' cy='32' rx='8' ry='14' transform='rotate(30 18 32)'/>
+<ellipse cx='46' cy='28' rx='7' ry='10' transform='rotate(-40 46 28)'/>
+<ellipse cx='32' cy='44' rx='10' ry='6' transform='rotate(10 32 44)'/>
+<circle cx='32' cy='10' r='6'/>
+</g>
+<circle cx='32' cy='32' r='30' fill='none' stroke='%23333' stroke-width='1'/>
+</svg>`)}`
     document.head.appendChild(link)
   }
   const theme = ui.theme || {}
@@ -123,7 +134,11 @@ function updateUI() {
     document.getElementById('about-title').textContent = localize(manifest.about.title)
     const descText = localize(manifest.about.description)
     const descEl = document.getElementById('about-description')
-    descEl.innerHTML = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
+    let html = descText.split('\n\n').map(p => `<p>${p}</p>`).join('')
+    if (manifest.about.dataCredits) {
+      html += `<p class="about-credits">${localize(manifest.about.dataCredits)}</p>`
+    }
+    descEl.innerHTML = html
     document.getElementById('about-continue').textContent = t('continue')
   }
 
@@ -139,11 +154,16 @@ function updateUI() {
     if (el) el.textContent = localize(isNarrow && toggle.labelShort ? toggle.labelShort : toggle.label)
   })
 
-  // Data source
+  // Data sources
   const sourceEl = document.getElementById('legend-source')
-  if (sourceEl && manifest.ui?.sourceLink) {
-    const link = manifest.ui.sourceLink
-    sourceEl.innerHTML = `data: <a href="${link.url}" target="_blank" rel="noopener">${localize(isNarrow && link.labelShort ? link.labelShort : link.label)}</a>`
+  if (sourceEl) {
+    const links = manifest.ui?.sourceLinks || (manifest.ui?.sourceLink ? [manifest.ui.sourceLink] : [])
+    if (links.length > 0) {
+      const parts = links
+        .filter(link => link.url)
+        .map(link => `<a href="${link.url}" target="_blank" rel="noopener">${localize(isNarrow && link.labelShort ? link.labelShort : link.label)}</a>`)
+      sourceEl.innerHTML = `data: ${parts.join(', ')}`
+    }
   }
 
   // Update dropdowns
@@ -271,9 +291,9 @@ const hatchPatterns = {
   'hatch-white-sm': () => createHatchPattern('#ffffff', 6),
   'hatch-white-md': () => createHatchPattern('#ffffff', 10),
   'hatch-white-lg': () => createHatchPattern('#ffffff', 16),
-  'hatch-blue-sm': () => createHatchPattern('#70DFEE', 6),
-  'hatch-blue-md': () => createHatchPattern('#70DFEE', 10),
-  'hatch-blue-lg': () => createHatchPattern('#70DFEE', 16)
+  'hatch-blue-sm': () => createHatchPattern('#037874', 6),
+  'hatch-blue-md': () => createHatchPattern('#037874', 10),
+  'hatch-blue-lg': () => createHatchPattern('#037874', 16)
 }
 
 // ============================================================================
@@ -906,6 +926,9 @@ function setupUIHandlers() {
     document.getElementById('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
     if (map.getLayer('sanctioned-vessels-fill')) {
       map.setLayoutProperty('sanctioned-vessels-fill', 'visibility', showSanctionedOnly ? 'visible' : 'none')
+    }
+    if (map.getLayer('sanctioned-vessels-outline')) {
+      map.setLayoutProperty('sanctioned-vessels-outline', 'visibility', showSanctionedOnly ? 'visible' : 'none')
     }
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
