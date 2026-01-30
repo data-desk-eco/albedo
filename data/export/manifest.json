@@ -10,8 +10,8 @@
       "ru": "Эта интерактивная карта позволяет анализировать судоходный трафик и нагрузку на инфраструктуру в арктических водах России вдоль Северного морского пути в период с 2023 по 2025 год.\n\nОна визуализирует, как менялась судоходная активность с течением времени, показывает границы особо охраняемых природных территорий и позволяет определить, когда и где суда заходили в эти зоны.\n\nС помощью встроенных фильтров можно исследовать определённые категории судов, отслеживать закономерности активности в ключевых арктических регионах и сосредоточиться на районах пересечения судоходства, энергетической инфраструктуры и охраны окружающей среды.\n\nКаждый цветной пиксель представляет агрегированное присутствие судов в данной ячейке за выбранный период. Наведите курсор на область при большом увеличении, чтобы увидеть данные отдельных судов. Даты пересечений с охраняемыми территориями указывают, когда судно было обнаружено внутри охраняемой зоны."
     },
     "dataCredits": {
-      "en": "Sanctions data: <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>",
-      "ru": "Данные о санкциях: <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>"
+      "en": "Vessel data: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>. Sanctions data: <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>",
+      "ru": "Данные о судах: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>. Данные о санкциях: <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>"
     }
   },
   "map": {
