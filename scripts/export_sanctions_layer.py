@@ -46,13 +46,16 @@ def main():
     for mmsi in mmsi_list:
         con.execute("INSERT INTO sanctioned_mmsi VALUES (?)", [str(mmsi)])
 
-    # Aggregate by grid cell across all sanctioned vessels, tracking years
+    # Aggregate by grid cell across all sanctioned vessels, tracking years,
+    # vessel types and flags for client-side filtering
     rows = con.execute("""
         SELECT
             vp.lat, vp.lon,
             SUM(vp.hours) as total_hours,
             COUNT(DISTINCT vp.mmsi) as vessel_count,
-            LIST(DISTINCT vp.year ORDER BY vp.year) as years
+            LIST(DISTINCT vp.year ORDER BY vp.year) as years,
+            LIST(DISTINCT vp.vessel_type) as vessel_types,
+            LIST(DISTINCT vp.flag) as flags
         FROM vessel_positions vp
         JOIN sanctioned_mmsi sm ON vp.mmsi = sm.mmsi
         GROUP BY vp.lat, vp.lon
@@ -66,7 +69,7 @@ def main():
     # Build GeoJSON polygon features (one per grid cell)
     features = []
     all_years = set()
-    for lat, lon, total_hours, vessel_count, years in rows:
+    for lat, lon, total_hours, vessel_count, years, vessel_types, flags in rows:
         # lat from the DB is the TOP edge of the cell (snapToGrid uses
         # 90 - floor((90 - lat) * 100) * 0.01), so the polygon extends
         # downward.  lon is the LEFT edge, so the polygon extends right.
@@ -75,7 +78,7 @@ def main():
         min_lon = lon
         max_lon = lon + CELL_SIZE
 
-        # Boolean year properties for efficient MapLibre filtering
+        # Boolean year, vessel type, and flag properties for MapLibre filtering
         props = {
             "hours": round(total_hours, 1),
             "vessels": vessel_count,
@@ -83,6 +86,17 @@ def main():
         for y in years:
             props[f"y{y}"] = True
             all_years.add(y)
+        has_foreign = False
+        for vt in (vessel_types or []):
+            if vt:
+                props[f"t_{vt}"] = True
+        for f in (flags or []):
+            if f:
+                props[f"f_{f}"] = True
+                if f != "RUS":
+                    has_foreign = True
+        if has_foreign:
+            props["f_foreign"] = True
 
         features.append({
             "type": "Feature",
