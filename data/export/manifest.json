@@ -157,7 +157,7 @@
                 20
               ],
               "text-anchor": "center",
-              "text-padding": 2,
+              "text-padding": 0,
               "text-allow-overlap": false
             },
             "paint": {

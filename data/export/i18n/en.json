@@ -33,7 +33,7 @@
   "legend": "legend",
   "sanctionedShort": "sanctioned",
   "oldTanker": "tankers >25 yrs old",
-  "oldTankerShort": "old tankers",
+  "oldTankerShort": ">25yr tankers",
   "oilTanker": "oil tanker",
   "buildYear": "built",
   "dwt": "DWT",

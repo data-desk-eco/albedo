@@ -202,7 +202,7 @@ const manifest = {
               'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
               'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 12, 10, 20],
               'text-anchor': 'center',
-              'text-padding': 2,
+              'text-padding': 0,
               'text-allow-overlap': false
             },
             paint: {
