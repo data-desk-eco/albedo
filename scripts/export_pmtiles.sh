@@ -108,10 +108,20 @@ FROM buffer_zones_coastal
 WHERE ST_Intersects(geometry, ST_GeomFromText('POLYGON((-180 $MIN_LAT, 180 $MIN_LAT, 180 90, -180 90, -180 $MIN_LAT))'));
 " | jq -r '.[0].geojson' > "$TEMP_DIR/buffer_zones.geojson"
 
+# Export land polygons (Natural Earth 10m, clipped to study area)
+LAND_SHP="$DATA_ROOT/ne_10m_land/ne_10m_land.shp"
+if [ -f "$LAND_SHP" ]; then
+  echo "Exporting land layer..."
+  ogr2ogr -f GeoJSON "$TEMP_DIR/land.geojson" "$LAND_SHP" \
+    -clipsrc -180 "$MIN_LAT" 180 90
+fi
+
 echo "Creating PMTiles with tippecanoe..."
 
-# Build layer args
-LAYER_ARGS="-L protected_areas:$TEMP_DIR/protected_areas.geojson -L buffer_zones:$TEMP_DIR/buffer_zones.geojson -L places:$TEMP_DIR/places.geojson"
+# Build layer args (ice is now in the raster COG, not vector tiles)
+LAYER_ARGS=""
+[ -f "$TEMP_DIR/land.geojson" ] && LAYER_ARGS="$LAYER_ARGS -L land:$TEMP_DIR/land.geojson"
+LAYER_ARGS="$LAYER_ARGS -L protected_areas:$TEMP_DIR/protected_areas.geojson -L buffer_zones:$TEMP_DIR/buffer_zones.geojson -L places:$TEMP_DIR/places.geojson"
 
 # Create PMTiles with all layers
 tippecanoe \

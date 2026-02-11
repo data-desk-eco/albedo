@@ -189,6 +189,22 @@ with rasterio.open("data/land_mask.tif") as src:
         bands = [b[:min_h, :min_w] for b in bands]
     bands.append(land_data)
 
+# Read ice mask (optional)
+ice_data = None
+try:
+    with rasterio.open("data/ice_mask.tif") as src:
+        ice_data = src.read(1)
+        if ice_data.shape != bands[0].shape:
+            print(f"Warning: Ice mask shape {ice_data.shape} differs from vessel raster {bands[0].shape}")
+            min_h = min(ice_data.shape[0], bands[0].shape[0])
+            min_w = min(ice_data.shape[1], bands[0].shape[1])
+            ice_data = ice_data[:min_h, :min_w]
+            bands = [b[:min_h, :min_w] for b in bands]
+        bands.append(ice_data)
+        print("  Added ice mask band")
+except FileNotFoundError:
+    print("  No ice mask found, skipping ice band")
+
 # Stack and write with band descriptions
 combined = np.stack(bands)
 profile.update(count=len(bands), compress='deflate', tiled=True)
@@ -196,7 +212,8 @@ band_descriptions = (
     tuple(years) +
     tuple(f"{y}_sanctions" for y in years) +
     tuple(f"{y}_old_tankers" for y in years) +
-    ('land',)
+    ('land',) +
+    (('ice',) if ice_data is not None else ())
 )
 
 # Create metadata JSON for frontend
@@ -207,6 +224,8 @@ cog_metadata = {
     'landBand': 3 * n_years,
     'lastUpdated': datetime.now(timezone.utc).strftime('%Y-%m-%d')
 }
+if ice_data is not None:
+    cog_metadata['iceBand'] = 3 * n_years + 1
 if vessel_type:
     cog_metadata['vesselType'] = vessel_type
 
@@ -256,6 +275,55 @@ gdal_rasterize -burn 1 \
   -co COMPRESS=DEFLATE \
   data/ne_10m_land/ne_10m_land.shp \
   data/land_mask.tif
+
+# Create ice mask (NSIDC sea ice extent + glaciated areas, shared by all COGs)
+echo "Creating ice mask..."
+ICE_TEMP=$(mktemp -d)
+
+NSIDC_SHP=$(find data/nsidc_ice_extent -name "*.shp" 2>/dev/null | head -1)
+if [ -n "$NSIDC_SHP" ]; then
+  ogr2ogr -f GeoJSON "$ICE_TEMP/nsidc.geojson" "$NSIDC_SHP" -t_srs EPSG:4326
+  python3 -c "
+import json
+with open('$ICE_TEMP/nsidc.geojson') as f:
+    data = json.load(f)
+# Fill the NSIDC satellite pole hole (~89.84N)
+ring = [[round(i * (360/72) - 180, 1), 89.84] for i in range(73)]
+ring.append(ring[0])
+data['features'].append({'type':'Feature','properties':{},'geometry':{'type':'Polygon','coordinates':[ring]}})
+with open('$ICE_TEMP/nsidc_filled.geojson', 'w') as f:
+    json.dump(data, f)
+"
+fi
+
+GLAC_SHP="data/ne_10m_glaciated_areas/ne_10m_glaciated_areas.shp"
+if [ -f "$GLAC_SHP" ]; then
+  ogr2ogr -f GeoJSON "$ICE_TEMP/glaciated.geojson" "$GLAC_SHP" \
+    -clipsrc -180 ${SOUTH_LAT} 180 90
+fi
+
+python3 -c "
+import json, glob
+features = []
+for path in sorted(glob.glob('$ICE_TEMP/*.geojson')):
+    with open(path) as f:
+        data = json.load(f)
+    features.extend(data.get('features', []))
+merged = {'type': 'FeatureCollection', 'features': features}
+with open('$ICE_TEMP/ice_merged.geojson', 'w') as f:
+    json.dump(merged, f)
+print(f'  Merged {len(features)} ice features')
+"
+
+gdal_rasterize -burn 1 \
+  -te -180 ${SOUTH_LAT} 180 90 \
+  -tr 0.01 0.01 \
+  -ot Float32 \
+  -co COMPRESS=DEFLATE \
+  "$ICE_TEMP/ice_merged.geojson" \
+  data/ice_mask.tif
+
+rm -rf "$ICE_TEMP"
 
 # 1. Generate aggregate COG (all vessels)
 echo ""
@@ -309,7 +377,7 @@ for flag_filter in "${FLAG_ARRAY[@]}"; do
 done
 
 # Final cleanup
-rm -f data/land_mask.tif
+rm -f data/land_mask.tif data/ice_mask.tif
 cleanup_lookup_tables
 
 echo ""

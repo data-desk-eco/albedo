@@ -109,8 +109,8 @@ const manifest = {
       ru: 'Создано: <a href="https://arctida.io" target="_blank" rel="noopener">Arctida</a>, <a href="https://datadesk.eco" target="_blank" rel="noopener">Data Desk</a>'
     },
     dataCredits: {
-      en: 'Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>',
-      ru: 'Данные: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>'
+      en: 'Data: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>, <a href="https://nsidc.org/data/g02135" target="_blank" rel="noopener">NSIDC</a>',
+      ru: 'Данные: <a href="https://globalfishingwatch.org/" target="_blank" rel="noopener">Global Fishing Watch</a>, <a href="https://www.opensanctions.org/" target="_blank" rel="noopener">OpenSanctions</a>, <a href="https://nsidc.org/data/g02135" target="_blank" rel="noopener">NSIDC</a>'
     }
   },
 
@@ -147,9 +147,23 @@ const manifest = {
       defaultVisible: false
     },
     vectors: {
+      land: {
+        url: `${cogBase}vectors.pmtiles`,
+        defaultVisible: true,
+        belowHeatmap: true,
+        style: [
+          {
+            id: 'land-fill',
+            type: 'fill',
+            'source-layer': 'land',
+            paint: { 'fill-color': '#c8c8c8', 'fill-opacity': 1 }
+          }
+        ]
+      },
       'protected-areas': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
+        belowHeatmap: true,
         style: [
           {
             id: 'protected-areas-fill',
@@ -168,6 +182,7 @@ const manifest = {
       'buffer-zones': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
+        belowHeatmap: true,
         style: [
           {
             id: 'buffer-zones-fill',
@@ -257,6 +272,14 @@ const manifest = {
         labelShort: { en: 'Buffers', ru: 'Охр. зоны' },
         symbol: 'dashed',
         defaultVisible: true
+      },
+      {
+        layers: [],
+        label: { en: 'Sea ice extent', ru: 'Морской лёд' },
+        labelShort: { en: 'Ice', ru: 'Лёд' },
+        symbol: 'ice',
+        defaultVisible: true,
+        isIce: true
       },
       {
         layers: ['satellite'],

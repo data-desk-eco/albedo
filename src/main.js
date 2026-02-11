@@ -21,6 +21,7 @@ let satelliteVisible = false
 let dataInitialized = false
 let sanctionedMmsi = new Set()
 let vesselMeta = {}
+let iceVisible = true
 let showSanctionedOnly = false
 let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
@@ -195,10 +196,18 @@ function initLayerToggles() {
   ;(manifest.ui?.layerToggles || []).forEach((toggle, i) => {
     const item = document.createElement('div')
     item.className = `legend-item legend-toggle ${toggle.defaultVisible !== false ? 'active' : ''}`
-    item.dataset.layers = toggle.layers.join(',')
+    item.dataset.layers = (toggle.layers || []).join(',')
     item.innerHTML = `<div class="legend-symbol"><div class="legend-${toggle.symbol || 'square'}"></div></div><span id="legend-layer-${i}" class="legend-text">${localize(toggle.label)}</span>`
     container.appendChild(item)
     item.addEventListener('click', () => {
+      if (toggle.isIce) {
+        iceVisible = !iceVisible
+        item.classList.toggle('active')
+        cogModule.setIceState(iceVisible)
+        updatePoleCap()
+        refreshHeatmapTiles()
+        return
+      }
       const layerIds = item.dataset.layers.split(',')
       const first = layerIds.find(id => map.getLayer(id))
       if (!first) return
@@ -207,6 +216,7 @@ function initLayerToggles() {
       item.classList.toggle('active')
       if (toggle.isSatellite) {
         satelliteVisible = !visible
+        updatePoleCap()
         refreshHeatmapTiles()
       }
       // Force re-render — needed for fill-pattern layers with globe projection
@@ -253,6 +263,11 @@ function refreshHeatmapTiles() {
   cogTileCache.clear()
   cogModule?.clearCache()
   map.getSource('vessel-heatmap')?.setTiles([`cog://{z}/{x}/{y}?t=${Date.now()}`])
+}
+
+function updatePoleCap() {
+  if (!map?.getLayer('pole-cap-fill')) return
+  map.setLayoutProperty('pole-cap-fill', 'visibility', iceVisible && !satelliteVisible ? 'visible' : 'none')
 }
 
 function updateHeatmapSource() {
@@ -552,7 +567,7 @@ async function initPhase2(manifestDir) {
     const m = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
     if (!m) throw new Error('Invalid COG tile URL')
     const [, z, x, y] = m.map(Number)
-    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}/${showSanctionedOnly}/${showOldTankersOnly}`
+    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}/${iceVisible}/${showSanctionedOnly}/${showOldTankersOnly}`
     if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
     const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(key, buf)

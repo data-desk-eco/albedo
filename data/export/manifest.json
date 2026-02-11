@@ -14,8 +14,8 @@
       "ru": "Создано: <a href=\"https://arctida.io\" target=\"_blank\" rel=\"noopener\">Arctida</a>, <a href=\"https://datadesk.eco\" target=\"_blank\" rel=\"noopener\">Data Desk</a>"
     },
     "dataCredits": {
-      "en": "Data: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>",
-      "ru": "Данные: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>"
+      "en": "Data: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>, <a href=\"https://nsidc.org/data/g02135\" target=\"_blank\" rel=\"noopener\">NSIDC</a>",
+      "ru": "Данные: <a href=\"https://globalfishingwatch.org/\" target=\"_blank\" rel=\"noopener\">Global Fishing Watch</a>, <a href=\"https://www.opensanctions.org/\" target=\"_blank\" rel=\"noopener\">OpenSanctions</a>, <a href=\"https://nsidc.org/data/g02135\" target=\"_blank\" rel=\"noopener\">NSIDC</a>"
     }
   },
   "map": {
@@ -64,9 +64,26 @@
       "defaultVisible": false
     },
     "vectors": {
+      "land": {
+        "url": "vectors.pmtiles",
+        "defaultVisible": true,
+        "belowHeatmap": true,
+        "style": [
+          {
+            "id": "land-fill",
+            "type": "fill",
+            "source-layer": "land",
+            "paint": {
+              "fill-color": "#c8c8c8",
+              "fill-opacity": 1
+            }
+          }
+        ]
+      },
       "protected-areas": {
         "url": "vectors.pmtiles",
         "defaultVisible": true,
+        "belowHeatmap": true,
         "style": [
           {
             "id": "protected-areas-fill",
@@ -92,6 +109,7 @@
       "buffer-zones": {
         "url": "vectors.pmtiles",
         "defaultVisible": true,
+        "belowHeatmap": true,
         "style": [
           {
             "id": "buffer-zones-fill",
@@ -127,7 +145,6 @@
             "type": "symbol",
             "source-layer": "places",
             "minzoom": 2,
-            "filter": ["<=", ["get", "scalerank"], ["step", ["zoom"], 2, 3, 3, 4, 5, 6, 8]],
             "layout": {
               "text-field": [
                 "coalesce",
@@ -158,7 +175,7 @@
                 16
               ],
               "text-anchor": "center",
-              "text-padding": 2,
+              "text-padding": 1,
               "text-allow-overlap": false,
               "symbol-sort-key": [
                 "get",
@@ -295,6 +312,20 @@
         },
         "symbol": "dashed",
         "defaultVisible": true
+      },
+      {
+        "layers": [],
+        "label": {
+          "en": "Sea ice extent",
+          "ru": "Морской лёд"
+        },
+        "labelShort": {
+          "en": "Ice",
+          "ru": "Лёд"
+        },
+        "symbol": "ice",
+        "defaultVisible": true,
+        "isIce": true
       },
       {
         "layers": [

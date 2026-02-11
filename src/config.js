@@ -53,6 +53,13 @@ export function createMapStyle(manifest, manifestDir = '') {
     }
   }
 
+  // Pole cap: covers area above Mercator limit where raster tiles can't reach
+  // Ice (and land) in the raster stops at ~85°N, so we fill the pole with a vector polygon
+  sources['pole-cap'] = {
+    type: 'geojson',
+    data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[-180, 84], [180, 84], [180, 90], [-180, 90], [-180, 84]]] } }
+  }
+
   // PMTiles vector sources
   const vectorLayers = manifest.layers?.vectors || {}
   for (const [id, config] of Object.entries(vectorLayers)) {
@@ -86,6 +93,12 @@ export function createMapStyle(manifest, manifestDir = '') {
   }
 
   addVectorLayers(true)
+
+  // Pole cap fill (white, covers area above ~84°N where raster tiles can't reach)
+  layers.push({
+    id: 'pole-cap-fill', type: 'fill', source: 'pole-cap',
+    paint: { 'fill-color': '#ffffff', 'fill-opacity': 1 }
+  })
 
   layers.push({
     id: 'vessel-heatmap', type: 'raster', source: 'vessel-heatmap',

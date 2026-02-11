@@ -235,6 +235,14 @@ html, body {
   background: rgba(3, 120, 116, 0.05);
 }
 
+.legend-ice {
+  width: 18px;
+  height: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-sizing: border-box;
+}
+
 .legend-satellite {
   width: 18px;
   height: 18px;

@@ -8,11 +8,14 @@ import { YEAR_PALETTE } from './config.js'
 
 const MULTI_YEAR_COLOR = [169, 178, 194]  // #A9B2C2 — Arctida blue-gray
 const DOMINANCE_THRESHOLD = 0.6
+const LAND_COLOR = [200, 200, 200]  // light grey
+const ICE_COLOR = [255, 255, 255]   // white
 
 let cogSource = null
 let cogConfig = null
 let selectedBands = [0, 1, 2]
 let showLand = true
+let showIce = true
 let showSanctioned = false
 let showOldTankers = false
 
@@ -34,7 +37,20 @@ function createVesselColorizer() {
 
   return (bands) => {
     const landIdx = cogConfig?.landBand ?? bands.length - 1
-    if (bands[landIdx] === 1) return showLand ? [255, 255, 255, 255] : [0, 0, 0, 0]
+    const iceIdx = cogConfig?.iceBand ?? null
+
+    // Ice pixel (may also be land underneath, e.g. Greenland)
+    if (iceIdx != null && bands[iceIdx] === 1) {
+      if (!showLand) return [0, 0, 0, 0]  // satellite mode: transparent
+      if (showIce) return [...ICE_COLOR, 255]
+      // Ice toggled off: show as land if also land, otherwise transparent
+      if (bands[landIdx] === 1) return [...LAND_COLOR, 255]
+      return [0, 0, 0, 0]
+    }
+
+    // Land pixel
+    if (bands[landIdx] === 1) return showLand ? [...LAND_COLOR, 255] : [0, 0, 0, 0]
+
     if (!selectedBands.length) return [0, 0, 0, 0]
 
     const values = selectedBands.map(b => bands[b] || 0)
@@ -96,9 +112,10 @@ export async function initCOG(url) {
     cogConfig = config
     cogConfig.sanctionsBandOffset = config.sanctionsBandOffset ?? null
     cogConfig.oldTankerBandOffset = config.oldTankerBandOffset ?? null
+    cogConfig.iceBand = config.iceBand ?? null
   } else {
     console.warn('No ALBEDO_CONFIG in COG, using fallback')
-    cogConfig = { years: [2023, 2024, 2025].slice(0, metadata.bandCount - 1), landBand: metadata.bandCount - 1, sanctionsBandOffset: null, oldTankerBandOffset: null }
+    cogConfig = { years: [2023, 2024, 2025].slice(0, metadata.bandCount - 1), landBand: metadata.bandCount - 1, sanctionsBandOffset: null, oldTankerBandOffset: null, iceBand: null }
   }
 
   cogConfig.yearColors = Object.fromEntries(cogConfig.years.map((y, i) => [y, YEAR_PALETTE[i % YEAR_PALETTE.length]]))
@@ -126,6 +143,10 @@ export async function switchCOG(url) {
 export function setOverlayState({ sanctioned, oldTankers }) {
   if (sanctioned !== undefined) showSanctioned = sanctioned
   if (oldTankers !== undefined) showOldTankers = oldTankers
+}
+
+export function setIceState(visible) {
+  showIce = visible
 }
 
 export { YEAR_PALETTE } from './config.js'
