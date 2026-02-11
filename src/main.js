@@ -295,51 +295,17 @@ function populateFlagDropdown() {
 function updateSanctionsFilter() {
   const toggle = $('sanctions-toggle')
   const hasYears = activeYears.size > 0
-  const canUse = hasYears
 
-  if (!canUse) {
+  if (!hasYears) {
     toggle.classList.add('disabled')
     if (showSanctionedOnly) {
       showSanctionedOnly = false
       toggle.classList.remove('active')
-      setSanctionsVisibility(false)
+      cogModule?.setOverlayState({ sanctioned: false })
+      refreshHeatmapTiles()
     }
   } else {
     toggle.classList.remove('disabled')
-  }
-
-  if (!map) return
-
-  // Year filter
-  const yearFilter = hasYears
-    ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
-    : ['literal', false]
-
-  // Combine with flag filters
-  const conditions = [yearFilter]
-
-  if (currentFlagFilter === 'foreign') {
-    conditions.push(['has', 'f_foreign'])
-  } else if (currentFlagFilter !== 'all') {
-    conditions.push(['has', `f_${currentFlagFilter}`])
-  }
-
-  const filter = conditions.length === 1 ? conditions[0] : ['all', ...conditions]
-
-  for (const id of ['sanctioned-vessels-fill', 'sanctioned-vessels-outline']) {
-    if (map.getLayer(id)) map.setFilter(id, filter)
-  }
-}
-
-function setSanctionsVisibility(visible) {
-  for (const id of ['sanctioned-vessels-fill', 'sanctioned-vessels-outline']) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
-  }
-}
-
-function setOldTankersVisibility(visible) {
-  for (const id of ['old-tankers-fill', 'old-tankers-outline']) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
   }
 }
 
@@ -352,30 +318,11 @@ function updateOldTankersFilter() {
     if (showOldTankersOnly) {
       showOldTankersOnly = false
       toggle.classList.remove('active')
-      setOldTankersVisibility(false)
+      cogModule?.setOverlayState({ oldTankers: false })
+      refreshHeatmapTiles()
     }
   } else {
     toggle.classList.remove('disabled')
-  }
-
-  if (!map) return
-
-  const yearFilter = hasYears
-    ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
-    : ['literal', false]
-
-  const conditions = [yearFilter]
-
-  if (currentFlagFilter === 'foreign') {
-    conditions.push(['has', 'f_foreign'])
-  } else if (currentFlagFilter !== 'all') {
-    conditions.push(['has', `f_${currentFlagFilter}`])
-  }
-
-  const filter = conditions.length === 1 ? conditions[0] : ['all', ...conditions]
-
-  for (const id of ['old-tankers-fill', 'old-tankers-outline']) {
-    if (map.getLayer(id)) map.setFilter(id, filter)
   }
 }
 
@@ -614,7 +561,7 @@ async function initPhase2(manifestDir) {
     const m = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
     if (!m) throw new Error('Invalid COG tile URL')
     const [, z, x, y] = m.map(Number)
-    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}`
+    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}/${showSanctionedOnly}/${showOldTankersOnly}`
     if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
     const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(key, buf)
@@ -773,8 +720,6 @@ function setupUIHandlers() {
   $('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
     await switchActiveCOG()
-    updateSanctionsFilter()
-    updateOldTankersFilter()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
@@ -782,15 +727,16 @@ function setupUIHandlers() {
     if ($('sanctions-toggle').classList.contains('disabled')) return
     showSanctionedOnly = !showSanctionedOnly
     $('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
-    setSanctionsVisibility(showSanctionedOnly)
+    cogModule.setOverlayState({ sanctioned: showSanctionedOnly })
+    refreshHeatmapTiles()
   })
 
   $('old-tanker-toggle').addEventListener('click', () => {
     if ($('old-tanker-toggle').classList.contains('disabled')) return
     showOldTankersOnly = !showOldTankersOnly
     $('old-tanker-toggle').classList.toggle('active', showOldTankersOnly)
-    setOldTankersVisibility(showOldTankersOnly)
-    // Re-filter current tooltip if visible
+    cogModule.setOverlayState({ oldTankers: showOldTankersOnly })
+    refreshHeatmapTiles()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 

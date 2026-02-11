@@ -175,56 +175,6 @@ const manifest = {
           }
         ]
       },
-      'sanctioned-vessels': {
-        url: `${cogBase}vectors.pmtiles`,
-        defaultVisible: false,
-        style: [
-          {
-            id: 'sanctioned-vessels-fill',
-            type: 'fill',
-            'source-layer': 'sanctioned_vessels',
-            paint: {
-              'fill-color': '#FF3B30',
-              'fill-opacity': 0.8
-            }
-          },
-          {
-            id: 'sanctioned-vessels-outline',
-            type: 'line',
-            'source-layer': 'sanctioned_vessels',
-            paint: {
-              'line-color': '#FF3B30',
-              'line-width': 1,
-              'line-opacity': 0.9
-            }
-          }
-        ]
-      },
-      'old-tankers': {
-        url: `${cogBase}vectors.pmtiles`,
-        defaultVisible: false,
-        style: [
-          {
-            id: 'old-tankers-fill',
-            type: 'fill',
-            'source-layer': 'old_tankers',
-            paint: {
-              'fill-color': '#00D7ED',
-              'fill-opacity': 0.8
-            }
-          },
-          {
-            id: 'old-tankers-outline',
-            type: 'line',
-            'source-layer': 'old_tankers',
-            paint: {
-              'line-color': '#00D7ED',
-              'line-width': 1,
-              'line-opacity': 0.9
-            }
-          }
-        ]
-      },
       places: {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
