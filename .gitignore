@@ -33,6 +33,7 @@ data/*.tif
 data/vessel_categories/
 data/buffer_zones/
 data/sanctions/
+data/lseg/
 
 # Data - databases are too large
 data/*.duckdb

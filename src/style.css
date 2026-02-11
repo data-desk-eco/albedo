@@ -422,6 +422,20 @@ body.app-ready #zoom-controls {
   color: #ff4444;
 }
 
+#old-tanker-toggle {
+  cursor: pointer;
+}
+
+#old-tanker-toggle.disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+
+.old-tanker-badge {
+  color: #ff8800;
+}
+
 #places-info {
   padding: 8px 12px;
   width: var(--ui-panel-width);

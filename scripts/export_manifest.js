@@ -135,6 +135,7 @@ const manifest = {
       'protected-areas': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
+        belowHeatmap: true,
         style: [
           {
             id: 'protected-areas-fill',
@@ -209,7 +210,7 @@ const manifest = {
             'source-layer': 'places',
             minzoom: 0,
             layout: {
-              'text-field': ['coalesce', ['get', 'name_en'], ['get', 'name_en']],
+              'text-field': ['coalesce', ['get', `name_${env.DEFAULT_LANG || 'en'}`], ['get', 'name_en']],
               'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
               'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 12, 10, 20],
               'text-anchor': 'center',

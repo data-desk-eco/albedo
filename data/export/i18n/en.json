@@ -31,6 +31,9 @@
   "sanctioned": "sanctioned",
   "legend": "legend",
   "sanctionedShort": "sanction",
+  "oldTanker": "oil tankers >25yr",
+  "oldTankerShort": ">25yr tanker",
+  "oilTanker": "oil tanker",
   "buildYear": "built",
   "dwt": "DWT",
   "vesselTypes": {
