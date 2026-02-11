@@ -147,19 +147,6 @@ const manifest = {
       defaultVisible: false
     },
     vectors: {
-      land: {
-        url: `${cogBase}vectors.pmtiles`,
-        defaultVisible: true,
-        belowHeatmap: true,
-        style: [
-          {
-            id: 'land-fill',
-            type: 'fill',
-            'source-layer': 'land',
-            paint: { 'fill-color': '#c8c8c8', 'fill-opacity': 1 }
-          }
-        ]
-      },
       'protected-areas': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,

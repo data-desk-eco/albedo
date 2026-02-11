@@ -567,7 +567,7 @@ async function initPhase2(manifestDir) {
     const m = params.url.match(/cog:\/\/(\d+)\/(\d+)\/(\d+)/)
     if (!m) throw new Error('Invalid COG tile URL')
     const [, z, x, y] = m.map(Number)
-    const key = `${z}/${x}/${y}/${activeYearBands}/${satelliteVisible}/${iceVisible}/${showSanctionedOnly}/${showOldTankersOnly}`
+    const key = `${z}/${x}/${y}`
     if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
     const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(key, buf)
