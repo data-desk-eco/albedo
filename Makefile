@@ -100,8 +100,8 @@ clean:
 GCS_BUCKET := albedo-data
 GCS_URL := https://storage.googleapis.com/$(GCS_BUCKET)
 
-# Deploy data files to GCS
-deploy-data: data/vessel_heatmap.tif data/export/.done
+# Upload data files to GCS (no rebuild)
+deploy-data:
 	COG_BASE_URL=$(GCS_URL)/ node scripts/export_manifest.js
 	gcloud storage cp data/vessel_heatmap*.tif gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
