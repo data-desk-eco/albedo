@@ -20,6 +20,7 @@ data/.fetch.done:
 	./scripts/fetch_buffer_zones.sh
 	./scripts/fetch_land.sh
 	./scripts/fetch_places.sh
+	./scripts/fetch_ice.sh
 	@touch $@
 
 # Fetch sanctions data from OpenSanctions

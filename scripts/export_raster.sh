@@ -276,52 +276,80 @@ gdal_rasterize -burn 1 \
   data/ne_10m_land/ne_10m_land.shp \
   data/land_mask.tif
 
-# Create ice mask (NSIDC sea ice extent + glaciated areas, shared by all COGs)
+# Create ice mask (IMS 1km sea ice + glaciated areas, shared by all COGs)
 echo "Creating ice mask..."
 ICE_TEMP=$(mktemp -d)
 
-NSIDC_SHP=$(find data/nsidc_ice_extent -name "*.shp" 2>/dev/null | head -1)
-if [ -n "$NSIDC_SHP" ]; then
-  ogr2ogr -f GeoJSON "$ICE_TEMP/nsidc.geojson" "$NSIDC_SHP" -t_srs EPSG:4326
-  python3 -c "
-import json
-with open('$ICE_TEMP/nsidc.geojson') as f:
-    data = json.load(f)
-# Fill the NSIDC satellite pole hole (~89.84N)
-ring = [[round(i * (360/72) - 180, 1), 89.84] for i in range(73)]
-ring.append(ring[0])
-data['features'].append({'type':'Feature','properties':{},'geometry':{'type':'Polygon','coordinates':[ring]}})
-with open('$ICE_TEMP/nsidc_filled.geojson', 'w') as f:
-    json.dump(data, f)
+IMS_TIF="data/ims_1km.tif"
+if [ -f "$IMS_TIF" ]; then
+  echo "  Reprojecting IMS 1km data to EPSG:4326..."
+  gdalwarp -t_srs EPSG:4326 \
+    -te -180 ${SOUTH_LAT} 180 90 \
+    -tr 0.01 0.01 \
+    -r nearest \
+    -ot Byte \
+    -co COMPRESS=DEFLATE \
+    -overwrite \
+    "$IMS_TIF" \
+    "$ICE_TEMP/ims_reproj.tif"
+
+  echo "  Extracting sea ice (IMS value 3)..."
+  uv run --with "rasterio" --with "numpy" python3 -c "
+import rasterio
+import numpy as np
+with rasterio.open('$ICE_TEMP/ims_reproj.tif') as src:
+    data = src.read(1)
+    ice = np.where(data == 3, 1.0, 0.0).astype(np.float32)
+    profile = src.profile.copy()
+    profile.update(dtype='float32')
+with rasterio.open('$ICE_TEMP/ims_ice.tif', 'w', **profile) as dst:
+    dst.write(ice, 1)
+print(f'  Sea ice pixels: {np.count_nonzero(ice):,}')
 "
 fi
 
 GLAC_SHP="data/ne_10m_glaciated_areas/ne_10m_glaciated_areas.shp"
 if [ -f "$GLAC_SHP" ]; then
-  ogr2ogr -f GeoJSON "$ICE_TEMP/glaciated.geojson" "$GLAC_SHP" \
-    -clipsrc -180 ${SOUTH_LAT} 180 90
+  echo "  Rasterizing glaciated areas..."
+  gdal_rasterize -burn 1 \
+    -te -180 ${SOUTH_LAT} 180 90 \
+    -tr 0.01 0.01 \
+    -ot Float32 \
+    -co COMPRESS=DEFLATE \
+    "$GLAC_SHP" \
+    "$ICE_TEMP/glaciated.tif"
 fi
 
-python3 -c "
-import json, glob
-features = []
-for path in sorted(glob.glob('$ICE_TEMP/*.geojson')):
-    with open(path) as f:
-        data = json.load(f)
-    features.extend(data.get('features', []))
-merged = {'type': 'FeatureCollection', 'features': features}
-with open('$ICE_TEMP/ice_merged.geojson', 'w') as f:
-    json.dump(merged, f)
-print(f'  Merged {len(features)} ice features')
-"
+echo "  Merging ice sources..."
+uv run --with "rasterio" --with "numpy" python3 -c "
+import rasterio
+import numpy as np
+import os
 
-gdal_rasterize -burn 1 \
-  -te -180 ${SOUTH_LAT} 180 90 \
-  -tr 0.01 0.01 \
-  -ot Float32 \
-  -co COMPRESS=DEFLATE \
-  "$ICE_TEMP/ice_merged.geojson" \
-  data/ice_mask.tif
+result = None
+profile = None
+for path in ['$ICE_TEMP/ims_ice.tif', '$ICE_TEMP/glaciated.tif']:
+    if not os.path.exists(path):
+        continue
+    with rasterio.open(path) as src:
+        data = src.read(1)
+        if result is None:
+            result = data
+            profile = src.profile.copy()
+        else:
+            h = min(data.shape[0], result.shape[0])
+            w = min(data.shape[1], result.shape[1])
+            result = np.maximum(result[:h, :w], data[:h, :w])
+            profile.update(height=h, width=w)
+
+if result is not None:
+    profile.update(dtype='float32', compress='deflate')
+    with rasterio.open('data/ice_mask.tif', 'w', **profile) as dst:
+        dst.write(result.astype(np.float32), 1)
+    print(f'  Total ice pixels: {np.count_nonzero(result):,}')
+else:
+    print('  Warning: No ice data found')
+"
 
 rm -rf "$ICE_TEMP"
 
