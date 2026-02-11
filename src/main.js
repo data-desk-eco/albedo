@@ -24,6 +24,7 @@ let dataInitialized = false
 let sanctionedMmsi = new Set()
 let vesselMeta = {}
 let showSanctionedOnly = false
+let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
 
 // COG tile cache
@@ -135,6 +136,9 @@ function updateUI() {
 
   // Sanctions label
   $('sanctions-label').textContent = t(narrow ? 'sanctionedShort' : 'sanctioned')
+
+  // Old tanker label
+  $('old-tanker-label').textContent = t(narrow ? 'oldTankerShort' : 'oldTanker')
 
   // Legend collapse label
   $('legend-collapse-label').textContent = t('legend')
@@ -379,7 +383,12 @@ async function loadVesselMetadata(manifestDir) {
     const resp = await fetch(resolveUrl(url, manifestDir))
     if (!resp.ok) return
     vesselMeta = await resp.json()
-    console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels`)
+    const tankerCount = Object.values(vesselMeta).filter(v => v.ot).length
+    console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels (${tankerCount} oil tankers)`)
+    if (tankerCount > 0) {
+      $('old-tanker-toggle').classList.remove('hidden')
+      $('old-tanker-label').textContent = t(window.innerWidth <= 768 ? 'oldTankerShort' : 'oldTanker')
+    }
   } catch (err) {
     console.warn('Failed to load vessel metadata:', err)
   }
@@ -450,6 +459,11 @@ function yearsFromMask(mask) {
   return years.join(', ') || '?'
 }
 
+function isOldTanker(mmsi) {
+  const meta = vesselMeta[mmsi]
+  return meta?.ot && meta?.y && (new Date().getFullYear() - meta.y) >= 25
+}
+
 function filterVesselsByFlags(vessels) {
   if (currentFlagFilter === 'all') return vessels
   let filtered = vessels
@@ -462,7 +476,8 @@ function showRasterTooltip(vessels, isRefilter = false) {
   if (!isRefilter) lastTooltipVesselsRaw = vessels
   if (!vessels?.length) { hideTooltip(); return false }
 
-  const filtered = filterVesselsByFlags(vessels)
+  let filtered = filterVesselsByFlags(vessels)
+  if (showOldTankersOnly) filtered = filtered.filter(v => isOldTanker(v.mmsi))
   if (!filtered.length) { hideTooltip(); return false }
 
   // Group by MMSI
@@ -470,7 +485,7 @@ function showRasterTooltip(vessels, isRefilter = false) {
   for (const v of filtered) {
     const key = v.mmsi || v.ship_name || 'unknown'
     if (!byMmsi.has(key)) {
-      byMmsi.set(key, { mmsi: v.mmsi, ship_name: v.ship_name, vessel_type: v.vessel_type, flag: v.flag, total_hours: 0, dates: [], sanctioned: sanctionedMmsi.has(v.mmsi) })
+      byMmsi.set(key, { mmsi: v.mmsi, ship_name: v.ship_name, vessel_type: v.vessel_type, flag: v.flag, total_hours: 0, dates: [], sanctioned: sanctionedMmsi.has(v.mmsi), oldTanker: isOldTanker(v.mmsi) })
     }
     const entry = byMmsi.get(key)
     entry.total_hours += v.total_hours || 0
@@ -479,8 +494,8 @@ function showRasterTooltip(vessels, isRefilter = false) {
   }
 
   const grouped = Array.from(byMmsi.values())
-  // Prioritize sanctioned vessels for display
-  grouped.sort((a, b) => (b.sanctioned ? 1 : 0) - (a.sanctioned ? 1 : 0))
+  // Prioritize sanctioned vessels, then old tankers for display
+  grouped.sort((a, b) => (b.sanctioned ? 2 : b.oldTanker ? 1 : 0) - (a.sanctioned ? 2 : a.oldTanker ? 1 : 0))
   const w = window.innerWidth
   const maxDisplay = w >= 1000 ? 8 : w >= 768 ? 4 : 3
   const display = grouped.slice(0, maxDisplay)
@@ -504,11 +519,15 @@ function showRasterTooltip(vessels, isRefilter = false) {
     if (dwts.some(d => d !== '–')) rows.push({ key: t('dwt'), values: dwts })
   }
 
-  // Sanctions badge
-  if (display.some(v => v.sanctioned)) {
-    rows.push({ key: t('status'), values: display.map(v =>
-      v.sanctioned ? `<span class="sanction-badge">${t('sanctioned')}</span>` : '–'
-    )})
+  // Status badges (sanctions + old tanker)
+  const hasStatusBadges = display.some(v => v.sanctioned || v.oldTanker)
+  if (hasStatusBadges) {
+    rows.push({ key: t('status'), values: display.map(v => {
+      const badges = []
+      if (v.sanctioned) badges.push(`<span class="sanction-badge">${t('sanctioned')}</span>`)
+      if (v.oldTanker) badges.push(`<span class="old-tanker-badge">${t('oilTanker')}</span>`)
+      return badges.length ? badges.join(' ') : '–'
+    })})
   }
 
   let html = '<table>' + rows.map(r =>
@@ -687,11 +706,38 @@ function setupMapHandlers() {
   })
 
   map.on('mousemove', (e) => {
+    // Check for protected area hover (for cursor change)
+    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+    const paFeatures = paLayers.length ? map.queryRenderedFeatures(e.point, { layers: paLayers }) : []
+    map.getCanvas().style.cursor = paFeatures?.length ? 'pointer' : ''
+
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
       handleRasterHover(e)
       return
     }
     // Below vessel tooltip zoom — only show protected area tooltips
+    if (paFeatures?.length) {
+      showProtectedAreaTooltip(paFeatures[0], paFeatures[0].layer?.id === 'buffer-zones-fill')
+      return
+    }
+    hideTooltip()
+  })
+
+  map.on('mouseout', hideTooltip)
+
+  map.on('click', async (e) => {
+    if (!dataInitialized) return
+
+    // At high zoom, try vessel data first
+    if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
+      const { lat, lng } = e.lngLat
+      const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
+      try {
+        if (showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year, currentCategory === 'all' ? null : currentCategory))) return
+      } catch { /* ignore */ }
+    }
+
+    // Fall back to protected area click
     const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
     if (paLayers.length) {
       const features = map.queryRenderedFeatures(e.point, { layers: paLayers })
@@ -700,18 +746,6 @@ function setupMapHandlers() {
         return
       }
     }
-    hideTooltip()
-  })
-
-  map.on('mouseout', hideTooltip)
-
-  map.on('click', async (e) => {
-    if (!dataInitialized || map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
-    const { lat, lng } = e.lngLat
-    const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
-    try {
-      showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year, currentCategory === 'all' ? null : currentCategory))
-    } catch { /* ignore */ }
   })
 
   map.on('zoom', () => { if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) hideTooltip() })
@@ -747,6 +781,13 @@ function setupUIHandlers() {
     showSanctionedOnly = !showSanctionedOnly
     $('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
     setSanctionsVisibility(showSanctionedOnly)
+  })
+
+  $('old-tanker-toggle').addEventListener('click', () => {
+    showOldTankersOnly = !showOldTankersOnly
+    $('old-tanker-toggle').classList.toggle('active', showOldTankersOnly)
+    // Re-filter current tooltip if visible
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   $('places-select').addEventListener('change', (e) => {

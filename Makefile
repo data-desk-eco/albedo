@@ -32,6 +32,10 @@ data/export/sanctioned_mmsi.json: scripts/fetch_sanctions.py
 vessel-metadata: data/data.duckdb
 	uv run python scripts/ingest_vessel_metadata.py
 
+# Ingest oil tanker data from LSEG Excel files
+tankers: data/data.duckdb
+	uv run python scripts/ingest_tankers.py
+
 # Convert GFW JSON to Parquet
 convert: data/.convert.done
 
@@ -121,4 +125,4 @@ setup-gcs:
 	@rm /tmp/cors.json
 	@echo "GCS bucket configured with CORS for range requests"
 
-.PHONY: all fetch convert transform tiles export sanctions vessel-metadata install dev build preview clean deploy-data setup-gcs
+.PHONY: all fetch convert transform tiles export sanctions vessel-metadata tankers install dev build preview clean deploy-data setup-gcs

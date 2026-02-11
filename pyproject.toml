@@ -5,6 +5,7 @@ description = "Northern Sea Route vessel activity map"
 requires-python = ">=3.11"
 dependencies = [
     "duckdb>=1.0.0",
+    "openpyxl>=3.1.5",
     "rasterio>=1.3.0",
 ]
 

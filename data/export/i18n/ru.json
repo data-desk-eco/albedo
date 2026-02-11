@@ -31,6 +31,9 @@
   "sanctioned": "под санкциями",
   "legend": "легенда",
   "sanctionedShort": "санкции",
+  "oldTanker": "нефтетанкеры >25 лет",
+  "oldTankerShort": ">25 лет танкер",
+  "oilTanker": "нефтетанкер",
   "buildYear": "год постройки",
   "dwt": "дедвейт",
   "vesselTypes": {
