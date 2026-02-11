@@ -8,7 +8,7 @@ import { YEAR_PALETTE } from './config.js'
 
 const MULTI_YEAR_COLOR = [169, 178, 194]  // #A9B2C2 — Arctida blue-gray
 const DOMINANCE_THRESHOLD = 0.6
-const LAND_COLOR = [200, 200, 200]  // light grey
+const LAND_COLOR = [204, 227, 255]  // #CCE3FF — Arctida Blue 10
 const ICE_COLOR = [255, 255, 255]   // white
 
 let cogSource = null

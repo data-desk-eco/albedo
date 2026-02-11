@@ -150,7 +150,6 @@ const manifest = {
       'protected-areas': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
-        belowHeatmap: true,
         style: [
           {
             id: 'protected-areas-fill',
@@ -169,7 +168,6 @@ const manifest = {
       'buffer-zones': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
-        belowHeatmap: true,
         style: [
           {
             id: 'buffer-zones-fill',

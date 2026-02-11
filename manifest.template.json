@@ -49,7 +49,6 @@
       "protected-areas": {
         "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
-        "belowHeatmap": true,
         "style": [
           {
             "id": "protected-areas-fill",
@@ -68,7 +67,6 @@
       "buffer-zones": {
         "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
-        "belowHeatmap": true,
         "style": [
           {
             "id": "buffer-zones-fill",
