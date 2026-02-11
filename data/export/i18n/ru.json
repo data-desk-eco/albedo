@@ -1,5 +1,4 @@
 {
-  "allVessels": "типы судов",
   "selectPlace": "места",
   "unknown": "неизвестно",
   "vessel": "судно",
@@ -14,6 +13,8 @@
   "multiYearShort": "годы",
   "sectionVessel": "активность судов",
   "sectionVesselShort": "суда",
+  "sectionTypes": "маркеры",
+  "sectionTypesShort": "маркеры",
   "sectionLayers": "слои карты",
   "sectionLayersShort": "слои",
   "sectionData": "источники данных",

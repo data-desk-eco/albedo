@@ -2,14 +2,14 @@
  * Configuration — manifest loading, MapLibre style generation
  */
 
-// Year color palette (must match cog.js)
+// Year color palette (must match cog.js) — Arctida brand blues, dark→light (oldest→newest)
 const YEAR_PALETTE = [
-  [41, 136, 255],   // #2988FF
-  [112, 223, 238],  // #70DFEE
-  [204, 227, 255],  // #CCE3FF
-  [0, 99, 219],     // #0063DB
-  [133, 187, 255],  // #85BBFF
-  [70, 213, 217],   // #46D5D9
+  [41, 136, 255],   // #2988FF — oldest year (brand Blue 5)
+  [97, 167, 255],   // #61A7FF — middle year (brand Blue 7)
+  [168, 207, 255],  // #A8CFFF — newest year (brand Blue 9)
+  [30, 106, 255],   // #1E6AFF — future (brand primary)
+  [133, 187, 255],  // #85BBFF — future (brand Blue 8)
+  [204, 227, 255],  // #CCE3FF — future (brand Blue 10)
 ]
 
 export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'

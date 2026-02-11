@@ -1,5 +1,4 @@
 {
-  "allVessels": "vessel types",
   "selectPlace": "places",
   "unknown": "unknown",
   "vessel": "vessel",
@@ -14,6 +13,8 @@
   "multiYearShort": "multi",
   "sectionVessel": "vessel activity",
   "sectionVesselShort": "vessels",
+  "sectionTypes": "highlights",
+  "sectionTypesShort": "alerts",
   "sectionLayers": "map layers",
   "sectionLayersShort": "layers",
   "sectionData": "data sources",

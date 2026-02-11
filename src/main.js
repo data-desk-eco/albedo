@@ -12,9 +12,7 @@ let maplibregl, cogModule, dataModule
 
 // App state
 let manifest, map
-let currentCategory = 'all'
 let currentFlagFilter = 'all'
-let categories = []
 let cogUrls = {}
 let flagCogUrls = {}
 let activeYears = new Set()
@@ -126,6 +124,7 @@ function updateUI() {
 
   $('legend-multi-year').textContent = t(narrow ? 'multiYearShort' : 'multiYear')
   $('legend-section-vessel').textContent = t(narrow ? 'sectionVesselShort' : 'sectionVessel')
+  $('legend-section-types').textContent = t(narrow ? 'sectionTypesShort' : 'sectionTypes')
   $('legend-section-layers').textContent = t(narrow ? 'sectionLayersShort' : 'sectionLayers')
 
   // Layer toggle labels
@@ -170,7 +169,6 @@ function updateUI() {
       if (place) $('places-info').innerHTML = `<span>${localize(place.description)}</span>`
     }
   }
-  if (categories.length > 0) populateCategoryDropdown()
   populateFlagDropdown()
   $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
 }
@@ -271,24 +269,7 @@ function toggleYear(year) {
   updateHeatmapSource()
   updateMultiYearLegend()
   updateSanctionsFilter()
-}
-
-// --- Categories ---
-
-function loadCategories() {
-  categories = [{ id: 'all', label: t('allVessels') }]
-  for (const type of Object.keys(manifest?.data?.cogsByType || {}).sort()) {
-    categories.push({ id: type, label: tVesselType(type) })
-  }
-  populateCategoryDropdown()
-}
-
-function populateCategoryDropdown() {
-  const select = $('category-select')
-  if (categories.length <= 1) { select.classList.add('hidden'); return }
-  select.classList.remove('hidden')
-  select.innerHTML = categories.map(c => `<option value="${c.id}">${c.label}</option>`).join('')
-  select.value = currentCategory
+  updateOldTankersFilter()
 }
 
 // --- Flag filter ---
@@ -334,12 +315,8 @@ function updateSanctionsFilter() {
     ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
     : ['literal', false]
 
-  // Combine with vessel type and flag filters
+  // Combine with flag filters
   const conditions = [yearFilter]
-
-  if (currentCategory !== 'all') {
-    conditions.push(['has', `t_${currentCategory}`])
-  }
 
   if (currentFlagFilter === 'foreign') {
     conditions.push(['has', 'f_foreign'])
@@ -360,6 +337,48 @@ function setSanctionsVisibility(visible) {
   }
 }
 
+function setOldTankersVisibility(visible) {
+  for (const id of ['old-tankers-fill', 'old-tankers-outline']) {
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none')
+  }
+}
+
+function updateOldTankersFilter() {
+  const toggle = $('old-tanker-toggle')
+  const hasYears = activeYears.size > 0
+
+  if (!hasYears) {
+    toggle.classList.add('disabled')
+    if (showOldTankersOnly) {
+      showOldTankersOnly = false
+      toggle.classList.remove('active')
+      setOldTankersVisibility(false)
+    }
+  } else {
+    toggle.classList.remove('disabled')
+  }
+
+  if (!map) return
+
+  const yearFilter = hasYears
+    ? ['any', ...Array.from(activeYears).map(y => ['has', `y${y}`])]
+    : ['literal', false]
+
+  const conditions = [yearFilter]
+
+  if (currentFlagFilter === 'foreign') {
+    conditions.push(['has', 'f_foreign'])
+  } else if (currentFlagFilter !== 'all') {
+    conditions.push(['has', `f_${currentFlagFilter}`])
+  }
+
+  const filter = conditions.length === 1 ? conditions[0] : ['all', ...conditions]
+
+  for (const id of ['old-tankers-fill', 'old-tankers-outline']) {
+    if (map.getLayer(id)) map.setFilter(id, filter)
+  }
+}
+
 async function loadSanctions(manifestDir) {
   const url = manifest?.data?.sanctionedMmsi
   if (!url) return
@@ -369,6 +388,7 @@ async function loadSanctions(manifestDir) {
     sanctionedMmsi = new Set(await resp.json())
     console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
     $('sanctions-toggle').classList.remove('hidden')
+    $('legend-section-types').classList.remove('hidden')
     $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
     updateSanctionsFilter()
   } catch (err) {
@@ -387,6 +407,7 @@ async function loadVesselMetadata(manifestDir) {
     console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels (${tankerCount} oil tankers)`)
     if (tankerCount > 0) {
       $('old-tanker-toggle').classList.remove('hidden')
+      $('legend-section-types').classList.remove('hidden')
       $('old-tanker-label').textContent = t(window.innerWidth <= 768 ? 'oldTankerShort' : 'oldTanker')
     }
   } catch (err) {
@@ -398,7 +419,7 @@ async function loadVesselMetadata(manifestDir) {
 
 function getActiveCogUrl() {
   if (currentFlagFilter !== 'all' && flagCogUrls[currentFlagFilter]) return flagCogUrls[currentFlagFilter]
-  return cogUrls[currentCategory] || cogUrls.all
+  return cogUrls.all
 }
 
 async function switchActiveCOG() {
@@ -409,17 +430,6 @@ async function switchActiveCOG() {
     refreshHeatmapTiles()
   } catch (err) {
     console.warn('Failed to switch COG:', err)
-  }
-}
-
-async function selectCategory(categoryId) {
-  if (categoryId === currentCategory) return
-  const prev = currentCategory
-  currentCategory = categoryId
-  try { await switchActiveCOG() } catch (err) {
-    console.error('Failed to switch COG:', err)
-    currentCategory = prev
-    $('category-select').value = prev
   }
 }
 
@@ -586,7 +596,6 @@ async function initPhase2(manifestDir) {
   // Build COG URL maps
   const baseCogUrl = resolveUrl(manifest.data?.cog || 'vessel_heatmap.tif', manifestDir)
   cogUrls = { all: baseCogUrl }
-  for (const [k, v] of Object.entries(manifest.data?.cogsByType || {})) cogUrls[k] = resolveUrl(v, manifestDir)
   flagCogUrls = { all: baseCogUrl }
   for (const [k, v] of Object.entries(manifest.data?.cogsByFlag || {})) flagCogUrls[k] = resolveUrl(v, manifestDir)
 
@@ -649,7 +658,6 @@ async function initPhase2(manifestDir) {
   updateMultiYearLegend()
   populatePlacesDropdown()
   populateFlagDropdown()
-  loadCategories()
   updateUI()
 
   document.body.classList.add('app-ready')
@@ -683,13 +691,12 @@ function setupMapHandlers() {
 
     const { lat, lng } = e.lngLat
     const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
-    const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentCategory}_${currentFlagFilter}`
+    const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentFlagFilter}`
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
 
     try {
-      const vesselType = currentCategory === 'all' ? null : currentCategory
-      const vessels = await dataModule.queryVesselsAt(lat, lng, year, vesselType)
+      const vessels = await dataModule.queryVesselsAt(lat, lng, year)
       if (vessels?.length && showRasterTooltip(vessels)) return
     } catch { /* ignore */ }
 
@@ -733,7 +740,7 @@ function setupMapHandlers() {
       const { lat, lng } = e.lngLat
       const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
       try {
-        if (showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year, currentCategory === 'all' ? null : currentCategory))) return
+        if (showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year))) return
       } catch { /* ignore */ }
     }
 
@@ -759,20 +766,15 @@ function setupUIHandlers() {
     $('lang-toggle').textContent = lang === 'ru' ? 'en' : 'ру'
     updateUI()
     updateMapLabels()
-    loadCategories()
   })
 
   $('about-modal').addEventListener('click', () => document.body.classList.remove('about-visible'))
-
-  $('category-select').addEventListener('change', e => {
-    selectCategory(e.target.value)
-    updateSanctionsFilter()
-  })
 
   $('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
     await switchActiveCOG()
     updateSanctionsFilter()
+    updateOldTankersFilter()
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
@@ -784,8 +786,10 @@ function setupUIHandlers() {
   })
 
   $('old-tanker-toggle').addEventListener('click', () => {
+    if ($('old-tanker-toggle').classList.contains('disabled')) return
     showOldTankersOnly = !showOldTankersOnly
     $('old-tanker-toggle').classList.toggle('active', showOldTankersOnly)
+    setOldTankersVisibility(showOldTankersOnly)
     // Re-filter current tooltip if visible
     if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })

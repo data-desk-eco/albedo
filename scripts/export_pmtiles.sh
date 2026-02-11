@@ -114,12 +114,21 @@ if [ -f "$EXPORT_DIR/sanctioned_mmsi.json" ]; then
   uv run python scripts/export_sanctions_layer.py
 fi
 
+echo "Exporting old tanker vessel positions..."
+# Generate old tanker GeoJSON from DuckDB + vessel metadata
+if [ -f "$EXPORT_DIR/vessel_metadata.json" ]; then
+  uv run python scripts/export_old_tankers_layer.py
+fi
+
 echo "Creating PMTiles with tippecanoe..."
 
 # Build layer args
 LAYER_ARGS="-L protected_areas:$TEMP_DIR/protected_areas.geojson -L buffer_zones:$TEMP_DIR/buffer_zones.geojson -L places:$TEMP_DIR/places.geojson"
 if [ -f "$TEMP_DIR/sanctioned_vessels.geojson" ]; then
   LAYER_ARGS="$LAYER_ARGS -L sanctioned_vessels:$TEMP_DIR/sanctioned_vessels.geojson"
+fi
+if [ -f "$TEMP_DIR/old_tankers.geojson" ]; then
+  LAYER_ARGS="$LAYER_ARGS -L old_tankers:$TEMP_DIR/old_tankers.geojson"
 fi
 
 # Create PMTiles with all layers

@@ -38,7 +38,6 @@ html, body {
 #tooltip,
 #legend,
 #places-info,
-#category-select,
 #flag-select,
 #places-select,
 #lang-toggle,
@@ -379,7 +378,6 @@ body.app-ready #zoom-controls {
   color: var(--ui-color);
 }
 
-#category-select,
 #flag-select,
 #places-select {
   padding: 8px 12px;
@@ -394,13 +392,11 @@ body.app-ready #zoom-controls {
   background-position: right 10px center;
 }
 
-#category-select:hover,
 #flag-select:hover,
 #places-select:hover {
   background: var(--ui-bg-hover);
 }
 
-#category-select option,
 #flag-select option,
 #places-select option {
   background: #1a1a1a;
@@ -433,7 +429,7 @@ body.app-ready #zoom-controls {
 }
 
 .old-tanker-badge {
-  color: #ff8800;
+  color: #00D7ED;
 }
 
 #places-info {

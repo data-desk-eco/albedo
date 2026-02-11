@@ -39,12 +39,6 @@
     "cog": "vessel_heatmap.tif",
     "vesselData": "vessel_data.bin",
     "sanctionedMmsi": "sanctioned_mmsi.json",
-    "cogsByType": {
-      "FISHING": "vessel_heatmap_fishing.tif",
-      "CARGO": "vessel_heatmap_cargo.tif",
-      "PASSENGER": "vessel_heatmap_passenger.tif",
-      "CARRIER": "vessel_heatmap_carrier.tif"
-    },
     "cogsByFlag": {
       "foreign": "vessel_heatmap_flag_foreign.tif",
       "RUS": "vessel_heatmap_flag_rus.tif",
@@ -67,6 +61,7 @@
       "protected-areas": {
         "url": "vectors.pmtiles",
         "defaultVisible": true,
+        "belowHeatmap": true,
         "style": [
           {
             "id": "protected-areas-fill",
@@ -144,6 +139,31 @@
           }
         ]
       },
+      "old-tankers": {
+        "url": "vectors.pmtiles",
+        "defaultVisible": false,
+        "style": [
+          {
+            "id": "old-tankers-fill",
+            "type": "fill",
+            "source-layer": "old_tankers",
+            "paint": {
+              "fill-color": "#00D7ED",
+              "fill-opacity": 0.8
+            }
+          },
+          {
+            "id": "old-tankers-outline",
+            "type": "line",
+            "source-layer": "old_tankers",
+            "paint": {
+              "line-color": "#00D7ED",
+              "line-width": 1,
+              "line-opacity": 0.9
+            }
+          }
+        ]
+      },
       "places": {
         "url": "vectors.pmtiles",
         "defaultVisible": true,
@@ -158,7 +178,7 @@
                 "coalesce",
                 [
                   "get",
-                  "name_en"
+                  "name_ru"
                 ],
                 [
                   "get",

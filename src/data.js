@@ -27,7 +27,7 @@ export async function initData(baseUrl, manifest) {
   }
 }
 
-export async function queryVesselsAt(lat, lon, year = null, vesselType = null) {
+export async function queryVesselsAt(lat, lon, year = null) {
   if (lat < southLatCutoff) return []
-  return queryTileVessels(lat, lon, year, vesselType)
+  return queryTileVessels(lat, lon, year)
 }
