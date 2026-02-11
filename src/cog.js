@@ -34,7 +34,7 @@ function parseGDALMetadata(xml) {
   return result
 }
 
-const OVERLAY_OLD_TANKER = [0, 215, 237]    // #00D7ED — cyan
+const OVERLAY_OLD_TANKER = [255, 204, 0]     // #FFCC00 — yellow
 const OVERLAY_SANCTIONS = [255, 59, 48]      // #FF3B30 — red
 const OVERLAY_ALPHA = 0.8
 
