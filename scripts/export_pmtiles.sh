@@ -120,6 +120,7 @@ tippecanoe \
   --no-feature-limit \
   --no-tile-size-limit \
   --no-tiny-polygon-reduction \
+  -r1 \
   --minimum-zoom=0 \
   --maximum-zoom=10 \
   $LAYER_ARGS
