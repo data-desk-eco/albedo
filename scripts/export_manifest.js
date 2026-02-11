@@ -196,14 +196,15 @@ const manifest = {
             id: 'place-labels',
             type: 'symbol',
             'source-layer': 'places',
-            minzoom: 0,
+            minzoom: 2,
             layout: {
               'text-field': ['coalesce', ['get', `name_${env.DEFAULT_LANG || 'en'}`], ['get', 'name_en']],
               'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-              'text-size': ['interpolate', ['linear'], ['zoom'], 2.5, 12, 10, 20],
+              'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 8, 16],
               'text-anchor': 'center',
-              'text-padding': 0,
-              'text-allow-overlap': false
+              'text-padding': 1,
+              'text-allow-overlap': false,
+              'symbol-sort-key': ['get', 'scalerank']
             },
             paint: {
               'text-color': '#666666',

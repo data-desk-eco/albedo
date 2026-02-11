@@ -80,7 +80,7 @@ SELECT json_object(
   )
 ) as geojson
 FROM ST_Read('$DATA_ROOT/ne_10m_populated_places/ne_10m_populated_places.shp')
-WHERE SCALERANK <= 5 AND ST_Y(geom) >= $MIN_LAT;
+WHERE SCALERANK <= 8 AND ST_Y(geom) >= $MIN_LAT;
 " | jq -r '.[0].geojson' > "$TEMP_DIR/places.geojson"
 
 # Export buffer zones as GeoJSON FeatureCollection with bilingual properties

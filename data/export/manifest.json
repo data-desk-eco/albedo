@@ -126,7 +126,7 @@
             "id": "place-labels",
             "type": "symbol",
             "source-layer": "places",
-            "minzoom": 0,
+            "minzoom": 2,
             "layout": {
               "text-field": [
                 "coalesce",
@@ -151,14 +151,18 @@
                 [
                   "zoom"
                 ],
-                2.5,
-                12,
+                2,
                 10,
-                20
+                8,
+                16
               ],
               "text-anchor": "center",
-              "text-padding": 0,
-              "text-allow-overlap": false
+              "text-padding": 1,
+              "text-allow-overlap": false,
+              "symbol-sort-key": [
+                "get",
+                "scalerank"
+              ]
             },
             "paint": {
               "text-color": "#666666",
