@@ -2,8 +2,8 @@
  * Configuration — manifest loading, MapLibre style generation
  */
 
-// Year color palette (must match cog.js) — Arctida brand blues, dark→light (oldest→newest)
-const YEAR_PALETTE = [
+// Year color palette — Arctida brand blues, dark→light (oldest→newest)
+export const YEAR_PALETTE = [
   [41, 136, 255],   // #2988FF — oldest year (brand Blue 5)
   [97, 167, 255],   // #61A7FF — middle year (brand Blue 7)
   [168, 207, 255],  // #A8CFFF — newest year (brand Blue 9)

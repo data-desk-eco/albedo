@@ -4,16 +4,7 @@
  */
 
 import { COGTileSource } from '../tools/cog-tiles/src/index.js'
-
-// Year color palette — Arctida brand blues, dark→light (oldest→newest)
-const YEAR_PALETTE = [
-  [41, 136, 255],   // #2988FF — oldest year (brand Blue 5)
-  [97, 167, 255],   // #61A7FF — middle year (brand Blue 7)
-  [168, 207, 255],  // #A8CFFF — newest year (brand Blue 9)
-  [30, 106, 255],   // #1E6AFF — future (brand primary)
-  [133, 187, 255],  // #85BBFF — future (brand Blue 8)
-  [204, 227, 255],  // #CCE3FF — future (brand Blue 10)
-]
+import { YEAR_PALETTE } from './config.js'
 
 const MULTI_YEAR_COLOR = [169, 178, 194]  // #A9B2C2 — Arctida blue-gray
 const DOMINANCE_THRESHOLD = 0.6
@@ -24,15 +15,6 @@ let selectedBands = [0, 1, 2]
 let showLand = true
 let showSanctioned = false
 let showOldTankers = false
-
-function parseGDALMetadata(xml) {
-  if (!xml) return {}
-  const result = {}
-  for (const m of xml.matchAll(/<Item\s+name="([^"]+)"[^>]*>([^<]*)<\/Item>/g)) {
-    result[m[1]] = m[2].replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&apos;/g, "'")
-  }
-  return result
-}
 
 const OVERLAY_OLD_TANKER = [255, 204, 0]     // #FFCC00 — yellow
 const OVERLAY_SANCTIONS = [255, 59, 48]      // #FF3B30 — red
@@ -90,7 +72,7 @@ function createVesselColorizer() {
       r = 0; g = 0; b = 0
     }
 
-    // Composite old tanker overlay (cyan)
+    // Composite old tanker overlay (yellow)
     if (oldTankerTotal > 0) {
       ;[r, g, b] = alphaBlend([r, g, b], OVERLAY_OLD_TANKER, OVERLAY_ALPHA)
     }
@@ -107,7 +89,7 @@ function createVesselColorizer() {
 export async function initCOG(url) {
   cogSource = new COGTileSource(url, { colorize: createVesselColorizer() })
   const metadata = await cogSource.initialize()
-  const gdal = parseGDALMetadata(metadata.fileDirectory?.GDAL_METADATA)
+  const gdal = metadata.gdalMetadata || {}
 
   if (gdal.ALBEDO_CONFIG) {
     const config = JSON.parse(gdal.ALBEDO_CONFIG)
@@ -146,4 +128,4 @@ export function setOverlayState({ sanctioned, oldTankers }) {
   if (oldTankers !== undefined) showOldTankers = oldTankers
 }
 
-export { YEAR_PALETTE }
+export { YEAR_PALETTE } from './config.js'

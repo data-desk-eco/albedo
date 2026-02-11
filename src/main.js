@@ -26,7 +26,8 @@ let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
 let isBouncingBack = false
 
-// COG tile cache
+// COG tile cache (FIFO eviction)
+const COG_CACHE_MAX = 512
 const cogTileCache = new Map()
 let activeYearBands = []
 
@@ -173,7 +174,6 @@ function updateUI() {
     }
   }
   populateFlagDropdown()
-  $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
 }
 
 // --- Legend ---
@@ -277,56 +277,52 @@ function toggleYear(year) {
 
 // --- Flag filter ---
 
-const FLAG_PRESETS = [
-  { id: 'all', labelKey: 'allFlags' },
-  { id: 'foreign', labelKey: 'foreignFlag' },
-  { id: 'RUS', label: 'russia' }, { id: 'NOR', label: 'norway' }, { id: 'PAN', label: 'panama' }, { id: 'LBR', label: 'liberia' },
-  { id: 'MHL', label: 'marshall islands' }, { id: 'MLT', label: 'malta' }, { id: 'CHN', label: 'china' }, { id: 'GBR', label: 'united kingdom' },
-]
+function getFlagPresets() {
+  if (manifest?.ui?.flagPresets) return manifest.ui.flagPresets
+  // Derive from cogsByFlag keys for older manifests
+  const flags = Object.keys(manifest?.data?.cogsByFlag || {})
+  if (!flags.length) return []
+  return [
+    { id: 'all', labelKey: 'allFlags' },
+    ...flags.map(id => id === 'foreign' ? { id, labelKey: 'foreignFlag' } : { id, label: id.toLowerCase() })
+  ]
+}
 
 function populateFlagDropdown() {
+  const presets = getFlagPresets()
   const select = $('flag-select')
+  if (!presets.length) { select.classList.add('hidden'); return }
   select.classList.remove('hidden')
-  select.innerHTML = FLAG_PRESETS.map(p =>
+  select.innerHTML = presets.map(p =>
     `<option value="${p.id}">${p.labelKey ? t(p.labelKey) : p.label || p.id}</option>`
   ).join('')
   select.value = currentFlagFilter
 }
 
-// --- Sanctions ---
+// --- Overlay toggles ---
+
+function syncOverlayToggle(elementId, isActive, resetFn) {
+  const toggle = $(elementId)
+  if (activeYears.size > 0) { toggle.classList.remove('disabled'); return }
+  toggle.classList.add('disabled')
+  if (!isActive) return
+  resetFn()
+  toggle.classList.remove('active')
+  refreshHeatmapTiles()
+}
 
 function updateSanctionsFilter() {
-  const toggle = $('sanctions-toggle')
-  const hasYears = activeYears.size > 0
-
-  if (!hasYears) {
-    toggle.classList.add('disabled')
-    if (showSanctionedOnly) {
-      showSanctionedOnly = false
-      toggle.classList.remove('active')
-      cogModule?.setOverlayState({ sanctioned: false })
-      refreshHeatmapTiles()
-    }
-  } else {
-    toggle.classList.remove('disabled')
-  }
+  syncOverlayToggle('sanctions-toggle', showSanctionedOnly, () => {
+    showSanctionedOnly = false
+    cogModule?.setOverlayState({ sanctioned: false })
+  })
 }
 
 function updateOldTankersFilter() {
-  const toggle = $('old-tanker-toggle')
-  const hasYears = activeYears.size > 0
-
-  if (!hasYears) {
-    toggle.classList.add('disabled')
-    if (showOldTankersOnly) {
-      showOldTankersOnly = false
-      toggle.classList.remove('active')
-      cogModule?.setOverlayState({ oldTankers: false })
-      refreshHeatmapTiles()
-    }
-  } else {
-    toggle.classList.remove('disabled')
-  }
+  syncOverlayToggle('old-tanker-toggle', showOldTankersOnly, () => {
+    showOldTankersOnly = false
+    cogModule?.setOverlayState({ oldTankers: false })
+  })
 }
 
 async function loadSanctions(manifestDir) {
@@ -426,10 +422,11 @@ function isOldTanker(mmsi) {
 
 function filterVesselsByFlags(vessels) {
   if (currentFlagFilter === 'all') return vessels
-  let filtered = vessels
-  if (currentFlagFilter === 'foreign') filtered = filtered.filter(v => v.flag && v.flag !== 'RUS')
-  else if (currentFlagFilter !== 'all') filtered = filtered.filter(v => v.flag === currentFlagFilter)
-  return filtered
+  if (currentFlagFilter === 'foreign') {
+    const home = manifest?.ui?.homeFlag
+    return home ? vessels.filter(v => v.flag && v.flag !== home) : vessels
+  }
+  return vessels.filter(v => v.flag === currentFlagFilter)
 }
 
 function showRasterTooltip(vessels, isRefilter = false) {
@@ -568,6 +565,7 @@ async function initPhase2(manifestDir) {
     if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
     const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(key, buf)
+    if (cogTileCache.size > COG_CACHE_MAX) cogTileCache.delete(cogTileCache.keys().next().value)
     return { data: buf }
   })
 

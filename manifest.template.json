@@ -49,7 +49,6 @@
       "protected-areas": {
         "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
-        "belowHeatmap": true,
         "style": [
           {
             "id": "protected-areas-fill",
@@ -68,7 +67,6 @@
       "buffer-zones": {
         "url": "${COG_BASE_URL}vectors.pmtiles",
         "defaultVisible": true,
-        "belowHeatmap": true,
         "style": [
           {
             "id": "buffer-zones-fill",
@@ -122,6 +120,19 @@
     "favicon": "${UI_FAVICON}",
     "defaultLang": "${DEFAULT_LANG}",
     "availableLangs": ${AVAILABLE_LANGS},
+    "flagPresets": [
+      { "id": "all", "labelKey": "allFlags" },
+      { "id": "foreign", "labelKey": "foreignFlag" },
+      { "id": "RUS", "label": "russia" },
+      { "id": "NOR", "label": "norway" },
+      { "id": "PAN", "label": "panama" },
+      { "id": "LBR", "label": "liberia" },
+      { "id": "MHL", "label": "marshall islands" },
+      { "id": "MLT", "label": "malta" },
+      { "id": "CHN", "label": "china" },
+      { "id": "GBR", "label": "united kingdom" }
+    ],
+    "homeFlag": "${HOME_FLAG}",
     "sourceLink": {
       "url": "${SOURCE_URL}",
       "label": { "en": "${SOURCE_LABEL}", "ru": "${SOURCE_LABEL}" },

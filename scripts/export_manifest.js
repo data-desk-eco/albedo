@@ -36,13 +36,28 @@ for (const type of vesselTypes) {
   cogsByType[type] = `${cogBase}vessel_heatmap_${suffix}.tif`
 }
 
-// Build cogsByFlag from FLAG_PRESETS
-const flagPresets = (env.FLAG_PRESETS || 'foreign,RUS,NOR,PAN,LBR,MHL,MLT,CHN,GBR').split(',').filter(Boolean)
+// Build cogsByFlag and UI flag presets from FLAG_PRESETS
+const FLAG_LABELS = {
+  RUS: 'russia', NOR: 'norway', PAN: 'panama', LBR: 'liberia',
+  MHL: 'marshall islands', MLT: 'malta', CHN: 'china', GBR: 'united kingdom',
+  USA: 'united states', JPN: 'japan', KOR: 'south korea', SGP: 'singapore',
+  CYP: 'cyprus', BHS: 'bahamas', GRC: 'greece', HKG: 'hong kong',
+  DNK: 'denmark', DEU: 'germany', TUR: 'turkey', IND: 'india',
+}
+const flagPresetIds = (env.FLAG_PRESETS || 'foreign,RUS,NOR,PAN,LBR,MHL,MLT,CHN,GBR').split(',').filter(Boolean)
 const cogsByFlag = {}
-for (const flag of flagPresets) {
+for (const flag of flagPresetIds) {
   const suffix = flag.toLowerCase()
   cogsByFlag[flag] = `${cogBase}vessel_heatmap_flag_${suffix}.tif`
 }
+const uiFlagPresets = [
+  { id: 'all', labelKey: 'allFlags' },
+  ...flagPresetIds.map(id =>
+    id === 'foreign'
+      ? { id: 'foreign', labelKey: 'foreignFlag' }
+      : { id, label: FLAG_LABELS[id] || id.toLowerCase() }
+  )
+]
 
 // Load places from data/places.json or fall back to PLACES_JSON env var
 let places = []
@@ -135,7 +150,6 @@ const manifest = {
       'protected-areas': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
-        belowHeatmap: true,
         style: [
           {
             id: 'protected-areas-fill',
@@ -154,7 +168,6 @@ const manifest = {
       'buffer-zones': {
         url: `${cogBase}vectors.pmtiles`,
         defaultVisible: true,
-        belowHeatmap: true,
         style: [
           {
             id: 'buffer-zones-fill',
@@ -208,6 +221,8 @@ const manifest = {
     favicon: env.UI_FAVICON || '#00ffff',
     defaultLang: env.DEFAULT_LANG || 'en',
     availableLangs,
+    flagPresets: uiFlagPresets.length > 1 ? uiFlagPresets : undefined,
+    homeFlag: env.HOME_FLAG || undefined,
     sourceLink: {
       url: env.SOURCE_URL || '',
       label: { en: env.SOURCE_LABEL || '', ru: env.SOURCE_LABEL || '' },
