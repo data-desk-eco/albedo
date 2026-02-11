@@ -96,12 +96,13 @@
             "type": "symbol",
             "source-layer": "places",
             "minzoom": 2,
+            "filter": ["<=", ["get", "scalerank"], ["step", ["zoom"], 2, 3, 3, 4, 5, 6, 8]],
             "layout": {
               "text-field": ["coalesce", ["get", "name_${DEFAULT_LANG}"], ["get", "name_en"]],
               "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
               "text-size": ["interpolate", ["linear"], ["zoom"], 2, 10, 8, 16],
               "text-anchor": "center",
-              "text-padding": 1,
+              "text-padding": 2,
               "text-allow-overlap": false,
               "symbol-sort-key": ["get", "scalerank"]
             },

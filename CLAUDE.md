@@ -93,7 +93,8 @@ configurable band offsets (`sanctionsBandOffset`, `oldTankerBandOffset`).
 - **Sanctions**: Red overlay. Toggled via the sanctions button in the legend.
 - **Old tankers**: Yellow overlay for oil tankers >25 years old.
 - **Binary tiles**: Both get priority ranking so they always appear in tooltips
-  with full detail (name, MMSI, flag, type, hours, status badge).
+  with full detail (name, MMSI, flag, type, hours). Sanctioned vessels show a
+  status badge; old tankers do not (vessel type is sufficient).
 
 Both toggles work with all filter combinations (year, type, flag).
 

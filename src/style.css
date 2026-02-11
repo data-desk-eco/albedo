@@ -601,7 +601,7 @@ body.app-ready #zoom-controls {
 
   #tooltip {
     min-width: auto;
-    max-width: 260px;
+    max-width: none;
   }
 
   #about-content h2 {

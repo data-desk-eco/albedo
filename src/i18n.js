@@ -14,7 +14,7 @@ export async function initI18n(manifest, baseUrl) {
   const browserLang = navigator.languages
     ?.map(l => l.split('-')[0])
     .find(l => availableLangs.includes(l))
-  currentLang = localStorage.getItem('lang') || browserLang || manifest.ui?.defaultLang || availableLangs[0]
+  currentLang = localStorage.getItem('lang') || browserLang || manifest.ui?.defaultLang
 
   if (!availableLangs.includes(currentLang)) currentLang = availableLangs[0]
   await loadLanguage(currentLang)
