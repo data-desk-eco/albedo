@@ -24,6 +24,7 @@ let vesselMeta = {}
 let showSanctionedOnly = false
 let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
+let isBouncingBack = false
 
 // COG tile cache
 const cogTileCache = new Map()
@@ -126,6 +127,8 @@ function updateUI() {
   $('legend-section-vessel').textContent = t(narrow ? 'sectionVesselShort' : 'sectionVessel')
   $('legend-section-types').textContent = t(narrow ? 'sectionTypesShort' : 'sectionTypes')
   $('legend-section-layers').textContent = t(narrow ? 'sectionLayersShort' : 'sectionLayers')
+  $('legend-section-layers').classList.toggle('hidden', narrow)
+  $('legend-layers').classList.toggle('hidden', narrow)
 
   // Layer toggle labels
   ;(manifest.ui?.layerToggles || []).forEach((toggle, i) => {
@@ -277,15 +280,15 @@ function toggleYear(year) {
 const FLAG_PRESETS = [
   { id: 'all', labelKey: 'allFlags' },
   { id: 'foreign', labelKey: 'foreignFlag' },
-  { id: 'RUS' }, { id: 'NOR' }, { id: 'PAN' }, { id: 'LBR' },
-  { id: 'MHL' }, { id: 'MLT' }, { id: 'CHN' }, { id: 'GBR' },
+  { id: 'RUS', label: 'russia' }, { id: 'NOR', label: 'norway' }, { id: 'PAN', label: 'panama' }, { id: 'LBR', label: 'liberia' },
+  { id: 'MHL', label: 'marshall islands' }, { id: 'MLT', label: 'malta' }, { id: 'CHN', label: 'china' }, { id: 'GBR', label: 'united kingdom' },
 ]
 
 function populateFlagDropdown() {
   const select = $('flag-select')
   select.classList.remove('hidden')
   select.innerHTML = FLAG_PRESETS.map(p =>
-    `<option value="${p.id}">${p.labelKey ? t(p.labelKey) : p.id}</option>`
+    `<option value="${p.id}">${p.labelKey ? t(p.labelKey) : p.label || p.id}</option>`
   ).join('')
   select.value = currentFlagFilter
 }
@@ -703,6 +706,24 @@ function setupMapHandlers() {
   })
 
   map.on('zoom', () => { if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) hideTooltip() })
+
+  // Gentle nudge back when user pans below the study area
+  const southLat = manifest.map?.bounds?.south || 57
+  function bounceBack() {
+    const center = map.getCenter()
+    const zoom = map.getZoom()
+    const minLat = zoom > 4 ? southLat - 10 : southLat
+    if (center.lat >= minLat) { isBouncingBack = false; return }
+    isBouncingBack = true
+    const targetLat = minLat + 2
+    map.easeTo({
+      center: [center.lng, targetLat],
+      duration: 600,
+      easing: (t) => t * (2 - t)
+    })
+    map.once('moveend', bounceBack)
+  }
+  map.on('moveend', () => { if (!isBouncingBack) bounceBack() })
 }
 
 // --- UI handlers ---

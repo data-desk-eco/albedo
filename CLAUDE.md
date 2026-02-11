@@ -28,11 +28,11 @@ albedo/
 │   ├── convert.sh         # JSON to Parquet conversion
 │   ├── export_raster.sh   # COG generation (uses create_raster.py, raster_utils.py)
 │   ├── export_pmtiles.sh  # Vector tile generation via tippecanoe (bilingual)
-│   ├── export_sanctions_layer.py  # Sanctioned vessel grid polygons (rendering only)
 │   ├── export_buffer_zones.py     # Protected area buffer zone GeoJSON
 │   ├── export_tiles.py    # Hilbert-indexed binary vessel data (year bitmask)
 │   ├── export_manifest.js # Manifest generation with env quote stripping
-│   └── ingest_vessel_metadata.py  # Vessel build year + DWT enrichment
+│   ├── ingest_vessel_metadata.py  # Vessel build year + DWT enrichment
+│   └── ingest_tankers.py  # Oil tanker fleet data ingestion
 ├── etl/
 │   └── transform.sql      # DuckDB SQL transformations
 ├── tools/
@@ -63,7 +63,7 @@ The app is fully static - all computation happens in the browser:
 ```
 GCS/CDN                          Browser
 ├── vessel_heatmap*.tif (COGs)   geotiff.js → raster tiles via cog-tiles
-├── vectors.pmtiles              pmtiles → protected areas, places, sanctions
+├── vectors.pmtiles              pmtiles → protected areas, buffer zones, places
 ├── vessel_data.bin              vessel-tiles.js → Hilbert-indexed tooltips
 ├── i18n/{lang}.json             i18n.js → UI translations
 ├── sanctioned_mmsi.json         Sanctions MMSI set (client-side badge matching)
@@ -84,18 +84,18 @@ across years). Sanctioned vessels are prioritized in the per-cell ranking so the
 always appear. Each entry carries a year bitmask (u8, bit 0 = 2020) enabling
 year filtering without wasting slots on duplicate year entries.
 
-## Sanctions Layer
+## Sanctions & Old Tanker Overlays
 
-Two complementary data sources:
+Both overlays are rendered via dedicated COG raster bands (not vector tiles).
+The main heatmap COG contains per-year bands for sanctions and old tankers at
+configurable band offsets (`sanctionsBandOffset`, `oldTankerBandOffset`).
 
-- **PMTiles polygons**: 0.01° grid cells rendered as red overlay. Boolean
-  properties for year (`y2023`), vessel type (`t_CARGO`), and flag (`f_RUS`,
-  `f_foreign`) enable MapLibre-side filtering. Used for rendering only — no
-  tooltip metadata.
-- **Binary tiles**: Sanctioned vessels get priority ranking so they always appear
-  in tooltips with full detail (name, MMSI, flag, type, hours, sanctions badge).
+- **Sanctions**: Red overlay. Toggled via the sanctions button in the legend.
+- **Old tankers**: Yellow overlay for oil tankers >25 years old.
+- **Binary tiles**: Both get priority ranking so they always appear in tooltips
+  with full detail (name, MMSI, flag, type, hours, status badge).
 
-The sanctions toggle works with all filter combinations (year, type, flag).
+Both toggles work with all filter combinations (year, type, flag).
 
 ## i18n
 
