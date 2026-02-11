@@ -84,12 +84,6 @@ function applyManifestUI() {
   const ui = manifest.ui || {}
   if (ui.title) document.title = ui.title
 
-  // Polar map favicon (top-down Arctic view)
-  const link = document.createElement('link')
-  link.rel = 'icon'
-  link.href = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='31' fill='%23111'/><g fill='%23fff' opacity='0.45'><path d='M4 38c-1-2-1-4-1-6 2 0 4-1 5-3 2-3 0-7 2-9 1-2 4-1 6-2 2-2 2-5 4-7 2-1 4 0 5 1l3 3c1 1 3 1 5 0l3-2c2-2 4-1 6 0 1 1 2 3 4 3 3 1 5-2 8-1 2 1 3 3 3 5h1c0-4-1-8-3-11-1 2-3 3-5 3-3 0-4-3-7-4-2-1-4 1-6 0-2-2-1-5-3-6-3-2-5 1-7 0S26 4 24 5c-3 1-3 5-6 7-2 1-5 0-7 2-3 2-3 7-6 9C4 24 3 22 2 21c-1 3-1 7-1 11 2 0 3 2 3 6z'/><path d='M62 32c0 2 0 4-1 6-1-1-3-2-5-1-3 1-3 5-5 7-2 1-5 0-7 2-2 2-1 5-4 7-2 2-5 0-7 1-3 1-3 5-6 6-2 1-5-1-7-1-3 0-5 3-8 2-2-1-3-3-4-5-2-2-4-2-6-1 0-2-1-5-1-7 2 0 3-2 5-4 2-3 0-6 2-8 2-2 5-1 7-3 2-2 1-6 3-7 3-2 5 1 7 0 3-2 3-6 6-7 2-1 5 1 7 0 2-2 1-5 3-7 2-1 5 0 6 1 1 2 1 5 3 6z'/></g><circle cx='32' cy='32' r='31' fill='none' stroke='%23444' stroke-width='0.75'/></svg>`)}`
-  document.head.appendChild(link)
-
   const theme = ui.theme || {}
   const root = document.documentElement
   const props = { background: '--ui-background', text: '--ui-color', textMuted: '--ui-color-muted', panelBg: '--ui-bg', panelHover: '--ui-bg-hover' }
