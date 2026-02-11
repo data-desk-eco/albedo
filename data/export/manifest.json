@@ -39,6 +39,12 @@
     "cog": "vessel_heatmap.tif",
     "vesselData": "vessel_data.bin",
     "sanctionedMmsi": "sanctioned_mmsi.json",
+    "cogsByType": {
+      "FISHING": "vessel_heatmap_fishing.tif",
+      "CARGO": "vessel_heatmap_cargo.tif",
+      "PASSENGER": "vessel_heatmap_passenger.tif",
+      "CARRIER": "vessel_heatmap_carrier.tif"
+    },
     "cogsByFlag": {
       "foreign": "vessel_heatmap_flag_foreign.tif",
       "RUS": "vessel_heatmap_flag_rus.tif",
