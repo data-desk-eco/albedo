@@ -443,7 +443,12 @@ function showRasterTooltip(vessels, isRefilter = false) {
   if (!vessels?.length) { hideTooltip(); return false }
 
   let filtered = filterVesselsByFlags(vessels)
-  if (showOldTankersOnly) filtered = filtered.filter(v => isOldTanker(v.mmsi))
+  if (showSanctionedOnly || showOldTankersOnly) {
+    filtered = filtered.filter(v =>
+      (showSanctionedOnly && sanctionedMmsi.has(v.mmsi)) ||
+      (showOldTankersOnly && isOldTanker(v.mmsi))
+    )
+  }
   if (!filtered.length) { hideTooltip(); return false }
 
   // Group by MMSI
@@ -754,6 +759,7 @@ function setupUIHandlers() {
     $('sanctions-toggle').classList.toggle('active', showSanctionedOnly)
     cogModule.setOverlayState({ sanctioned: showSanctionedOnly })
     refreshHeatmapTiles()
+    if (lastTooltipVesselsRaw) showRasterTooltip(lastTooltipVesselsRaw, true)
   })
 
   $('old-tanker-toggle').addEventListener('click', () => {
