@@ -52,6 +52,10 @@ import duckdb
 DATA_ROOT = Path(__file__).parent.parent / "data"
 OUTPUT_FILE = DATA_ROOT / "export" / "vessel_data.bin"
 SANCTIONS_PATH = DATA_ROOT / "export" / "sanctioned_mmsi.json"
+VESSEL_META_PATH = DATA_ROOT / "export" / "vessel_metadata.json"
+
+# Vessels older than this are considered "old tankers" and get priority ranking
+OLD_TANKER_AGE_YEARS = 25
 
 # Block size: number of cells per block
 BLOCK_SIZE = 1000
@@ -166,13 +170,42 @@ def build_cells(
             has_sanctions = True
             print(f"  Loaded {len(mmsi_list)} sanctioned MMSIs for priority ranking")
 
+    # Load old tanker MMSIs if available (prioritize after sanctions)
+    has_old_tankers = False
+    if VESSEL_META_PATH.exists():
+        from datetime import date
+
+        cutoff_year = date.today().year - OLD_TANKER_AGE_YEARS
+        meta = json.loads(VESSEL_META_PATH.read_text())
+        old_tanker_mmsis = [
+            mmsi for mmsi, v in meta.items()
+            if v.get("ot") and v.get("y") and v["y"] <= cutoff_year
+        ]
+        if old_tanker_mmsis:
+            db.execute("CREATE TEMP TABLE IF NOT EXISTS old_tanker_mmsi (mmsi VARCHAR)")
+            db.execute("DELETE FROM old_tanker_mmsi")
+            for mmsi in old_tanker_mmsis:
+                db.execute("INSERT INTO old_tanker_mmsi VALUES (?)", [str(mmsi)])
+            has_old_tankers = True
+            print(f"  Loaded {len(old_tanker_mmsis)} old tanker MMSIs for priority ranking")
+
     print("  Querying vessel positions...")
     # Aggregate per (cell, vessel) — one entry per vessel per cell, with a
     # year bitmask so a single slot covers all years of activity.
-    # Sanctioned vessels get priority in per-cell ranking so they always
-    # appear in tooltips even if they have fewer hours than other vessels.
+    # Sanctioned vessels and old tankers get priority in per-cell ranking
+    # so they always appear in tooltips even if they have fewer hours.
     sanctions_join = "LEFT JOIN sanctioned_mmsi sm ON a.mmsi = sm.mmsi" if has_sanctions else ""
-    sanctions_order = "CASE WHEN sm.mmsi IS NOT NULL THEN 0 ELSE 1 END," if has_sanctions else ""
+    old_tanker_join = "LEFT JOIN old_tanker_mmsi ot ON a.mmsi = ot.mmsi" if has_old_tankers else ""
+    # Priority: sanctioned (0) > old tankers (1) > regular vessels (2)
+    priority_parts = []
+    if has_sanctions:
+        priority_parts.append("CASE WHEN sm.mmsi IS NOT NULL THEN 0")
+    if has_old_tankers:
+        priority_parts.append("WHEN ot.mmsi IS NOT NULL THEN 1" if has_sanctions else "CASE WHEN ot.mmsi IS NOT NULL THEN 1")
+    if priority_parts:
+        priority_order = " ".join(priority_parts) + " ELSE 2 END,"
+    else:
+        priority_order = ""
 
     rows = db.execute(
         f"""
@@ -193,10 +226,11 @@ def build_cells(
         ),
         ranked AS (
             SELECT a.*,
-                   ROW_NUMBER() OVER (PARTITION BY a.lat, a.lon ORDER BY {sanctions_order} a.total_hours DESC) as rn,
+                   ROW_NUMBER() OVER (PARTITION BY a.lat, a.lon ORDER BY {priority_order} a.total_hours DESC) as rn,
                    COUNT(*) OVER (PARTITION BY a.lat, a.lon) as cell_count
             FROM agg a
             {sanctions_join}
+            {old_tanker_join}
         )
         SELECT lat, lon, mmsi, flag, vessel_type, years, total_hours, first_seen, last_seen, cell_count
         FROM ranked WHERE rn <= 5

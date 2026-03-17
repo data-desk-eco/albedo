@@ -5,7 +5,7 @@
 
 import './style.css'
 import { initI18n, t, tVesselType, getLang, toggleLang, localize } from './i18n.js'
-import { RASTER_TOOLTIP_MIN_ZOOM, MANIFEST_URL, createMapStyle, getYearColor } from './config.js'
+import { RASTER_TOOLTIP_MIN_ZOOM, MANIFEST_URL, PROTECTED_AREA_COLOR, createMapStyle, getYearColor } from './config.js'
 
 // Lazy-loaded modules
 let maplibregl, cogModule, dataModule
@@ -27,9 +27,9 @@ let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
 let isBouncingBack = false
 
-// COG tile cache (FIFO eviction)
-const COG_CACHE_MAX = 512
-const cogTileCache = new Map()
+// COG tile cache (LRU eviction)
+const COG_CACHE_MAX = 256
+const cogTileCache = new Map()  // Map iteration order = insertion order; re-insert on access for LRU
 let activeYearBands = []
 
 // DOM refs
@@ -253,7 +253,7 @@ function createHatchPattern(color, size = 6) {
 
 const hatchPatterns = Object.fromEntries(
   ['white', 'blue'].flatMap(c => ['sm', 'md', 'lg'].map((s, i) =>
-    [`hatch-${c === 'white' ? 'white' : 'blue'}-${s}`, () => createHatchPattern(c === 'white' ? '#ffffff' : '#037874', [6, 10, 16][i])]
+    [`hatch-${c === 'white' ? 'white' : 'blue'}-${s}`, () => createHatchPattern(c === 'white' ? '#ffffff' : PROTECTED_AREA_COLOR, [6, 10, 16][i])]
   ))
 )
 
@@ -341,13 +341,11 @@ async function loadSanctions(manifestDir) {
     const resp = await fetch(resolveUrl(url, manifestDir))
     if (!resp.ok) return
     sanctionedMmsi = new Set(await resp.json())
-    console.log(`Loaded ${sanctionedMmsi.size} sanctioned MMSIs`)
     $('sanctions-toggle').classList.remove('hidden')
     $('legend-section-types').classList.remove('hidden')
     $('sanctions-label').textContent = t(window.innerWidth <= 768 ? 'sanctionedShort' : 'sanctioned')
     updateSanctionsFilter()
   } catch (err) {
-    console.warn('Failed to load sanctions data:', err)
   }
 }
 
@@ -359,14 +357,12 @@ async function loadVesselMetadata(manifestDir) {
     if (!resp.ok) return
     vesselMeta = await resp.json()
     const tankerCount = Object.values(vesselMeta).filter(v => v.ot).length
-    console.log(`Loaded metadata for ${Object.keys(vesselMeta).length} vessels (${tankerCount} oil tankers)`)
     if (tankerCount > 0) {
       $('old-tanker-toggle').classList.remove('hidden')
       $('legend-section-types').classList.remove('hidden')
       $('old-tanker-label').textContent = t(window.innerWidth <= 768 ? 'oldTankerShort' : 'oldTanker')
     }
   } catch (err) {
-    console.warn('Failed to load vessel metadata:', err)
   }
 }
 
@@ -384,7 +380,6 @@ async function switchActiveCOG() {
     await cogModule.switchCOG(url)
     refreshHeatmapTiles()
   } catch (err) {
-    console.warn('Failed to switch COG:', err)
   }
 }
 
@@ -573,7 +568,13 @@ async function initPhase2(manifestDir) {
     if (!m) throw new Error('Invalid COG tile URL')
     const [, z, x, y] = m.map(Number)
     const key = `${z}/${x}/${y}`
-    if (cogTileCache.has(key)) return { data: cogTileCache.get(key) }
+    if (cogTileCache.has(key)) {
+      // LRU: move to end by re-inserting
+      const cached = cogTileCache.get(key)
+      cogTileCache.delete(key)
+      cogTileCache.set(key, cached)
+      return { data: cached }
+    }
     const buf = await cogModule.renderTile(z, x, y, activeYearBands, !satelliteVisible)
     cogTileCache.set(key, buf)
     if (cogTileCache.size > COG_CACHE_MAX) cogTileCache.delete(cogTileCache.keys().next().value)
@@ -634,7 +635,6 @@ function setupMapHandlers() {
   })
 
   map.on('load', () => {
-    map.triggerRepaint()
     dataInitialized = true
     updateMapLabels()
     updateProgress(100)
@@ -644,6 +644,7 @@ function setupMapHandlers() {
 
   // Vessel tooltips on hover — vessel data takes priority over protected areas
   let lastQueryCell = null
+  let hoverSeq = 0  // Guards against stale async completions overriding newer results
   const handleRasterHover = rafThrottle(async (e) => {
     if (!dataInitialized) return
     if (map.getZoom() < RASTER_TOOLTIP_MIN_ZOOM) return
@@ -653,11 +654,15 @@ function setupMapHandlers() {
     const cellKey = `${Math.floor(lat * 100)}_${Math.floor(lng * 100)}_${year}_${currentFlagFilter}`
     if (cellKey === lastQueryCell) return
     lastQueryCell = cellKey
+    const seq = ++hoverSeq
 
     try {
       const vessels = await dataModule.queryVesselsAt(lat, lng, year)
+      if (seq !== hoverSeq) return  // Stale — a newer query has started
       if (vessels?.length && showRasterTooltip(vessels)) return
     } catch { /* ignore */ }
+
+    if (seq !== hoverSeq) return  // Stale — a newer query has started
 
     // No vessel data — fall back to protected area tooltip
     const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
@@ -746,6 +751,9 @@ function setupUIHandlers() {
   })
 
   $('about-modal').addEventListener('click', () => document.body.classList.remove('about-visible'))
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.body.classList.remove('about-visible')
+  })
 
   $('flag-select').addEventListener('change', async (e) => {
     currentFlagFilter = e.target.value
@@ -805,7 +813,6 @@ function setupUIHandlers() {
     const manifestDir = await initPhase1()
     await initPhase2(manifestDir)
   } catch (err) {
-    console.error('Failed to initialize:', err)
     document.body.innerHTML = `<div style="padding:2rem;color:#fff;background:#1a1a1a;min-height:100vh"><h1>Failed to load</h1><p>${err.message}</p></div>`
   }
 })()

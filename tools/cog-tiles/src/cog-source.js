@@ -281,8 +281,112 @@ export class COGTileSource {
         tileMinLat, tileMaxLat
       )
     } catch (err) {
-      console.warn(`Tile ${z}/${x}/${y} error:`, err.message)
       return await this._createEmptyTile()
+    }
+  }
+
+  /**
+   * Render a tile and return raw raster data + reprojection params (no colorization)
+   * Useful for offloading colorization to a Web Worker.
+   * @param {number} z - Zoom level
+   * @param {number} x - Tile X coordinate
+   * @param {number} y - Tile Y coordinate
+   * @returns {Promise<Object|null>} { rasters, params } or null for empty tiles
+   */
+  async renderTileRaw(z, x, y) {
+    if (!this._initialized) {
+      await this.initialize()
+    }
+
+    const tileSize = this.options.tileSize
+    const image = await this._getImageForZoom(z)
+    const [imgWidth, imgHeight] = [image.getWidth(), image.getHeight()]
+
+    const [cogMinLon, cogMinLat, cogMaxLon, cogMaxLat] = this._mainImageBBox
+    const tileBBox = tileToBBox(z, x, y)
+    const [tileMinLon, tileMinLat, tileMaxLon, tileMaxLat] = tileBBox
+
+    if (!bboxIntersects(tileBBox, this._mainImageBBox)) return null
+    if (tileMinLat > MAX_MERCATOR_LAT) return null
+
+    const scaleX = imgWidth / this._mainImageSize[0]
+    const scaleY = imgHeight / this._mainImageSize[1]
+    const pixelWidthDeg = (cogMaxLon - cogMinLon) / this._mainImageSize[0]
+    const pixelHeightDeg = (cogMaxLat - cogMinLat) / this._mainImageSize[1]
+
+    const mainWindowX = (tileMinLon - cogMinLon) / pixelWidthDeg
+    const mainWindowWidth = (tileMaxLon - tileMinLon) / pixelWidthDeg
+    const readMinLat = Math.max(tileMinLat, cogMinLat)
+    const readMaxLat = Math.min(tileMaxLat, cogMaxLat, MAX_MERCATOR_LAT)
+    const mainWindowYTop = (cogMaxLat - readMaxLat) / pixelHeightDeg
+    const mainWindowYBottom = (cogMaxLat - readMinLat) / pixelHeightDeg
+
+    const windowX = mainWindowX * scaleX
+    const windowWidth = mainWindowWidth * scaleX
+    const windowYTop = mainWindowYTop * scaleY
+    const windowYBottom = mainWindowYBottom * scaleY
+
+    const srcLeft = Math.max(0, windowX)
+    const srcRight = Math.min(imgWidth, windowX + windowWidth)
+    const srcTop = Math.max(0, windowYTop)
+    const srcBottom = Math.min(imgHeight, windowYBottom)
+    const srcWidth = srcRight - srcLeft
+    const srcHeight = srcBottom - srcTop
+    if (srcWidth <= 0 || srcHeight <= 0) return null
+
+    const dstLeft = Math.round(((srcLeft - windowX) / windowWidth) * tileSize)
+    const dstRight = Math.round(((srcRight - windowX) / windowWidth) * tileSize)
+    const dstWidth = dstRight - dstLeft
+
+    const tileMercMinY = latToMercatorY(tileMinLat)
+    const tileMercMaxY = latToMercatorY(tileMaxLat)
+    const tileMercHeight = tileMercMaxY - tileMercMinY
+
+    const actualMinLat = cogMaxLat - (srcBottom / scaleY) * pixelHeightDeg
+    const actualMaxLat = cogMaxLat - (srcTop / scaleY) * pixelHeightDeg
+    const actualMercMinY = latToMercatorY(actualMinLat)
+    const actualMercMaxY = latToMercatorY(actualMaxLat)
+
+    const dstTop = Math.round(((tileMercMaxY - actualMercMaxY) / tileMercHeight) * tileSize)
+    const dstBottom = Math.round(((tileMercMaxY - actualMercMinY) / tileMercHeight) * tileSize)
+    const dstHeight = dstBottom - dstTop
+    if (dstWidth <= 0 || dstHeight <= 0) return null
+
+    try {
+      const srcLeftInt = Math.floor(srcLeft)
+      const srcTopInt = Math.floor(srcTop)
+      const srcRightInt = Math.ceil(srcRight)
+      const srcBottomInt = Math.ceil(srcBottom)
+
+      const rasters = await image.readRasters({
+        window: [srcLeftInt, srcTopInt, srcRightInt, srcBottomInt],
+        resampleMethod: 'nearest',
+        pool: this._pool,
+      })
+
+      const readMinLatActual = cogMaxLat - (srcBottomInt / scaleY) * pixelHeightDeg
+      const readMaxLatActual = cogMaxLat - (srcTopInt / scaleY) * pixelHeightDeg
+      const srcMinLon = cogMinLon + (srcLeftInt / scaleX) * pixelWidthDeg
+      const srcMaxLon = cogMinLon + (srcRightInt / scaleX) * pixelWidthDeg
+
+      // Convert rasters to plain Float32Arrays for transfer
+      const bandArrays = []
+      for (let b = 0; b < rasters.length; b++) {
+        bandArrays.push(new Float32Array(rasters[b]))
+      }
+
+      return {
+        bands: bandArrays,
+        params: {
+          tileSize, dstLeft, dstTop, dstWidth, dstHeight,
+          srcMinLat: readMinLatActual, srcMaxLat: readMaxLatActual,
+          srcMinLon, srcMaxLon,
+          tileMinLon, tileMaxLon, tileMinLat, tileMaxLat,
+          srcWidth: rasters.width, srcHeight: rasters.height
+        }
+      }
+    } catch (err) {
+      return null
     }
   }
 
@@ -321,41 +425,53 @@ export class COGTileSource {
     // Get colorizer
     const colorize = this.options.colorize || this._defaultColorize.bind(this)
 
-    // Per-pixel sampling with Mercator reprojection
+    // Pre-allocate reusable arrays (avoids 65k allocations per tile)
+    const bands = new Array(bandCount)
+    const color = [0, 0, 0, 0]
+
+    // Pre-compute Mercator Y per row (avoids trig per pixel — only per row)
+    const rowToSrcRow = new Int32Array(dstHeight)
+    const latScale = 1 / (srcMaxLat - srcMinLat) * srcHeight
     for (let dstRow = 0; dstRow < dstHeight; dstRow++) {
       const tileY = dstTop + dstRow
       const mercY = tileMercMaxY - ((tileY + 0.5) / tileSize) * tileMercHeight
       const lat = mercatorYToLat(mercY)
+      if (lat > MAX_MERCATOR_LAT) { rowToSrcRow[dstRow] = -1; continue }
+      const srcRowFrac = (srcMaxLat - lat) * latScale
+      rowToSrcRow[dstRow] = Math.floor(Math.max(0, Math.min(srcHeight - 1, srcRowFrac)))
+    }
 
-      if (lat > MAX_MERCATOR_LAT) continue
+    // Pre-compute source column per destination column
+    const colToSrcCol = new Int32Array(dstWidth)
+    for (let col = 0; col < dstWidth; col++) {
+      const tileX = dstLeft + col
+      const lon = tileMinLon + ((tileX + 0.5) / tileSize) * tileLonWidth
+      const srcColFrac = ((lon - srcMinLon) / srcLonWidth) * srcWidth
+      colToSrcCol[col] = Math.floor(Math.max(0, Math.min(srcWidth - 1, srcColFrac)))
+    }
 
-      // Map latitude to source row
-      const srcRowFrac = ((srcMaxLat - lat) / (srcMaxLat - srcMinLat)) * srcHeight
-      const srcRow = Math.floor(Math.max(0, Math.min(srcHeight - 1, srcRowFrac)))
+    // Per-pixel sampling with Mercator reprojection
+    for (let dstRow = 0; dstRow < dstHeight; dstRow++) {
+      const srcRow = rowToSrcRow[dstRow]
+      if (srcRow === -1) continue
+      const tileY = dstTop + dstRow
+      const rowOffset = srcRow * srcWidth
 
       for (let col = 0; col < dstWidth; col++) {
         const px = (dstRow * dstWidth + col) * 4
+        const srcIdx = rowOffset + colToSrcCol[col]
 
-        // Map longitude to source column
-        const tileX = dstLeft + col
-        const lon = tileMinLon + ((tileX + 0.5) / tileSize) * tileLonWidth
-        const srcColFrac = ((lon - srcMinLon) / srcLonWidth) * srcWidth
-        const srcCol = Math.floor(Math.max(0, Math.min(srcWidth - 1, srcColFrac)))
-
-        const srcIdx = srcRow * srcWidth + srcCol
-
-        // Collect band values
-        const bands = new Array(bandCount)
+        // Collect band values into reusable array
         for (let b = 0; b < bandCount; b++) {
           bands[b] = rasters[b][srcIdx] || 0
         }
 
         // Apply colorizer
-        const [r, g, b, a] = colorize(bands, tileX, tileY)
-        pixels[px] = r
-        pixels[px + 1] = g
-        pixels[px + 2] = b
-        pixels[px + 3] = a
+        const c = colorize(bands, dstLeft + col, tileY)
+        pixels[px] = c[0]
+        pixels[px + 1] = c[1]
+        pixels[px + 2] = c[2]
+        pixels[px + 3] = c[3]
       }
     }
 
@@ -394,7 +510,6 @@ export class COGTileSource {
           const data = await source.renderTile(z, x, y)
           return { data }
         } catch (err) {
-          console.error('Tile error:', err)
           throw err
         }
       }

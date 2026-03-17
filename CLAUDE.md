@@ -15,8 +15,9 @@ make dev       # Dev server at localhost:5173
 albedo/
 ├── src/                    # Frontend application (vanilla JS + MapLibre GL)
 │   ├── main.js            # App init, UI handlers, map lifecycle, tooltips
-│   ├── cog.js             # COG tile rendering with year-based colorization
-│   ├── config.js          # MapLibre style generation, manifest-driven config
+│   ├── cog.js             # COG tile orchestration (delegates to worker)
+│   ├── cog-worker.js      # Web Worker: colorization + reprojection + PNG encoding
+│   ├── config.js          # Colour palette, MapLibre style, manifest-driven config
 │   ├── data.js            # Data layer init (PMTiles protocol, vessel queries)
 │   ├── vessel-tiles.js    # Hilbert-indexed binary vessel data for tooltips
 │   ├── geo.js             # Coordinate conversions (Mercator, grid snapping)
@@ -67,11 +68,52 @@ GCS/CDN                          Browser
 ├── vessel_data.bin              vessel-tiles.js → Hilbert-indexed tooltips
 ├── i18n/{lang}.json             i18n.js → UI translations
 ├── sanctioned_mmsi.json         Sanctions MMSI set (client-side badge matching)
-├── sanctions_details.json       Sanctions program/dataset metadata by MMSI
 ├── vessel_metadata.json         Build year, DWT enrichment
 ├── manifest.json                Config + layer definitions
 └── index.html + JS              MapLibre GL → composite rendering
 ```
+
+### Tile Rendering Pipeline
+
+COG tile rendering is split across threads for performance:
+
+```
+Main thread                          Worker thread (cog-worker.js)
+───────────                          ─────────────
+MapLibre requests tile
+  ↓
+cogSource.renderTileRaw(z,x,y)
+  ↓ (geotiff.js decodes COG data
+  ↓  via its own decoder pool)
+  ↓
+raw rasters + params ──transfer──→  Mercator reprojection
+                                     + year-based colorization
+                                     + overlay compositing
+                                     + OffscreenCanvas PNG encode
+                     ←──transfer──  ArrayBuffer (PNG)
+  ↓
+return to MapLibre
+```
+
+Band data is transferred zero-copy via `Transferable` objects. The main thread
+never touches pixel data — only coordinates geotiff decoding and forwards raw
+rasters to the colorization worker.
+
+## Colour Palette
+
+All colours are defined in `config.js` and referenced from CSS variables in
+`style.css`. The COG renderer imports them in the worker via config messages.
+
+| Colour | Hex | Usage |
+|--------|---------|-------|
+| Blue 5 | #2988FF | Oldest year band |
+| Blue 7 | #61A7FF | Middle year band |
+| Blue 9 | #A8CFFF | Newest year band |
+| Blue-gray | #A9B2C2 | Multi-year blend |
+| Blue 10 | #CCE3FF | Land fill |
+| Red | #FF4444 | Sanctions overlay + badge |
+| Yellow | #FFCC00 | Old tanker overlay |
+| Teal | #037874 | Protected areas + hatch patterns |
 
 ## Tooltip System
 
@@ -80,9 +122,10 @@ All vessel tooltips come from a single source: Hilbert-indexed binary tiles
 tooltips display as fallback when no vessel data exists at the cursor position.
 
 Each binary tile cell stores up to 5 vessel entries, one per vessel (aggregated
-across years). Sanctioned vessels are prioritized in the per-cell ranking so they
-always appear. Each entry carries a year bitmask (u8, bit 0 = 2020) enabling
-year filtering without wasting slots on duplicate year entries.
+across years). Sanctioned vessels and old tankers (>25 years) are prioritized in
+the per-cell ranking so they always appear. Each entry carries a year bitmask
+(u8, bit 0 = 2020) enabling year filtering without wasting slots on duplicate
+year entries.
 
 ## Sanctions & Old Tanker Overlays
 

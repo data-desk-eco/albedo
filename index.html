@@ -51,10 +51,7 @@
   <div id="places-info" class="hidden"></div>
 </div>
 <button id="lang-toggle">en</button>
-<div id="perf-overlay" class="hidden">
-  <div>render: <span id="perf-render">-</span>ms</div>
-  <div>load: <span id="perf-load">-</span>ms</div>
-</div>
+<div id="perf-overlay" class="hidden"></div>
 <div id="legend">
   <div id="legend-collapse" class="ui-select-text"><span id="legend-collapse-label"></span></div>
   <div id="legend-body">
@@ -69,13 +66,13 @@
   <div id="legend-section-types" class="legend-section-title hidden"></div>
   <div id="sanctions-toggle" class="legend-item legend-toggle hidden">
     <div class="legend-symbol">
-      <div class="legend-square" style="background: #ff4444;"></div>
+      <div class="legend-square" style="background: var(--color-sanctions);"></div>
     </div>
     <span id="sanctions-label" class="legend-text">sanctioned</span>
   </div>
   <div id="old-tanker-toggle" class="legend-item legend-toggle hidden">
     <div class="legend-symbol">
-      <div class="legend-square" style="background: #FFCC00;"></div>
+      <div class="legend-square" style="background: var(--color-old-tanker);"></div>
     </div>
     <span id="old-tanker-label" class="legend-text">oil tankers &gt;25yr</span>
   </div>

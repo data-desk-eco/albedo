@@ -36,27 +36,27 @@
     }
   },
   "data": {
-    "cog": "vessel_heatmap.tif",
-    "vesselData": "vessel_data.bin",
+    "cog": "https://storage.googleapis.com/albedo-data/vessel_heatmap.tif",
+    "vesselData": "https://storage.googleapis.com/albedo-data/vessel_data.bin",
     "sanctionedMmsi": "sanctioned_mmsi.json",
     "cogsByType": {
-      "FISHING": "vessel_heatmap_fishing.tif",
-      "CARGO": "vessel_heatmap_cargo.tif",
-      "PASSENGER": "vessel_heatmap_passenger.tif",
-      "CARRIER": "vessel_heatmap_carrier.tif"
+      "FISHING": "https://storage.googleapis.com/albedo-data/vessel_heatmap_fishing.tif",
+      "CARGO": "https://storage.googleapis.com/albedo-data/vessel_heatmap_cargo.tif",
+      "PASSENGER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_passenger.tif",
+      "CARRIER": "https://storage.googleapis.com/albedo-data/vessel_heatmap_carrier.tif"
     },
     "cogsByFlag": {
-      "foreign": "vessel_heatmap_flag_foreign.tif",
-      "RUS": "vessel_heatmap_flag_rus.tif",
-      "NOR": "vessel_heatmap_flag_nor.tif",
-      "PAN": "vessel_heatmap_flag_pan.tif",
-      "LBR": "vessel_heatmap_flag_lbr.tif",
-      "MHL": "vessel_heatmap_flag_mhl.tif",
-      "MLT": "vessel_heatmap_flag_mlt.tif",
-      "CHN": "vessel_heatmap_flag_chn.tif",
-      "GBR": "vessel_heatmap_flag_gbr.tif"
+      "foreign": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_foreign.tif",
+      "RUS": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_rus.tif",
+      "NOR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_nor.tif",
+      "PAN": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_pan.tif",
+      "LBR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_lbr.tif",
+      "MHL": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_mhl.tif",
+      "MLT": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_mlt.tif",
+      "CHN": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_chn.tif",
+      "GBR": "https://storage.googleapis.com/albedo-data/vessel_heatmap_flag_gbr.tif"
     },
-    "vesselMetadata": "vessel_metadata.json"
+    "vesselMetadata": "https://storage.googleapis.com/albedo-data/vessel_metadata.json"
   },
   "layers": {
     "satellite": {
@@ -65,7 +65,7 @@
     },
     "vectors": {
       "protected-areas": {
-        "url": "vectors.pmtiles",
+        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -90,7 +90,7 @@
         ]
       },
       "buffer-zones": {
-        "url": "vectors.pmtiles",
+        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {
@@ -119,7 +119,7 @@
         ]
       },
       "places": {
-        "url": "vectors.pmtiles",
+        "url": "https://storage.googleapis.com/albedo-data/vectors.pmtiles",
         "defaultVisible": true,
         "style": [
           {

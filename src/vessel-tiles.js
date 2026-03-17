@@ -186,7 +186,6 @@ export async function initVesselTiles(url) {
     vessels.push({ mmsi, shipName })
   }
 
-  console.log(`Vessel tiles v2 initialized: ${blockCount} blocks, ${cellCount} cells, ${vessels.length} vessels`)
 }
 
 /**

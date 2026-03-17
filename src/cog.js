@@ -1,15 +1,17 @@
 /**
  * Client-side COG tile renderer
- * Year-colorized vessel heatmap from Cloud-Optimized GeoTIFF bands
+ * Year-colorized vessel heatmap from Cloud-Optimized GeoTIFF bands.
+ * Colorization + reprojection + PNG encoding run in a Web Worker.
  */
 
 import { COGTileSource } from '../tools/cog-tiles/src/index.js'
-import { YEAR_PALETTE } from './config.js'
+import {
+  YEAR_PALETTE, MULTI_YEAR_COLOR, LAND_COLOR, ICE_COLOR,
+  OVERLAY_SANCTIONS, OVERLAY_OLD_TANKER, OVERLAY_ALPHA
+} from './config.js'
+import CogWorker from './cog-worker.js?worker'
 
-const MULTI_YEAR_COLOR = [169, 178, 194]  // #A9B2C2 — Arctida blue-gray
 const DOMINANCE_THRESHOLD = 0.6
-const LAND_COLOR = [204, 227, 255]  // #CCE3FF — Arctida Blue 10
-const ICE_COLOR = [255, 255, 255]   // white
 
 let cogSource = null
 let cogConfig = null
@@ -19,91 +21,68 @@ let showIce = true
 let showSanctioned = false
 let showOldTankers = false
 
-const OVERLAY_OLD_TANKER = [255, 204, 0]     // #FFCC00 — yellow
-const OVERLAY_SANCTIONS = [255, 59, 48]      // #FF3B30 — red
-const OVERLAY_ALPHA = 0.8
+// Worker setup
+let worker = null
+let nextMsgId = 0
+const pending = new Map()  // id → { resolve, reject }
 
-function alphaBlend(base, overlay, alpha) {
-  return [
-    Math.round(base[0] * (1 - alpha) + overlay[0] * alpha),
-    Math.round(base[1] * (1 - alpha) + overlay[1] * alpha),
-    Math.round(base[2] * (1 - alpha) + overlay[2] * alpha),
-  ]
-}
-
-function createVesselColorizer() {
-  const oldTankerOffset = cogConfig?.oldTankerBandOffset ?? null
-  const sanctionsOffset = cogConfig?.sanctionsBandOffset ?? null
-
-  return (bands) => {
-    const landIdx = cogConfig?.landBand ?? bands.length - 1
-    const iceIdx = cogConfig?.iceBand ?? null
-
-    // Ice pixel (may also be land underneath, e.g. Greenland)
-    if (iceIdx != null && bands[iceIdx] === 1) {
-      if (!showLand) return [0, 0, 0, 0]  // satellite mode: transparent
-      if (showIce) return [...ICE_COLOR, 255]
-      // Ice toggled off: show as land if also land, otherwise transparent
-      if (bands[landIdx] === 1) return [...LAND_COLOR, 255]
-      return [0, 0, 0, 0]
-    }
-
-    // Land pixel
-    if (bands[landIdx] === 1) return showLand ? [...LAND_COLOR, 255] : [0, 0, 0, 0]
-
-    if (!selectedBands.length) return [0, 0, 0, 0]
-
-    const values = selectedBands.map(b => bands[b] || 0)
-    const total = values.reduce((a, b) => a + b, 0)
-
-    // Check overlay totals
-    let oldTankerTotal = 0
-    if (showOldTankers && oldTankerOffset != null) {
-      for (const b of selectedBands) oldTankerTotal += bands[b + oldTankerOffset] || 0
-    }
-    let sanctionsTotal = 0
-    if (showSanctioned && sanctionsOffset != null) {
-      for (const b of selectedBands) sanctionsTotal += bands[b + sanctionsOffset] || 0
-    }
-
-    // If base and all active overlays are empty, transparent
-    if (total === 0 && oldTankerTotal === 0 && sanctionsTotal === 0) return [0, 0, 0, 0]
-
-    // Compute base color
-    let r, g, b
-    if (total > 0) {
-      let maxVal = 0, maxIdx = 0
-      for (let j = 0; j < values.length; j++) {
-        if (values[j] > maxVal) { maxVal = values[j]; maxIdx = j }
-      }
-      const brightness = Math.min(1, Math.max(0.7, Math.log1p(total) / Math.log1p(50)))
-      const color = maxVal / total >= DOMINANCE_THRESHOLD
-        ? (YEAR_PALETTE[selectedBands[maxIdx] % YEAR_PALETTE.length] || MULTI_YEAR_COLOR)
-        : MULTI_YEAR_COLOR
-      r = Math.round(color[0] * brightness)
-      g = Math.round(color[1] * brightness)
-      b = Math.round(color[2] * brightness)
-    } else {
-      // No base data but overlay has data — start from black
-      r = 0; g = 0; b = 0
-    }
-
-    // Composite old tanker overlay (yellow)
-    if (oldTankerTotal > 0) {
-      ;[r, g, b] = alphaBlend([r, g, b], OVERLAY_OLD_TANKER, OVERLAY_ALPHA)
-    }
-
-    // Composite sanctions overlay (red) — renders on top
-    if (sanctionsTotal > 0) {
-      ;[r, g, b] = alphaBlend([r, g, b], OVERLAY_SANCTIONS, OVERLAY_ALPHA)
-    }
-
-    return [r, g, b, 255]
+function initWorker() {
+  if (worker) return
+  worker = new CogWorker()
+  worker.onmessage = (e) => {
+    const { id, buffer } = e.data
+    const p = pending.get(id)
+    if (p) { pending.delete(id); p.resolve(buffer) }
   }
 }
 
+function sendToWorker(type, data, transferables = []) {
+  const id = nextMsgId++
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject })
+    worker.postMessage({ type, id, ...data }, transferables)
+  })
+}
+
+function sendColorizerConfig() {
+  if (!worker || !cogConfig) return
+  worker.postMessage({
+    type: 'config',
+    config: {
+      landBand: cogConfig.landBand,
+      iceBand: cogConfig.iceBand ?? null,
+      sanctionsBandOffset: cogConfig.sanctionsBandOffset ?? null,
+      oldTankerBandOffset: cogConfig.oldTankerBandOffset ?? null,
+      selectedBands,
+      showLand,
+      showIce,
+      showSanctioned,
+      showOldTankers,
+      yearPalette: YEAR_PALETTE,
+      multiYearColor: MULTI_YEAR_COLOR,
+      landColor: LAND_COLOR,
+      iceColor: ICE_COLOR,
+      overlaySanctions: OVERLAY_SANCTIONS,
+      overlayOldTanker: OVERLAY_OLD_TANKER,
+      overlayAlpha: OVERLAY_ALPHA,
+      dominanceThreshold: DOMINANCE_THRESHOLD
+    }
+  })
+}
+
+// Cached empty tile (shared across empty tile responses)
+let emptyTilePromise = null
+function getEmptyTile(tileSize) {
+  if (!emptyTilePromise) {
+    emptyTilePromise = sendToWorker('empty', { tileSize })
+  }
+  // Return a copy each time since MapLibre may transfer ownership
+  return emptyTilePromise.then(buf => buf.slice(0))
+}
+
 export async function initCOG(url) {
-  cogSource = new COGTileSource(url, { colorize: createVesselColorizer() })
+  initWorker()
+  cogSource = new COGTileSource(url, {})
   const metadata = await cogSource.initialize()
   const gdal = metadata.gdalMetadata || {}
 
@@ -114,11 +93,11 @@ export async function initCOG(url) {
     cogConfig.oldTankerBandOffset = config.oldTankerBandOffset ?? null
     cogConfig.iceBand = config.iceBand ?? null
   } else {
-    console.warn('No ALBEDO_CONFIG in COG, using fallback')
     cogConfig = { years: [2023, 2024, 2025].slice(0, metadata.bandCount - 1), landBand: metadata.bandCount - 1, sanctionsBandOffset: null, oldTankerBandOffset: null, iceBand: null }
   }
 
   cogConfig.yearColors = Object.fromEntries(cogConfig.years.map((y, i) => [y, YEAR_PALETTE[i % YEAR_PALETTE.length]]))
+  sendColorizerConfig()
   return cogConfig
 }
 
@@ -126,27 +105,37 @@ export async function renderTile(z, x, y, bands = [0, 1, 2], land = true) {
   if (!cogSource) throw new Error('COG not initialized')
   selectedBands = bands
   showLand = land
-  cogSource.options.colorize = createVesselColorizer()
-  return cogSource.renderTile(z, x, y)
+  sendColorizerConfig()
+
+  const raw = await cogSource.renderTileRaw(z, x, y)
+  if (!raw) return getEmptyTile(cogSource.options.tileSize)
+
+  // Transfer band arrays to worker (zero-copy)
+  const transferables = raw.bands.map(b => b.buffer)
+  return sendToWorker('render', { bands: raw.bands, params: raw.params }, transferables)
 }
 
 export function clearCache() {
   cogSource?.clearCache()
+  emptyTilePromise = null
 }
 
 export async function switchCOG(url) {
   cogSource?.dispose()
   cogSource = cogConfig = null
+  emptyTilePromise = null
   return initCOG(url)
 }
 
 export function setOverlayState({ sanctioned, oldTankers }) {
   if (sanctioned !== undefined) showSanctioned = sanctioned
   if (oldTankers !== undefined) showOldTankers = oldTankers
+  sendColorizerConfig()
 }
 
 export function setIceState(visible) {
   showIce = visible
+  sendColorizerConfig()
 }
 
 export { YEAR_PALETTE } from './config.js'

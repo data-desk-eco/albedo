@@ -26,7 +26,6 @@ async function loadLanguage(lang) {
     if (!resp.ok) throw new Error(`Failed to load ${lang}.json`)
     translations[lang] = await resp.json()
   } catch (err) {
-    console.error(`Failed to load language ${lang}:`, err)
     if (lang !== 'en' && !translations['en']) {
       try {
         translations['en'] = await (await fetch(`${dataUrl}i18n/en.json`)).json()

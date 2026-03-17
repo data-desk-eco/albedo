@@ -2,15 +2,29 @@
  * Configuration — manifest loading, MapLibre style generation
  */
 
-// Year color palette — Arctida brand blues, dark→light (oldest→newest)
+// --- Colour palette ---
+// Arctida brand blues, dark→light (oldest→newest year)
 export const YEAR_PALETTE = [
-  [41, 136, 255],   // #2988FF — oldest year (brand Blue 5)
-  [97, 167, 255],   // #61A7FF — middle year (brand Blue 7)
-  [168, 207, 255],  // #A8CFFF — newest year (brand Blue 9)
-  [30, 106, 255],   // #1E6AFF — future (brand primary)
-  [133, 187, 255],  // #85BBFF — future (brand Blue 8)
-  [204, 227, 255],  // #CCE3FF — future (brand Blue 10)
+  [41, 136, 255],   // #2988FF — Blue 5
+  [97, 167, 255],   // #61A7FF — Blue 7
+  [168, 207, 255],  // #A8CFFF — Blue 9
+  [30, 106, 255],   // #1E6AFF — Primary
+  [133, 187, 255],  // #85BBFF — Blue 8
+  [204, 227, 255],  // #CCE3FF — Blue 10
 ]
+
+// Map surface colours (RGB arrays for COG tile renderer)
+export const MULTI_YEAR_COLOR = [169, 178, 194]  // #A9B2C2 — blue-gray blend
+export const LAND_COLOR = [204, 227, 255]         // #CCE3FF — Blue 10
+export const ICE_COLOR = [255, 255, 255]           // white
+
+// Overlay colours (RGB arrays for COG tile renderer)
+export const OVERLAY_SANCTIONS = [255, 68, 68]     // #FF4444 — red
+export const OVERLAY_OLD_TANKER = [255, 204, 0]    // #FFCC00 — yellow
+export const OVERLAY_ALPHA = 0.8
+
+// Protected area colour (used in hatch patterns)
+export const PROTECTED_AREA_COLOR = '#037874'
 
 export const MANIFEST_URL = import.meta.env.VITE_MANIFEST_URL || './data/export/manifest.json'
 export const RASTER_TOOLTIP_MIN_ZOOM = 8

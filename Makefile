@@ -109,7 +109,6 @@ deploy-data:
 	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/
 	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
