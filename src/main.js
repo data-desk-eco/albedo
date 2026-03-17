@@ -552,14 +552,16 @@ async function initPhase2(manifestDir) {
   flagCogUrls = { all: baseCogUrl }
   for (const [k, v] of Object.entries(manifest.data?.cogsByFlag || {})) flagCogUrls[k] = resolveUrl(v, manifestDir)
 
-  // Initialize COG
-  const cogConfig = await cogModule.initCOG(baseCogUrl)
+  // Initialize COG + register PMTiles protocol in parallel
+  // Vessel tile init is deferred — only needed for tooltips at zoom 8+
+  const cogInitPromise = cogModule.initCOG(baseCogUrl)
+  dataModule.initProtocol()
+  updateProgress(60)
+
+  const cogConfig = await cogInitPromise
   knownYears = cogConfig.years
   activeYears = new Set(knownYears)
   activeYearBands = knownYears.map((_, i) => i)
-  updateProgress(60)
-
-  await dataModule.initData(manifestDir, manifest)
   updateProgress(80)
 
   // COG tile protocol
@@ -622,7 +624,8 @@ async function initPhase2(manifestDir) {
 
   document.body.classList.add('app-ready')
 
-  // Non-blocking loads
+  // Non-blocking loads (vessel tiles deferred — only needed for tooltips at zoom 8+)
+  dataModule.initVesselData(manifestDir, manifest)
   loadSanctions(manifestDir)
   loadVesselMetadata(manifestDir)
 }

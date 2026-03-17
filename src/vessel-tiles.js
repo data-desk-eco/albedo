@@ -90,63 +90,57 @@ async function decompress(compressed) {
 export async function initVesselTiles(url) {
   dataUrl = url
 
-  // First, fetch just the header (16 bytes) to get sizes
-  const headerResp = await fetch(url, {
-    headers: { Range: 'bytes=0-15' }
+  // Two requests instead of three:
+  // 1. Header + first index entry (32 bytes) → learn blockCount + firstBlockOffset
+  // 2. Full index + lookup tables in one range request
+  const HEADER_SIZE = 16
+  const peekResp = await fetch(url, {
+    headers: { Range: 'bytes=0-31' }
   })
-  const headerBuf = await headerResp.arrayBuffer()
-  const headerView = new DataView(headerBuf)
+  const peekBuf = await peekResp.arrayBuffer()
+  const peekView = new DataView(peekBuf)
 
   // Parse header
-  const magic = new TextDecoder().decode(new Uint8Array(headerBuf, 0, 4))
+  const magic = new TextDecoder().decode(new Uint8Array(peekBuf, 0, 4))
   if (magic !== 'VSSL') {
     throw new Error(`Invalid magic: ${magic}`)
   }
 
-  dataVersion = headerView.getUint16(4, true)
+  dataVersion = peekView.getUint16(4, true)
   if (dataVersion !== 2 && dataVersion !== 3) {
     throw new Error(`Unsupported version: ${dataVersion}`)
   }
 
-  const blockCount = headerView.getUint16(6, true)
-  const cellCount = headerView.getUint32(8, true)
-  const lookupOffset = headerView.getUint32(12, true)
+  const blockCount = peekView.getUint16(6, true)
+  const cellCount = peekView.getUint32(8, true)
+  const lookupOffset = peekView.getUint32(12, true)
 
-  // Calculate how much we need to fetch (header + index + lookup)
-  // We need to know lookup size - fetch index first to find first block offset
-  const indexSize = blockCount * 16
-  const indexEnd = 16 + indexSize - 1
+  // First index entry tells us where blocks start (= end of lookup)
+  const firstBlockOffset = peekView.getUint32(HEADER_SIZE + 8, true)
 
-  // Fetch index
-  const indexResp = await fetch(url, {
-    headers: { Range: `bytes=16-${indexEnd}` }
+  // Fetch index + lookup in a single range request
+  const metaResp = await fetch(url, {
+    headers: { Range: `bytes=${HEADER_SIZE}-${firstBlockOffset - 1}` }
   })
-  const indexBuf = await indexResp.arrayBuffer()
-  const indexView = new DataView(indexBuf)
+  const metaBuf = await metaResp.arrayBuffer()
 
-  // Parse block index and find first block offset (= end of lookup)
+  // Parse block index
+  const indexSize = blockCount * 16
+  const indexView = new DataView(metaBuf, 0, indexSize)
   blockIndex = []
-  let firstBlockOffset = 0
   for (let i = 0; i < blockCount; i++) {
     const offset = i * 16
-    const entry = {
+    blockIndex.push({
       hilbertStart: indexView.getUint32(offset, true),
       hilbertEnd: indexView.getUint32(offset + 4, true),
       offset: indexView.getUint32(offset + 8, true),
       compressedLen: indexView.getUint32(offset + 12, true)
-    }
-    blockIndex.push(entry)
-    if (i === 0) {
-      firstBlockOffset = entry.offset
-    }
+    })
   }
 
-  // Now fetch lookup tables (from lookupOffset to firstBlockOffset - 1)
-  const lookupResp = await fetch(url, {
-    headers: { Range: `bytes=${lookupOffset}-${firstBlockOffset - 1}` }
-  })
-  const lookupBuf = await lookupResp.arrayBuffer()
-  const lookupView = new DataView(lookupBuf)
+  // Parse lookup tables (immediately after index in the same buffer)
+  const lookupStart = lookupOffset - HEADER_SIZE
+  const lookupView = new DataView(metaBuf, lookupStart)
   let lookupPos = 0
 
   // Parse flags
@@ -156,7 +150,7 @@ export async function initVesselTiles(url) {
   for (let i = 0; i < flagCount; i++) {
     const len = lookupView.getUint8(lookupPos)
     lookupPos += 1
-    flags.push(new TextDecoder().decode(new Uint8Array(lookupBuf, lookupPos, len)))
+    flags.push(new TextDecoder().decode(new Uint8Array(metaBuf, lookupStart + lookupPos, len)))
     lookupPos += len
   }
 
@@ -167,7 +161,7 @@ export async function initVesselTiles(url) {
   for (let i = 0; i < typeCount; i++) {
     const len = lookupView.getUint8(lookupPos)
     lookupPos += 1
-    vesselTypes.push(new TextDecoder().decode(new Uint8Array(lookupBuf, lookupPos, len)))
+    vesselTypes.push(new TextDecoder().decode(new Uint8Array(metaBuf, lookupStart + lookupPos, len)))
     lookupPos += len
   }
 
@@ -176,12 +170,12 @@ export async function initVesselTiles(url) {
   lookupPos += 4
   vessels = []
   for (let i = 0; i < vesselCount; i++) {
-    const mmsiBytes = new Uint8Array(lookupBuf, lookupPos, 12)
+    const mmsiBytes = new Uint8Array(metaBuf, lookupStart + lookupPos, 12)
     const mmsi = new TextDecoder().decode(mmsiBytes).replace(/\0+$/, '')
     lookupPos += 12
     const nameLen = lookupView.getUint8(lookupPos)
     lookupPos += 1
-    const shipName = new TextDecoder().decode(new Uint8Array(lookupBuf, lookupPos, nameLen))
+    const shipName = new TextDecoder().decode(new Uint8Array(metaBuf, lookupStart + lookupPos, nameLen))
     lookupPos += nameLen
     vessels.push({ mmsi, shipName })
   }
