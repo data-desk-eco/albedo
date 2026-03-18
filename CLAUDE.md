@@ -163,8 +163,23 @@ Manifest is generated from `manifest.template.json` via `scripts/export_manifest
 
 ```bash
 make deploy-data   # Upload data files to GCS bucket
+make deploy-app    # Upload built app to GCS (for third-party packaging)
 make build         # Vite production build
 ```
+
+### Third-Party Deployment
+
+To package a self-contained deployment for hosting on any static server:
+
+```bash
+./scripts/download_package.sh            # Downloads everything from GCS → albedo-YYYYMMDD.zip
+./scripts/download_package.sh custom.zip # Custom output filename
+```
+
+No build tools required — just `curl` and `zip`. The zip contains the full app
+and all data files with relative URLs, ready to unzip to any static host (S3,
+GCS, Nginx, etc.). The hosting server must support HTTP Range requests (most do
+by default).
 
 ## Key Dependencies
 

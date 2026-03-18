@@ -112,6 +112,21 @@ deploy-data:
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
+# Upload built app + self-contained manifest to GCS for download_package.sh
+deploy-app: dist
+	COG_BASE_URL= node scripts/export_manifest.js
+	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/app/manifest.json
+	gcloud storage cp dist/index.html gs://$(GCS_BUCKET)/app/
+	gcloud storage cp -r dist/assets gs://$(GCS_BUCKET)/app/
+	gcloud storage cp -r dist/data/places gs://$(GCS_BUCKET)/app/data/
+	ls dist/assets > /tmp/albedo-assets.txt && gcloud storage cp /tmp/albedo-assets.txt gs://$(GCS_BUCKET)/app/assets.txt && rm /tmp/albedo-assets.txt
+	ls dist/data/places > /tmp/albedo-places.txt && gcloud storage cp /tmp/albedo-places.txt gs://$(GCS_BUCKET)/app/places.txt && rm /tmp/albedo-places.txt
+	@echo "App deployed to: $(GCS_URL)/app/"
+
+# Download complete deployment from GCS (no build tools needed)
+package:
+	./scripts/download_package.sh
+
 # Setup GCS bucket with CORS for range requests (run once)
 setup-gcs:
 	gcloud storage buckets create gs://$(GCS_BUCKET) \
@@ -125,4 +140,4 @@ setup-gcs:
 	@rm /tmp/cors.json
 	@echo "GCS bucket configured with CORS for range requests"
 
-.PHONY: all fetch convert transform tiles export sanctions vessel-metadata tankers install dev build preview clean deploy-data setup-gcs
+.PHONY: all fetch convert transform tiles export sanctions vessel-metadata tankers install dev build preview clean deploy-data deploy-app setup-gcs package
