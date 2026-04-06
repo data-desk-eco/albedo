@@ -44,6 +44,7 @@ html, body {
 #flag-select,
 #places-select,
 #lang-toggle,
+#theme-toggle,
 #about-content {
   font-family: var(--ui-font-family);
   font-weight: var(--ui-font-weight);
@@ -203,6 +204,7 @@ html, body {
   opacity: 0.3;
 }
 
+
 .legend-toggle.active:hover {
   opacity: 1;
 }
@@ -301,7 +303,7 @@ html, body {
 /* Zoom controls */
 #zoom-controls {
   position: absolute;
-  top: 42px;
+  top: 44px;
   right: 10px;
   display: flex;
   flex-direction: column;
@@ -343,20 +345,34 @@ body.app-ready #zoom-controls {
   background: var(--ui-bg-hover);
 }
 
-/* Language toggle */
-#lang-toggle {
+/* Top controls (theme + language) */
+#top-controls {
   position: absolute;
   top: 10px;
   right: 10px;
+  display: flex;
+  gap: 0;
+}
+
+#lang-toggle {
   font-size: 12px;
   padding: 4px 8px;
   cursor: pointer;
 }
 
+#theme-toggle {
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: none;
+}
+
 /* Performance overlay */
 #perf-overlay {
   position: absolute;
-  top: 40px;
+  top: 80px;
   right: 10px;
   font-family: var(--ui-font-family);
   font-size: 11px;
@@ -429,6 +445,10 @@ body.app-ready #zoom-controls {
   color: var(--color-sanctions);
 }
 
+.old-tanker-badge {
+  color: var(--color-old-tanker);
+}
+
 #old-tanker-toggle {
   cursor: pointer;
 }
@@ -467,6 +487,10 @@ body.app-ready #zoom-controls {
 
 #tooltip.visible {
   display: block;
+}
+
+#tooltip.pinned {
+  pointer-events: auto;
 }
 
 #tooltip td {
@@ -528,6 +552,10 @@ body.app-ready #zoom-controls {
   margin-bottom: 0;
 }
 
+#about-description a {
+  color: var(--ui-color);
+}
+
 #about-description .about-credits {
   margin: 0;
   font-size: 13px;
@@ -557,6 +585,40 @@ body.app-ready #zoom-controls {
 #about-content .about-en {
   color: var(--ui-color-muted);
   font-size: 0.75em;
+}
+
+/* Light theme */
+body.light-theme {
+  --ui-background: #f0f2f5;
+  --ui-color: #1a1a2e;
+  --ui-color-muted: rgba(26, 26, 46, 0.6);
+  --ui-bg: rgba(255, 255, 255, 0.75);
+  --ui-border: 1px solid rgba(0, 0, 0, 0.15);
+  --ui-bg-hover: rgba(0, 0, 0, 0.08);
+  --ui-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23555' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+body.light-theme .legend-text,
+body.light-theme .ui-select-text {
+  color: var(--ui-color);
+}
+
+body.light-theme #flag-select option,
+body.light-theme #places-select option {
+  background: #ffffff;
+  color: var(--ui-color);
+}
+
+body.light-theme #logo-container {
+  mix-blend-mode: normal;
+}
+
+body.light-theme #about-modal {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+body.light-theme #about-content {
+  background: rgba(255, 255, 255, 0.8);
 }
 
 /* Responsive */

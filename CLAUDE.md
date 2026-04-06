@@ -122,10 +122,14 @@ All vessel tooltips come from a single source: Hilbert-indexed binary tiles
 tooltips display as fallback when no vessel data exists at the cursor position.
 
 Each binary tile cell stores up to 5 vessel entries, one per vessel (aggregated
-across years). Sanctioned vessels and old tankers (>25 years) are prioritized in
+across years). Sanctioned vessels and old tankers (>15 years) are prioritized in
 the per-cell ranking so they always appear. Each entry carries a year bitmask
 (u8, bit 0 = 2020) enabling year filtering without wasting slots on duplicate
 year entries.
+
+Clicking a cell pins the tooltip in place until the next click. Hover tooltips
+are suppressed while pinned. Tooltips show all vessels at a location regardless
+of active overlay mode (sanctions/tanker badges still appear).
 
 ## Sanctions & Old Tanker Overlays
 
@@ -134,7 +138,7 @@ The main heatmap COG contains per-year bands for sanctions and old tankers at
 configurable band offsets (`sanctionsBandOffset`, `oldTankerBandOffset`).
 
 - **Sanctions**: Red overlay. Toggled via the sanctions button in the legend.
-- **Old tankers**: Yellow overlay for oil tankers >25 years old.
+- **Old tankers**: Yellow overlay for all tankers >15 years old.
 - **Binary tiles**: Both get priority ranking so they always appear in tooltips
   with full detail (name, MMSI, flag, type, hours). Sanctioned vessels show a
   status badge; old tankers do not (vessel type is sufficient).

@@ -22,9 +22,11 @@ let dataInitialized = false
 let sanctionedMmsi = new Set()
 let vesselMeta = {}
 let iceVisible = true
+let lightTheme = false
 let showSanctionedOnly = false
 let showOldTankersOnly = false
 let lastTooltipVesselsRaw = null
+let tooltipPinned = false
 let isBouncingBack = false
 
 // COG tile cache (LRU eviction)
@@ -57,7 +59,9 @@ function showTooltip(html) {
 
 function hideTooltip() {
   tooltip.classList.remove('visible')
+  tooltip.classList.remove('pinned')
   lastTooltipVesselsRaw = null
+  tooltipPinned = false
 }
 
 // --- Utilities ---
@@ -99,7 +103,12 @@ function applyManifestUI() {
 function renderAboutModal() {
   if (!manifest?.about) return
   $('about-title').textContent = localize(manifest.about.title)
-  let html = localize(manifest.about.description).split('\n\n').map(p => `<p>${p}</p>`).join('')
+  const paragraphs = localize(manifest.about.description).split('\n\n').map(p => `<p>${p}</p>`)
+  if (manifest.data?.analysisExcel && paragraphs.length >= 2) {
+    const url = resolveUrl(manifest.data.analysisExcel, MANIFEST_URL.substring(0, MANIFEST_URL.lastIndexOf('/') + 1) || './')
+    paragraphs[1] = paragraphs[1].replace('</p>', ` (${t('downloadAnalysisPre')}<a href="${url}" download>${t('downloadAnalysisLink')}</a>.)</p>`)
+  }
+  let html = paragraphs.join('')
   if (manifest.about.builtBy) {
     html += `<p class="about-credits">${localize(manifest.about.builtBy)}</p>`
   }
@@ -267,7 +276,7 @@ function refreshHeatmapTiles() {
 
 function updatePoleCap() {
   if (!map?.getLayer('pole-cap-fill')) return
-  map.setLayoutProperty('pole-cap-fill', 'visibility', iceVisible && !satelliteVisible ? 'visible' : 'none')
+  map.setLayoutProperty('pole-cap-fill', 'visibility', iceVisible ? 'visible' : 'none')
 }
 
 function updateHeatmapSource() {
@@ -356,7 +365,7 @@ async function loadVesselMetadata(manifestDir) {
     const resp = await fetch(resolveUrl(url, manifestDir))
     if (!resp.ok) return
     vesselMeta = await resp.json()
-    const tankerCount = Object.values(vesselMeta).filter(v => v.ot).length
+    const tankerCount = Object.values(vesselMeta).filter(v => v.y).length
     if (tankerCount > 0) {
       $('old-tanker-toggle').classList.remove('hidden')
       $('legend-section-types').classList.remove('hidden')
@@ -419,9 +428,10 @@ function yearsFromMask(mask) {
   return years.join(', ') || '?'
 }
 
-function isOldTanker(mmsi) {
+function isOldTanker(mmsi, vesselType) {
   const meta = vesselMeta[mmsi]
-  return meta?.ot && meta?.y && (new Date().getFullYear() - meta.y) >= 25
+  const isTanker = vesselType === 'TANKER' || meta?.ot
+  return isTanker && meta?.y && (new Date().getFullYear() - meta.y) >= 15
 }
 
 function filterVesselsByFlags(vessels) {
@@ -438,12 +448,6 @@ function showRasterTooltip(vessels, isRefilter = false) {
   if (!vessels?.length) { hideTooltip(); return false }
 
   let filtered = filterVesselsByFlags(vessels)
-  if (showSanctionedOnly || showOldTankersOnly) {
-    filtered = filtered.filter(v =>
-      (showSanctionedOnly && sanctionedMmsi.has(v.mmsi)) ||
-      (showOldTankersOnly && isOldTanker(v.mmsi))
-    )
-  }
   if (!filtered.length) { hideTooltip(); return false }
 
   // Group by MMSI
@@ -451,7 +455,7 @@ function showRasterTooltip(vessels, isRefilter = false) {
   for (const v of filtered) {
     const key = v.mmsi || v.ship_name || 'unknown'
     if (!byMmsi.has(key)) {
-      byMmsi.set(key, { mmsi: v.mmsi, ship_name: v.ship_name, vessel_type: v.vessel_type, flag: v.flag, total_hours: 0, dates: [], sanctioned: sanctionedMmsi.has(v.mmsi), oldTanker: isOldTanker(v.mmsi) })
+      byMmsi.set(key, { mmsi: v.mmsi, ship_name: v.ship_name, vessel_type: v.vessel_type, flag: v.flag, total_hours: 0, dates: [], sanctioned: sanctionedMmsi.has(v.mmsi), oldTanker: isOldTanker(v.mmsi, v.vessel_type) })
     }
     const entry = byMmsi.get(key)
     entry.total_hours += v.total_hours || 0
@@ -485,12 +489,15 @@ function showRasterTooltip(vessels, isRefilter = false) {
     if (dwts.some(d => d !== '–')) rows.push({ key: t('dwt'), values: dwts })
   }
 
-  // Status badges (sanctions only)
-  const hasStatusBadges = display.some(v => v.sanctioned)
+  // Status badges
+  const hasStatusBadges = display.some(v => v.sanctioned || v.oldTanker)
   if (hasStatusBadges) {
-    rows.push({ key: t('status'), values: display.map(v =>
-      v.sanctioned ? `<span class="sanction-badge">${t('sanctioned')}</span>` : '–'
-    )})
+    rows.push({ key: t('status'), values: display.map(v => {
+      const badges = []
+      if (v.sanctioned) badges.push(`<span class="sanction-badge">${t('sanctioned')}</span>`)
+      if (v.oldTanker) badges.push(`<span class="old-tanker-badge">${t('oldTankerBadge')}</span>`)
+      return badges.length ? badges.join(' ') : '–'
+    })})
   }
 
   let html = '<table>' + rows.map(r =>
@@ -583,12 +590,20 @@ async function initPhase2(manifestDir) {
     return { data: buf }
   })
 
+  // Restore theme before creating map so initial style uses correct colors
+  if (localStorage.getItem('theme') === 'light') {
+    lightTheme = true
+    document.body.classList.add('light-theme')
+    $('theme-icon-light').style.display = 'none'
+    $('theme-icon-dark').style.display = ''
+  }
+
   // Create map
   const mc = manifest.map || {}
   map = new maplibregl.Map({
     container: 'map',
     attributionControl: false,
-    style: createMapStyle(manifest, manifestDir),
+    style: createMapStyle(manifest, manifestDir, lightTheme),
     center: mc.center || [0, 0],
     zoom: mc.zoom || 2,
     pitch: mc.pitch || 0,
@@ -685,6 +700,9 @@ function setupMapHandlers() {
     const paFeatures = paLayers.length ? map.queryRenderedFeatures(e.point, { layers: paLayers }) : []
     map.getCanvas().style.cursor = paFeatures?.length ? 'pointer' : ''
 
+    // Don't update tooltip while pinned
+    if (tooltipPinned) return
+
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
       handleRasterHover(e)
       return
@@ -697,28 +715,43 @@ function setupMapHandlers() {
     hideTooltip()
   })
 
-  map.on('mouseout', hideTooltip)
+  map.on('mouseout', () => { if (!tooltipPinned) hideTooltip() })
 
   map.on('click', async (e) => {
     if (!dataInitialized) return
+
+    // If tooltip is pinned, unpin first
+    if (tooltipPinned) {
+      hideTooltip()
+    }
+
+    let shown = false
 
     // At high zoom, try vessel data first
     if (map.getZoom() >= RASTER_TOOLTIP_MIN_ZOOM) {
       const { lat, lng } = e.lngLat
       const year = activeYears.size === 1 ? Array.from(activeYears)[0] : null
       try {
-        if (showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year))) return
+        shown = showRasterTooltip(await dataModule.queryVesselsAt(lat, lng, year))
       } catch { /* ignore */ }
     }
 
     // Fall back to protected area click
-    const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
-    if (paLayers.length) {
-      const features = map.queryRenderedFeatures(e.point, { layers: paLayers })
-      if (features?.length) {
-        showProtectedAreaTooltip(features[0], features[0].layer?.id === 'buffer-zones-fill')
-        return
+    if (!shown) {
+      const paLayers = ['protected-areas-fill', 'buffer-zones-fill'].filter(id => map.getLayer(id))
+      if (paLayers.length) {
+        const features = map.queryRenderedFeatures(e.point, { layers: paLayers })
+        if (features?.length) {
+          showProtectedAreaTooltip(features[0], features[0].layer?.id === 'buffer-zones-fill')
+          shown = true
+        }
       }
+    }
+
+    // Pin tooltip if we showed one
+    if (shown) {
+      tooltipPinned = true
+      tooltip.classList.add('pinned')
     }
   })
 
@@ -746,6 +779,23 @@ function setupMapHandlers() {
 // --- UI handlers ---
 
 function setupUIHandlers() {
+  $('theme-toggle').addEventListener('click', () => {
+    lightTheme = !lightTheme
+    document.body.classList.toggle('light-theme', lightTheme)
+    $('theme-icon-light').style.display = lightTheme ? 'none' : ''
+    $('theme-icon-dark').style.display = lightTheme ? '' : 'none'
+    // Update map layers for theme
+    const bg = lightTheme ? '#f0f2f5' : (manifest.ui?.theme?.background || '#000000')
+    if (map.getLayer('background')) map.setPaintProperty('background', 'background-color', bg)
+    if (map.getLayer('south-mask')) map.setPaintProperty('south-mask', 'fill-color', bg)
+    // Update place label colours
+    if (map.getLayer('place-labels')) {
+      map.setPaintProperty('place-labels', 'text-color', lightTheme ? '#333333' : '#666666')
+      map.setPaintProperty('place-labels', 'text-halo-color', lightTheme ? '#f0f2f5' : '#ffffff')
+    }
+    localStorage.setItem('theme', lightTheme ? 'light' : 'dark')
+  })
+
   $('lang-toggle').addEventListener('click', async () => {
     const lang = await toggleLang()
     $('lang-toggle').textContent = lang === 'ru' ? 'en' : 'ру'

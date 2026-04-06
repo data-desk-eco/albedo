@@ -29,6 +29,10 @@ sanctions: data/export/sanctioned_mmsi.json
 data/export/sanctioned_mmsi.json: scripts/fetch_sanctions.py
 	uv run python scripts/fetch_sanctions.py
 
+# Update sanctions and optionally deploy (use DEPLOY=1 to push to GCS)
+update-sanctions:
+	./scripts/update_sanctions.sh $(if $(DEPLOY),--deploy,)
+
 # Ingest supplementary vessel metadata (build year, DWT, IMO)
 vessel-metadata: data/data.duckdb
 	uv run python scripts/ingest_vessel_metadata.py
@@ -53,9 +57,15 @@ data/data.duckdb: data/.convert.done etl/transform.sql
 # Generate COGs with land mask (aggregate + per-vessel-type)
 tiles: data/vessel_heatmap.tif
 
-data/vessel_heatmap.tif: data/data.duckdb
+data/vessel_heatmap.tif: data/data.duckdb data/export/sanctioned_mmsi.json data/export/vessel_metadata.json
 	./scripts/export_raster.sh
 	@echo "Generated COGs:" && ls -lh data/vessel_heatmap*.tif
+
+# Export vessels-in-protected-areas Excel analysis
+analysis: data/export/vessels_in_protected_areas.xlsx
+
+data/export/vessels_in_protected_areas.xlsx: data/data.duckdb scripts/export_protected_area_vessels.py
+	uv run python scripts/export_protected_area_vessels.py
 
 # Export client-side data files (manifest + PMTiles + vessel tooltips)
 export: data/export/.done
@@ -110,6 +120,7 @@ deploy-data:
 	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
+	-gcloud storage cp data/export/vessels_in_protected_areas.xlsx gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
 # Upload built app + self-contained manifest to GCS for download_package.sh
@@ -140,4 +151,4 @@ setup-gcs:
 	@rm /tmp/cors.json
 	@echo "GCS bucket configured with CORS for range requests"
 
-.PHONY: all fetch convert transform tiles export sanctions vessel-metadata tankers install dev build preview clean deploy-data deploy-app setup-gcs package
+.PHONY: all fetch convert transform tiles export analysis sanctions update-sanctions vessel-metadata tankers install dev build preview clean deploy-data deploy-app setup-gcs package

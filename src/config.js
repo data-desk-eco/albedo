@@ -34,10 +34,11 @@ export function getYearColor(bandIndex) {
   return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
-export function createMapStyle(manifest, manifestDir = '') {
+export function createMapStyle(manifest, manifestDir = '', isLightTheme = false) {
   const theme = manifest.ui?.theme || {}
   const bounds = manifest.map?.bounds || {}
   const southBound = bounds.south ?? -90
+  const bgColor = isLightTheme ? '#f0f2f5' : (theme.background || '#000000')
 
   const sources = {
     'vessel-heatmap': {
@@ -83,7 +84,7 @@ export function createMapStyle(manifest, manifestDir = '') {
   }
 
   const layers = [
-    { id: 'background', type: 'background', paint: { 'background-color': theme.background || '#000000' } }
+    { id: 'background', type: 'background', paint: { 'background-color': bgColor } }
   ]
 
   if (sources['satellite']) {
@@ -122,7 +123,7 @@ export function createMapStyle(manifest, manifestDir = '') {
   addVectorLayers(false)
 
   // South mask: hide everything below SOUTH_LAT
-  layers.push({ id: 'south-mask', type: 'fill', source: 'south-mask', paint: { 'fill-color': theme.background || '#000000' } })
+  layers.push({ id: 'south-mask', type: 'fill', source: 'south-mask', paint: { 'fill-color': bgColor } })
 
   return {
     version: 8,

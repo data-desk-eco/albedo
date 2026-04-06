@@ -4,7 +4,8 @@ Fetch sanctioned vessel data from OpenSanctions.
 Produces sanctioned_mmsi.json and sanctions_details.json.
 
 OpenSanctions provides structured datasets of sanctioned entities.
-We filter for vessels with known MMSI/IMO identifiers.
+We filter for vessels with known IMO identifiers and cross-reference
+with our GFW database to get MMSIs.
 
 Usage:
     uv run python scripts/fetch_sanctions.py
@@ -16,26 +17,24 @@ Output:
 
 import json
 import os
+import re
 import sys
 import urllib.request
 import urllib.error
-import gzip
 import csv
 from pathlib import Path
-from io import TextIOWrapper
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPORT_DIR = ROOT / "data" / "export"
 SANCTIONS_DIR = ROOT / "data" / "sanctions"
 DB_PATH = ROOT / "data" / "data.duckdb"
 
-# OpenSanctions bulk data URL (statements CSV, gzipped)
-# We use the "default" dataset which combines all major sanctions lists
+# OpenSanctions bulk data URL (simple CSV format)
 OPENSANCTIONS_URL = "https://data.opensanctions.org/datasets/latest/default/targets.simple.csv"
 
 
 def fetch_opensanctions():
-    """Fetch OpenSanctions vessel data and extract MMSI/IMO identifiers."""
+    """Fetch OpenSanctions vessel data and extract IMO/MMSI identifiers."""
     SANCTIONS_DIR.mkdir(parents=True, exist_ok=True)
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -58,79 +57,103 @@ def fetch_opensanctions():
                 print("  No cached data available, exiting")
                 sys.exit(1)
 
-    # Parse CSV for vessel entities with MMSI
+    # Parse CSV for vessel entities
+    # The simple CSV format has columns:
+    #   id, schema, name, aliases, birth_date, countries, addresses,
+    #   identifiers, sanctions, phones, emails, program_ids, dataset,
+    #   first_seen, last_seen, last_change
     print("Parsing OpenSanctions data for vessels...")
-    sanctioned = {}  # mmsi -> {programs, datasets}
+    sanctioned_by_imo = {}  # imo -> {name, datasets, last_seen}
+    sanctioned_by_mmsi = {}  # mmsi -> {name, datasets, last_seen}
+
+    imo_re = re.compile(r"IMO(\d{7})")
+    mmsi_re = re.compile(r"MMSI(\d{9})")
 
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             schema = row.get("schema", "")
-            # Look for Vessel schema or entities with MMSI in properties
             if schema != "Vessel":
                 continue
 
-            # Extract identifiers
-            props = row.get("properties", "{}")
-            try:
-                props_dict = json.loads(props) if props else {}
-            except json.JSONDecodeError:
-                continue
-
-            mmsi_list = props_dict.get("mmsi", [])
-            if not mmsi_list:
-                continue
-
-            datasets = row.get("datasets", "")
-            dataset_list = [d.strip() for d in datasets.split(";") if d.strip()] if datasets else []
-
-            caption = row.get("caption", "")
-            first_seen = row.get("first_seen", "")
+            name = row.get("name", "")
+            identifiers = row.get("identifiers", "")
+            dataset = row.get("dataset", "")
             last_seen = row.get("last_seen", "")
+            sanctions_info = row.get("sanctions", "")
 
-            for mmsi in mmsi_list:
-                mmsi = str(mmsi).strip()
-                if not mmsi or not mmsi.isdigit():
-                    continue
-                programs_str = f"{last_seen}"
-                if caption:
-                    programs_str = f"{caption} - {programs_str}"
+            # Extract IMO numbers from identifiers field
+            imos = imo_re.findall(identifiers)
+            # Extract MMSI numbers from identifiers field
+            mmsis = mmsi_re.findall(identifiers)
 
-                sanctioned[mmsi] = {
-                    "programs": programs_str,
-                    "datasets": dataset_list,
-                }
+            programs_str = name
+            if last_seen:
+                programs_str = f"{name} - {last_seen[:10]}"
 
-    print(f"  Found {len(sanctioned)} sanctioned vessels with MMSI")
+            dataset_list = [d.strip() for d in dataset.split(";") if d.strip()] if dataset else []
 
-    # Cross-reference with our vessel database if available
-    known_mmsi = set()
+            entry = {
+                "programs": programs_str,
+                "datasets": dataset_list,
+            }
+
+            for imo in imos:
+                sanctioned_by_imo[imo] = entry
+
+            for mmsi in mmsis:
+                if mmsi.isdigit():
+                    sanctioned_by_mmsi[mmsi] = entry
+
+    print(f"  Found {len(sanctioned_by_imo)} sanctioned vessels with IMO")
+    print(f"  Found {len(sanctioned_by_mmsi)} sanctioned vessels with direct MMSI")
+
+    # Cross-reference IMOs with our vessel database to get MMSIs
     if DB_PATH.exists():
         try:
             import duckdb
             con = duckdb.connect(str(DB_PATH), read_only=True)
-            result = con.execute("SELECT DISTINCT mmsi FROM vessel_activity").fetchall()
-            known_mmsi = {str(row[0]) for row in result}
+
+            # Get IMO→MMSI mapping
+            rows = con.execute("""
+                SELECT DISTINCT imo, mmsi
+                FROM vessel_presence
+                WHERE imo IS NOT NULL AND imo != ''
+                  AND mmsi IS NOT NULL AND mmsi != ''
+            """).fetchall()
             con.close()
-            print(f"  Cross-referencing with {len(known_mmsi)} vessels in database")
+
+            imo_to_mmsi = {}
+            for imo, mmsi in rows:
+                imo = str(imo).strip()
+                mmsi = str(mmsi).strip()
+                if imo not in imo_to_mmsi:
+                    imo_to_mmsi[imo] = mmsi
+
+            print(f"  Database has {len(imo_to_mmsi)} IMO→MMSI mappings")
+
+            # Match sanctioned IMOs to MMSIs
+            for imo, entry in sanctioned_by_imo.items():
+                mmsi = imo_to_mmsi.get(imo)
+                if mmsi and mmsi not in sanctioned_by_mmsi:
+                    sanctioned_by_mmsi[mmsi] = entry
+
+            print(f"  Total sanctioned vessels with MMSI: {len(sanctioned_by_mmsi)}")
+
         except Exception as e:
             print(f"  Warning: Could not read database: {e}")
-
-    # Filter to only MMSIs we've seen (if database available)
-    if known_mmsi:
-        matched = {k: v for k, v in sanctioned.items() if k in known_mmsi}
-        print(f"  {len(matched)} sanctioned vessels found in our dataset")
+            print("  Only using vessels with direct MMSI identifiers")
     else:
-        matched = sanctioned
+        print("  No database available, only using vessels with direct MMSI identifiers")
 
     # Write outputs
-    mmsi_list = sorted(matched.keys())
+    mmsi_list = sorted(sanctioned_by_mmsi.keys())
     mmsi_path = EXPORT_DIR / "sanctioned_mmsi.json"
     mmsi_path.write_text(json.dumps(mmsi_list, indent=None))
     print(f"  Wrote {mmsi_path} ({len(mmsi_list)} MMSIs)")
 
     details_path = EXPORT_DIR / "sanctions_details.json"
-    details_path.write_text(json.dumps(matched, indent=None))
+    details_path.write_text(json.dumps(sanctioned_by_mmsi, indent=None))
     print(f"  Wrote {details_path}")
 
 

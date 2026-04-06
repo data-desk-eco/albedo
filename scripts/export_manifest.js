@@ -72,11 +72,13 @@ try {
   console.warn('Warning: Could not load places:', e.message)
 }
 
-// Parse AVAILABLE_LANGS
+// Parse AVAILABLE_LANGS (strip surrounding single quotes if present)
 let availableLangs = ['en']
 try {
   if (env.AVAILABLE_LANGS) {
-    availableLangs = JSON.parse(env.AVAILABLE_LANGS)
+    let raw = env.AVAILABLE_LANGS
+    if (raw.startsWith("'") && raw.endsWith("'")) raw = raw.slice(1, -1)
+    availableLangs = JSON.parse(raw)
   }
 } catch (e) {
   console.warn('Warning: Could not parse AVAILABLE_LANGS:', e.message)
@@ -138,7 +140,8 @@ const manifest = {
     sanctionedMmsi: 'sanctioned_mmsi.json',
     cogsByType: Object.keys(cogsByType).length > 0 ? cogsByType : undefined,
     cogsByFlag: Object.keys(cogsByFlag).length > 0 ? cogsByFlag : undefined,
-    vesselMetadata: `${cogBase}vessel_metadata.json`
+    vesselMetadata: `${cogBase}vessel_metadata.json`,
+    analysisExcel: `${cogBase}vessels_in_protected_areas.xlsx`
   },
 
   layers: {

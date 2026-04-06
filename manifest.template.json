@@ -37,7 +37,8 @@
     "vesselData": "${COG_BASE_URL}vessel_data.bin",
     "sanctionedMmsi": "sanctioned_mmsi.json",
     "cogsByFlag": ${COGS_BY_FLAG},
-    "vesselMetadata": "${COG_BASE_URL}vessel_metadata.json"
+    "vesselMetadata": "${COG_BASE_URL}vessel_metadata.json",
+    "analysisExcel": "${COG_BASE_URL}vessels_in_protected_areas.xlsx"
   },
 
   "layers": {

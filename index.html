@@ -15,8 +15,8 @@
     #map{opacity:0;transition:opacity 0.4s ease-out}
     #map.ready{opacity:1}
     /* UI hidden until app ready */
-    #controls,#legend,#lang-toggle,#logo-container{opacity:0;pointer-events:none}
-    body.app-ready #controls,body.app-ready #legend,body.app-ready #lang-toggle,body.app-ready #logo-container{opacity:1;pointer-events:auto;transition:opacity 0.15s ease-out}
+    #controls,#legend,#top-controls,#logo-container{opacity:0;pointer-events:none}
+    body.app-ready #controls,body.app-ready #legend,body.app-ready #top-controls,body.app-ready #logo-container{opacity:1;pointer-events:auto;transition:opacity 0.15s ease-out}
     /* About modal: visible during load, dismissable after ready */
     #about-modal{opacity:0;pointer-events:none}
     body.about-visible #about-modal{opacity:1}
@@ -50,7 +50,13 @@
   </select>
   <div id="places-info" class="hidden"></div>
 </div>
-<button id="lang-toggle">en</button>
+<div id="top-controls">
+  <button id="theme-toggle" title="Toggle light/dark mode">
+    <svg id="theme-icon-light" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    <svg id="theme-icon-dark" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+  </button>
+  <button id="lang-toggle">en</button>
+</div>
 <div id="perf-overlay" class="hidden"></div>
 <div id="legend">
   <div id="legend-collapse" class="ui-select-text"><span id="legend-collapse-label"></span></div>
@@ -74,7 +80,7 @@
     <div class="legend-symbol">
       <div class="legend-square" style="background: var(--color-old-tanker);"></div>
     </div>
-    <span id="old-tanker-label" class="legend-text">oil tankers &gt;25yr</span>
+    <span id="old-tanker-label" class="legend-text">tankers &gt;15yr</span>
   </div>
   <div id="legend-section-layers" class="legend-section-title"></div>
   <div id="legend-layers"></div>

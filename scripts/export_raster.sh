@@ -27,15 +27,23 @@ print(f'  Sanctioned MMSIs: {len(mmsis)}')
 from datetime import date
 with open('data/export/vessel_metadata.json') as f:
     meta = json.load(f)
-cutoff_year = date.today().year - 25
+cutoff_year = date.today().year - 15
+# Get tanker MMSIs from GFW data via pre-exported CSV
+import subprocess
+result = subprocess.run(
+    ['duckdb', 'data/data.duckdb', '-csv', '-noheader', '-c',
+     \"SELECT DISTINCT mmsi FROM vessel_presence WHERE vessel_type = 'TANKER'\"],
+    capture_output=True, text=True)
+tanker_mmsis = set(line.strip() for line in result.stdout.strip().split('\n') if line.strip())
 count = 0
 with open('data/_old_tanker_mmsi.csv', 'w') as f:
     f.write('mmsi\n')
     for mmsi, info in meta.items():
-        if info.get('ot') and info.get('y') and info['y'] <= cutoff_year:
+        is_tanker = info.get('ot') or mmsi in tanker_mmsis
+        if is_tanker and info.get('y') and info['y'] <= cutoff_year:
             f.write(f'{mmsi}\n')
             count += 1
-print(f'  Old tanker MMSIs (>= 25 years): {count}')
+print(f'  Old tanker MMSIs (>= 15 years): {count}')
 "
 
   duckdb data/data.duckdb -c "

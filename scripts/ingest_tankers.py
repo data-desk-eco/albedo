@@ -154,8 +154,8 @@ def join_with_gfw(tankers: dict[str, dict]) -> dict[str, dict]:
     print(f"Matched (LSEG tanker → GFW MMSI): {matched}")
 
     # Age stats
-    old = sum(1 for e in result.values() if e.get("y") and 2025 - e["y"] >= 25)
-    print(f"Matched & >25 years old: {old}")
+    old = sum(1 for e in result.values() if e.get("y") and 2025 - e["y"] >= 15)
+    print(f"Matched & >15 years old: {old}")
 
     return result
 

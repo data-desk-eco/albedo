@@ -35,8 +35,8 @@ function colorize(bands) {
 
   // Ice pixel
   if (iceIdx != null && bands[iceIdx] === 1) {
-    if (!cfg.showLand) return [0, 0, 0, 0]
     if (cfg.showIce) return [...cfg.iceColor, 255]
+    if (!cfg.showLand) return [0, 0, 0, 0]
     if (bands[landIdx] === 1) return [...cfg.landColor, 255]
     return [0, 0, 0, 0]
   }
