@@ -9,7 +9,7 @@ export
 #───────────────────────────────────────────────────────────────────────────────
 
 # Full pipeline
-all: transform tiles export build
+all: transform tiles export analysis build
 
 # Fetch source data from APIs
 fetch: data/.fetch.done
@@ -116,10 +116,11 @@ deploy-data:
 	gcloud storage cp data/vessel_heatmap*.tif gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vessel_data.bin gs://$(GCS_BUCKET)/
 	gcloud storage cp data/export/vectors.pmtiles gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/
-	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/
-	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/manifest.json gs://$(GCS_BUCKET)/ --cache-control="no-cache, max-age=0"
+	gcloud storage cp -r data/export/i18n gs://$(GCS_BUCKET)/ --cache-control="no-cache, max-age=0"
+	gcloud storage cp data/export/sanctioned_mmsi.json gs://$(GCS_BUCKET)/ --cache-control="no-cache, max-age=0"
 	gcloud storage cp data/export/vessel_metadata.json gs://$(GCS_BUCKET)/
+	gcloud storage cp data/export/sanctions_details.json gs://$(GCS_BUCKET)/
 	-gcloud storage cp data/export/vessels_in_protected_areas.xlsx gs://$(GCS_BUCKET)/
 	@echo "Deployed to: $(GCS_URL)/"
 
